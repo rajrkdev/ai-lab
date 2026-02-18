@@ -1,6 +1,6 @@
 title: Claude Code Mastery
 description: A comprehensive resource for mastering Claude Code — configuration, architecture, and training
-theme: jekyll-theme-cayman
+theme: jekyll-theme-midnight
 
 # Build settings
 markdown: kramdown
