@@ -46,9 +46,13 @@ Downloadable Word document version of the override test lab for offline referenc
 | Resource | What You'll Learn |
 |----------|-------------------|
 | [Architecture Diagram](architecture.html) | Interactive visual of the full session lifecycle and file load order |
-| [Markdown Files Catalog](claude-code-all-markdown-files-catalog) | All 20+ file types Claude Code reads, their locations, and when they load |
+| [File Catalog — Interactive](claude-code-architecture.html) | Browse all 16 file types with scope, priority, token cost, and examples |
+| [Precedence Diagram](claude-code-precedence-diagram.html) | Full hierarchy, conflict resolution scenarios, and override rules table |
+| [Override Test Lab](override-test-lab.html) | 12 hands-on test scenarios with exact file contents and verification steps |
+| [Markdown Files Catalog](claude-code-all-markdown-files-catalog) | All 16 file types Claude Code reads, their locations, and when they load |
 | [Config Architecture Guide](claude-code-config-guide) | When to use CLAUDE.md vs Rules vs Skills — with decision trees |
 | [Training Program](Claude-Training) | 8 modules from CLI shortcuts to multi-agent orchestration |
+| [Override Test Lab (docx)](override-test-lab.docx) | Downloadable Word document for offline reference |
 
 ---
 
