@@ -1,4 +1,4 @@
-import { useState } from "react";
+const { useState } = React;
 
 // Color palette
 const COLORS = {
@@ -626,7 +626,7 @@ function OverrideRulesTable() {
 }
 
 // ───────────────────── MAIN APP ─────────────────────
-export default function App() {
+function App() {
   const allFiles = [
     {
       name: "Enterprise CLAUDE.md",
@@ -961,3 +961,5 @@ export default function App() {
     </div>
   );
 }
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
