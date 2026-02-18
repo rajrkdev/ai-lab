@@ -55,7 +55,3 @@ Downloadable Word document version of the override test lab for offline referenc
 | [Override Test Lab (docx)](override-test-lab.docx) | Downloadable Word document for offline reference |
 
 ---
-
-<p style="text-align: center; color: #6a737d; font-size: 0.9em;">
-  Built with GitHub Pages • Source on <a href="https://github.com/dearraj25rk-jpg/personal">GitHub</a>
-</p>
