@@ -1,3 +1,8 @@
+---
+layout: default
+title: Elite Claude Code Mastery — Training Program
+---
+
 # Elite Claude Code mastery: a complete AI Engineer training program
 
 **This training program transforms an experienced .NET/Azure tech lead into an elite-level AI engineer** capable of orchestrating multi-agent systems, engineering production-grade RAG architectures, and leveraging Claude Code at its absolute ceiling. The curriculum spans 8 modules progressing from advanced CLI mastery through enterprise architecture patterns, with every technique grounded in the latest 2025-2026 documentation and real-world production implementations.

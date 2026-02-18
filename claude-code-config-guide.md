@@ -1,3 +1,8 @@
+---
+layout: default
+title: CLAUDE.md vs Skills vs Rules — Architecture Guide
+---
+
 # CLAUDE.md vs Skills vs Rules — Complete Architecture & Best Practices Guide
 
 ## 1. The Core Problem These Three Files Solve

@@ -1,3 +1,8 @@
+---
+layout: default
+title: Every Markdown File Claude Code Recognizes — Complete Catalog
+---
+
 # Every Markdown File Claude Code Recognizes — Complete Catalog
 
 ## Quick Reference Map
