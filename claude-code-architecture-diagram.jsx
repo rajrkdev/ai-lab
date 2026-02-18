@@ -1,4 +1,4 @@
-import { useState } from "react";
+const { useState } = React;
 
 const C = {
   bg: "#0B1120",
@@ -109,7 +109,7 @@ function Badge({ children, color, bg, border }) {
   );
 }
 
-export default function App() {
+function App() {
   return (
     <div style={{
       ...sans, background: C.bg, color: C.text, minHeight: "100vh",
@@ -767,3 +767,5 @@ export default function App() {
     </div>
   );
 }
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);

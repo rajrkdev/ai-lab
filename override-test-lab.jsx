@@ -1,4 +1,4 @@
-import { useState } from "react";
+const { useState } = React;
 
 const COLORS = {
   enterprise: { bg: "#DC2626", light: "#FEE2E2", border: "#EF4444", text: "#991B1B" },
@@ -737,7 +737,7 @@ function OverrideSummary() {
 }
 
 // ═══════════════════════ MAIN APP ═══════════════════════
-export default function App() {
+function App() {
   const [expanded, setExpanded] = useState(null);
   const [activeCategories, setActiveCategories] = useState([]);
   const [showSummary, setShowSummary] = useState(true);
@@ -834,3 +834,5 @@ echo "  5. Restart Claude Code between tests for clean state"`}
     </div>
   );
 }
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);

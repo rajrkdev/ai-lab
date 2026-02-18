@@ -1,4 +1,4 @@
-import { useState } from "react";
+const { useState } = React;
 
 const COLORS = {
   bg: "#0a0e1a",
@@ -626,7 +626,7 @@ function FlowDiagram({ onFileClick }) {
   );
 }
 
-export default function App() {
+function App() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [activeView, setActiveView] = useState("catalog");
   const [activeCategory, setActiveCategory] = useState("all");
@@ -787,3 +787,5 @@ export default function App() {
     </div>
   );
 }
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
