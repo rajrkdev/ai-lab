@@ -11,6 +11,9 @@ A comprehensive resource for mastering Claude Code — from configuration files 
 
 ## Guides
 
+### [Architecture Diagram (Interactive)](architecture.html)
+A visual, interactive diagram of how all 16 markdown file types load and connect — session lifecycle, token budget, and decision guide. Rendered as a React app directly in the browser.
+
 ### [Complete Markdown Files Catalog](claude-code-all-markdown-files-catalog)
 Every markdown file Claude Code recognizes — complete catalog with locations, priorities, token impact, and examples. Your definitive reference for the entire configuration surface.
 
@@ -26,6 +29,7 @@ An 8-module training program covering CLI mastery, agent teams, hooks, MCP serve
 
 | Resource | What You'll Learn |
 |----------|-------------------|
+| [Architecture Diagram](architecture.html) | Interactive visual of the full session lifecycle and file load order |
 | [Markdown Files Catalog](claude-code-all-markdown-files-catalog) | All 20+ file types Claude Code reads, their locations, and when they load |
 | [Config Architecture Guide](claude-code-config-guide) | When to use CLAUDE.md vs Rules vs Skills — with decision trees |
 | [Training Program](Claude-Training) | 8 modules from CLI shortcuts to multi-agent orchestration |
