@@ -10,8 +10,7 @@ highlighter: rouge
 exclude:
   - README.md
   - LICENSE
-  - .gitignore
-  - "*.png"
+  - .gitignore  
 
 # Default layout for all pages
 defaults:
