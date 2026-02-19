@@ -10,7 +10,8 @@ highlighter: rouge
 exclude:
   - README.md
   - LICENSE
-  - .gitignore  
+  - .gitignore
+  - "*.docx"
 
 # Default layout for all pages
 defaults:
