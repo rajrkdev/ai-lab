@@ -3,9 +3,9 @@ layout: default
 title: Home
 ---
 
-# Claude Code Mastery
+# Claude Code
 
-A comprehensive resource for mastering Claude Code — from configuration files to enterprise architecture patterns.
+A comprehensive resource for Claude Code — from configuration files architecture patterns.
 
 ---
 
@@ -33,7 +33,7 @@ Every markdown file Claude Code recognizes — complete catalog with locations, 
 ### [CLAUDE.md vs Skills vs Rules — Architecture Guide](claude-code-config-guide)
 Deep dive into the three core configuration mechanisms: CLAUDE.md (always-on memory), Rules (modular path-scoped instructions), and Skills (on-demand expertise packages). Includes decision frameworks, token budgets, and real-world examples.
 
-### [Elite Claude Code Training Program](Claude-Training)
+### [Claude Code Training Program](Claude-Training)
 An 8-module training program covering CLI mastery, agent teams, hooks, MCP servers, prompt engineering, RAG systems, CI/CD integration, and enterprise architecture patterns. Built for experienced developers ready to operate at an elite level.
 
 ### [Override Test Lab — Download (docx)](override-test-lab.docx)
