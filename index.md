@@ -5,7 +5,7 @@ title: Home
 
 # Claude Code
 
-A comprehensive resource for Claude Code — from configuration files architecture patterns.
+A resource for Claude Code — from configuration files architecture patterns.
 
 ---
 
