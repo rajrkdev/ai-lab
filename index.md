@@ -39,6 +39,9 @@ An 8-module training program covering CLI mastery, agent teams, hooks, MCP serve
 ### [Override Test Lab — Download (docx)](override-test-lab.docx)
 Downloadable Word document version of the override test lab for offline reference or sharing with your team.
 
+### [Concept Validation Report](validation-report)
+A detailed authenticity review of every major concept in this repository — 119 claims evaluated against official Anthropic documentation, with automated CI checks for links, markdown structure, and key fact patterns.
+
 ---
 
 ## Quick Links
@@ -53,5 +56,6 @@ Downloadable Word document version of the override test lab for offline referenc
 | [Config Architecture Guide](claude-code-config-guide) | When to use CLAUDE.md vs Rules vs Skills — with decision trees |
 | [Training Program](Claude-Training) | 8 modules from CLI shortcuts to multi-agent orchestration |
 | [Override Test Lab (docx)](override-test-lab.docx) | Downloadable Word document for offline reference |
+| [Concept Validation Report](validation-report) | Authenticity review of 119 claims — verified, partial, or unverifiable |
 
 ---
