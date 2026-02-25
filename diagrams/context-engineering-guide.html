@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Context Engineering — Claude Code Mastery</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a24;
+    --border: #2a2a3a;
+    --accent: #7c5cfc;
+    --accent2: #fc5c7d;
+    --accent3: #5cfca8;
+    --accent4: #fcbc5c;
+    --text: #e8e8f0;
+    --text-dim: #8888a8;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Noise overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  .wrapper { position: relative; z-index: 1; }
+
+  /* HEADER */
+  header {
+    padding: 60px 40px 40px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  header::after {
+    content: '';
+    position: absolute;
+    top: -80px; right: -80px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(124,92,252,0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent3);
+    background: rgba(92, 252, 168, 0.08);
+    border: 1px solid rgba(92, 252, 168, 0.2);
+    padding: 4px 12px;
+    border-radius: 2px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    font-size: clamp(32px, 5vw, 56px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -2px;
+    margin-bottom: 16px;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-dim);
+    max-width: 600px;
+    line-height: 1.8;
+  }
+
+  /* CORE PRINCIPLE BANNER */
+  .core-banner {
+    margin: 40px 40px;
+    padding: 28px 36px;
+    background: linear-gradient(135deg, rgba(124,92,252,0.12), rgba(252,92,125,0.08));
+    border: 1px solid rgba(124,92,252,0.3);
+    border-left: 4px solid var(--accent);
+    border-radius: 4px;
+  }
+
+  .core-banner .label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .core-banner p {
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  .core-banner p em {
+    color: var(--accent2);
+    font-style: normal;
+  }
+
+  /* CONTEXT WINDOW VISUAL */
+  .context-window-section {
+    padding: 0 40px 40px;
+  }
+
+  .section-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .context-window {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .cw-header {
+    background: var(--surface2);
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .cw-header::before {
+    content: '';
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent3);
+    box-shadow: 0 0 8px var(--accent3);
+  }
+
+  .cw-body {
+    padding: 20px;
+    display: grid;
+    gap: 3px;
+  }
+
+  .cw-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    border-radius: 4px;
+    overflow: hidden;
+    min-height: 44px;
+  }
+
+  .cw-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    min-width: 180px;
+    letter-spacing: 1px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .cw-desc {
+    font-size: 12px;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    color: var(--text-dim);
+    background: rgba(255,255,255,0.02);
+    border-left: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .cw-source {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    color: var(--text-dim);
+    background: rgba(255,255,255,0.02);
+    border-left: 1px solid rgba(255,255,255,0.05);
+    min-width: 200px;
+  }
+
+  .row-system    { background: rgba(124,92,252,0.12); }
+  .row-system .cw-label { color: var(--accent); }
+
+  .row-memory    { background: rgba(252,188,92,0.1); }
+  .row-memory .cw-label { color: var(--accent4); }
+
+  .row-tools     { background: rgba(92,252,168,0.08); }
+  .row-tools .cw-label { color: var(--accent3); }
+
+  .row-convo     { background: rgba(252,92,125,0.08); }
+  .row-convo .cw-label { color: var(--accent2); }
+
+  .row-task      { background: rgba(255,255,255,0.05); }
+  .row-task .cw-label { color: var(--text); }
+
+  /* LAYER CARDS */
+  .layers-grid {
+    padding: 0 40px 40px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 20px;
+  }
+
+  .layer-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+    cursor: default;
+  }
+
+  .layer-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(124,92,252,0.4);
+  }
+
+  .card-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .card-icon {
+    width: 40px; height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .card-meta { flex: 1; }
+  .card-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .card-file { font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
+
+  .card-body { padding: 20px 24px; }
+
+  .card-body p {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.7;
+    margin-bottom: 16px;
+  }
+
+  /* Code blocks */
+  .code-block {
+    background: #0d0d14;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+
+  .code-block-header {
+    background: var(--surface2);
+    padding: 8px 14px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .code-block pre {
+    padding: 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.8;
+    overflow-x: auto;
+    color: #c8c8e8;
+  }
+
+  .c-comment { color: #5a5a7a; }
+  .c-key     { color: var(--accent); }
+  .c-val     { color: var(--accent3); }
+  .c-str     { color: var(--accent4); }
+  .c-head    { color: var(--accent2); font-weight: 700; }
+
+  /* Pills */
+  .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+
+  .pill {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 2px;
+    letter-spacing: 0.5px;
+  }
+
+  .pill-purple { background: rgba(124,92,252,0.15); color: var(--accent); border: 1px solid rgba(124,92,252,0.25); }
+  .pill-green  { background: rgba(92,252,168,0.1);  color: var(--accent3); border: 1px solid rgba(92,252,168,0.2); }
+  .pill-red    { background: rgba(252,92,125,0.1);  color: var(--accent2); border: 1px solid rgba(252,92,125,0.2); }
+  .pill-yellow { background: rgba(252,188,92,0.1);  color: var(--accent4); border: 1px solid rgba(252,188,92,0.2); }
+
+  /* FLOW DIAGRAM */
+  .flow-section {
+    padding: 0 40px 40px;
+  }
+
+  .flow-diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 32px;
+    overflow-x: auto;
+  }
+
+  .flow-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .flow-node {
+    padding: 12px 18px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .flow-arrow {
+    font-size: 20px;
+    color: var(--text-dim);
+    padding: 0 4px;
+  }
+
+  .flow-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-style: italic;
+    margin-left: 8px;
+  }
+
+  .fn-purple { background: rgba(124,92,252,0.2); color: var(--accent); border: 1px solid rgba(124,92,252,0.3); }
+  .fn-green  { background: rgba(92,252,168,0.1); color: var(--accent3); border: 1px solid rgba(92,252,168,0.25); }
+  .fn-red    { background: rgba(252,92,125,0.1); color: var(--accent2); border: 1px solid rgba(252,92,125,0.25); }
+  .fn-yellow { background: rgba(252,188,92,0.1); color: var(--accent4); border: 1px solid rgba(252,188,92,0.25); }
+  .fn-white  { background: rgba(255,255,255,0.05); color: var(--text); border: 1px solid var(--border); }
+
+  /* RULES TABLE */
+  .rules-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .rules-table th {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+
+  .rules-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(42,42,58,0.5);
+    vertical-align: top;
+    line-height: 1.6;
+  }
+
+  .rules-table tr:hover td { background: rgba(124,92,252,0.04); }
+
+  .rules-table .file-col {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent3);
+    white-space: nowrap;
+  }
+
+  .rules-table .ce-col {
+    color: var(--accent);
+    font-size: 12px;
+  }
+
+  /* ACCORDION */
+  .accordion { margin-bottom: 8px; }
+
+  .acc-trigger {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    text-align: left;
+    transition: background 0.2s;
+  }
+
+  .acc-trigger:hover { background: rgba(124,92,252,0.1); }
+  .acc-trigger .chevron { transition: transform 0.3s; font-size: 12px; color: var(--text-dim); }
+  .acc-trigger.open .chevron { transform: rotate(180deg); }
+  .acc-trigger.open { border-color: rgba(124,92,252,0.4); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+
+  .acc-content {
+    display: none;
+    background: var(--surface);
+    border: 1px solid rgba(124,92,252,0.3);
+    border-top: none;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+    padding: 20px 24px;
+  }
+
+  .acc-content.open { display: block; }
+
+  .acc-content p {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.8;
+    margin-bottom: 12px;
+  }
+
+  /* CHEATSHEET */
+  .cheatsheet {
+    padding: 0 40px 60px;
+  }
+
+  .cs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  .cs-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+  }
+
+  .cs-card h4 {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .cs-rule {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-dim);
+  }
+
+  .cs-rule .icon { flex-shrink: 0; margin-top: 1px; }
+  .cs-rule.good .icon { color: var(--accent3); }
+  .cs-rule.bad .icon { color: var(--accent2); }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ANIMATE IN */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate { animation: fadeUp 0.5s ease both; }
+  .d1 { animation-delay: 0.05s; }
+  .d2 { animation-delay: 0.1s; }
+  .d3 { animation-delay: 0.15s; }
+  .d4 { animation-delay: 0.2s; }
+  .d5 { animation-delay: 0.25s; }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    header, .context-window-section, .layers-grid, .flow-section, .cheatsheet {
+      padding-left: 20px; padding-right: 20px;
+    }
+    .core-banner { margin: 24px 20px; }
+    .cw-source { display: none; }
+    .cw-label { min-width: 130px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+<!-- HEADER -->
+<header class="animate d1">
+  <div class="tag">Context Engineering × Claude Code</div>
+  <h1>How to <span>wire</span> Claude<br>for serious work</h1>
+  <p class="subtitle">A complete reference: how Context Engineering is the invisible force that makes every file, rule, agent, and command actually work.</p>
+</header>
+
+<!-- CORE PRINCIPLE -->
+<div class="core-banner animate d2">
+  <div class="label">The Central Principle</div>
+  <p>Every file you create for Claude — CLAUDE.md, settings.json, slash commands, agents — is just <em>one way of shaping what goes into the context window.</em> Context Engineering is the <em>strategy</em>. The files are the <em>tactics</em>.</p>
+</div>
+
+<!-- CONTEXT WINDOW ANATOMY -->
+<div class="context-window-section animate d3">
+  <div class="section-title">What Claude Actually Sees (The Context Window)</div>
+  <div class="context-window">
+    <div class="cw-header">Claude's context window — everything here, and ONLY this, shapes every response</div>
+    <div class="cw-body">
+
+      <div class="cw-row row-system">
+        <div class="cw-label">⚙️ System Context</div>
+        <div class="cw-desc">Identity, role, global rules, coding standards, domain knowledge</div>
+        <div class="cw-source">← CLAUDE.md + .claude/settings.json</div>
+      </div>
+
+      <div class="cw-row row-memory">
+        <div class="cw-label">🧠 Memory / Knowledge</div>
+        <div class="cw-desc">Subfolder CLAUDE.md, pasted code snippets, Jira/Confluence context</div>
+        <div class="cw-source">← src/CLAUDE.md, tests/CLAUDE.md</div>
+      </div>
+
+      <div class="cw-row row-tools">
+        <div class="cw-label">🔧 Tool Results</div>
+        <div class="cw-desc">Output from bash, file reads, web fetches, subagent responses</div>
+        <div class="cw-source">← .claude/agents/*.md define agents</div>
+      </div>
+
+      <div class="cw-row row-convo">
+        <div class="cw-label">💬 Conversation</div>
+        <div class="cw-desc">Your messages, Claude's prior responses in this session</div>
+        <div class="cw-source">← What you type + session history</div>
+      </div>
+
+      <div class="cw-row row-task">
+        <div class="cw-label">🎯 Current Task</div>
+        <div class="cw-desc">The actual thing you need done RIGHT NOW</div>
+        <div class="cw-source">← Your prompt / slash command</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- THE 5 LAYERS -->
+<div class="layers-grid animate d4">
+
+  <!-- CLAUDE.md -->
+  <div class="layer-card">
+    <div class="card-header">
+      <div class="card-icon" style="background:rgba(124,92,252,0.15)">📄</div>
+      <div class="card-meta">
+        <div class="card-title">CLAUDE.md Files</div>
+        <div class="card-file">CLAUDE.md · src/CLAUDE.md · tests/CLAUDE.md</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <p>These are your <strong>System Context</strong> injection points. Auto-loaded by Claude Code, they fill the top of the context window before you type a single word. The layered hierarchy means subfolder files add specificity without repeating yourself.</p>
+
+      <div class="code-block">
+        <div class="code-block-header">📁 How layers merge in context</div>
+        <pre><span class="c-comment"># What Claude sees when you open /tests/PolicyTests.cs</span>
+
+<span class="c-head">FROM: /CLAUDE.md</span>
+<span class="c-val">→ Stack, identity, hard rules (always loaded)</span>
+
+<span class="c-head">FROM: /tests/CLAUDE.md</span>
+<span class="c-val">→ Test patterns, selector rules (loaded because you're in /tests)</span>
+
+<span class="c-comment"># src/CLAUDE.md is NOT loaded (different folder)</span></pre>
+      </div>
+
+      <div class="pill-row">
+        <span class="pill pill-purple">System Context</span>
+        <span class="pill pill-green">Always Loaded</span>
+        <span class="pill pill-yellow">Layer = Scope</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- settings.json -->
+  <div class="layer-card">
+    <div class="card-header">
+      <div class="card-icon" style="background:rgba(92,252,168,0.1)">⚙️</div>
+      <div class="card-meta">
+        <div class="card-title">settings.json</div>
+        <div class="card-file">.claude/settings.json</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <p>This is your <strong>permission and capability context</strong>. It tells Claude what tools it's allowed to use autonomously vs. what requires your approval. Proper settings = Claude that acts, not just talks.</p>
+
+      <div class="code-block">
+        <div class="code-block-header">⚙️ settings.json pattern</div>
+        <pre>{
+  <span class="c-key">"model"</span>: <span class="c-str">"claude-opus-4-6"</span>,
+  <span class="c-key">"permissions"</span>: {
+    <span class="c-key">"allow"</span>: [
+      <span class="c-str">"Bash(dotnet:*)"</span>,   <span class="c-comment">// run dotnet cmds</span>
+      <span class="c-str">"Write(tests/**)"</span>,  <span class="c-comment">// write test files</span>
+      <span class="c-str">"Read(**/*.cs)"</span>    <span class="c-comment">// read any C# file</span>
+    ],
+    <span class="c-key">"deny"</span>: [
+      <span class="c-str">"Write(*.env)"</span>,     <span class="c-comment">// NEVER touch env</span>
+      <span class="c-str">"Bash(rm -rf:*)"</span>   <span class="c-comment">// no dangerous cmds</span>
+    ]
+  }
+}</pre>
+      </div>
+
+      <div class="pill-row">
+        <span class="pill pill-green">Tool Context</span>
+        <span class="pill pill-red">Safety Boundary</span>
+        <span class="pill pill-purple">Autonomous Actions</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slash Commands -->
+  <div class="layer-card">
+    <div class="card-header">
+      <div class="card-icon" style="background:rgba(252,188,92,0.1)">⚡</div>
+      <div class="card-meta">
+        <div class="card-title">Slash Commands</div>
+        <div class="card-file">.claude/commands/review.md · test-gen.md · fix-bug.md</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <p>Slash commands are <strong>pre-written context bundles</strong> you fire with one word. Typing <code style="font-family:var(--mono);color:var(--accent4)">/review</code> injects a fully formed role, checklist, and output format into the context window instantly — no typing required.</p>
+
+      <div class="code-block">
+        <div class="code-block-header">⚡ .claude/commands/review.md</div>
+        <pre><span class="c-head">## Role</span>
+<span class="c-val">Senior .NET architect. Insurance domain expert.</span>
+
+<span class="c-head">## Context Injection</span>
+<span class="c-val">Apply all rules from CLAUDE.md automatically.</span>
+
+<span class="c-head">## Checklist (run every time)</span>
+<span class="c-val">1. async/await correctness
+2. decimal for monetary values
+3. PII in logs check
+4. Azure retry patterns</span>
+
+<span class="c-head">## Output Format</span>
+<span class="c-val">[CRITICAL/HIGH/MEDIUM/LOW] Issue + Fix</span></pre>
+      </div>
+
+      <div class="pill-row">
+        <span class="pill pill-yellow">Instant Context</span>
+        <span class="pill pill-purple">Reusable</span>
+        <span class="pill pill-green">No Retyping</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Subagents -->
+  <div class="layer-card">
+    <div class="card-header">
+      <div class="card-icon" style="background:rgba(252,92,125,0.1)">🤖</div>
+      <div class="card-meta">
+        <div class="card-title">Subagents</div>
+        <div class="card-file">.claude/agents/qa-agent.md · jira-agent.md · review-agent.md</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <p>Subagents are <strong>isolated context environments</strong>. Each one is a Claude instance with its own system context, separate from your main conversation. This prevents context pollution — your QA agent stays laser-focused on tests and never gets confused by production code.</p>
+
+      <div class="code-block">
+        <div class="code-block-header">🤖 .claude/agents/qa-agent.md</div>
+        <pre><span class="c-head">## Identity</span>
+<span class="c-val">QA specialist. ONLY test-related tasks.
+Never write production code.</span>
+
+<span class="c-head">## Isolated Context Rules</span>
+<span class="c-val">- data-testid selectors only
+- POM pattern always
+- TestDataBuilder for all data
+- No Thread.Sleep()</span>
+
+<span class="c-head">## Input → Output Contract</span>
+<span class="c-val">IN:  Feature description / Jira ticket
+OUT: TC-001 format + Playwright C# code</span></pre>
+      </div>
+
+      <div class="pill-row">
+        <span class="pill pill-red">Isolated Context</span>
+        <span class="pill pill-purple">Specialist Role</span>
+        <span class="pill pill-yellow">No Pollution</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rules -->
+  <div class="layer-card">
+    <div class="card-header">
+      <div class="card-icon" style="background:rgba(92,252,168,0.08)">📏</div>
+      <div class="card-meta">
+        <div class="card-title">Rules (Hard Constraints)</div>
+        <div class="card-file">Defined in CLAUDE.md under "Hard Rules" or "Never Do"</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <p>Rules are <strong>negative context</strong> — they tell Claude what NOT to do. Without explicit rules, Claude defaults to common patterns (like Entity Framework, or using float for money). Rules override those defaults every single time.</p>
+
+      <div class="code-block">
+        <div class="code-block-header">📏 Hard Rules block in CLAUDE.md</div>
+        <pre><span class="c-head">## Hard Rules — NEVER Break</span>
+
+<span class="c-comment"># Async rules</span>
+<span class="c-val">- NEVER use .Result, .Wait(), GetAwaiter()</span>
+<span class="c-val">- ALWAYS async/await end-to-end</span>
+
+<span class="c-comment"># Money rules (insurance domain)</span>
+<span class="c-val">- ALWAYS decimal for amounts</span>
+<span class="c-val">- NEVER float or double for money</span>
+
+<span class="c-comment"># Privacy rules (APAC compliance)</span>
+<span class="c-val">- NEVER log PII: names, NRICs, policy numbers</span>
+<span class="c-val">- ALWAYS use structured logging with IDs only</span></pre>
+      </div>
+
+      <div class="pill-row">
+        <span class="pill pill-red">Negative Context</span>
+        <span class="pill pill-green">Domain Safety</span>
+        <span class="pill pill-yellow">Override Defaults</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Skills -->
+  <div class="layer-card">
+    <div class="card-header">
+      <div class="card-icon" style="background:rgba(124,92,252,0.15)">🎯</div>
+      <div class="card-meta">
+        <div class="card-title">Skills</div>
+        <div class="card-file">Patterns + Examples in CLAUDE.md or command files</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <p>Skills are <strong>example context</strong> — the most powerful form of context. Instead of describing what you want, you <em>show</em> Claude a working example. Claude pattern-matches to it. One good example beats three paragraphs of instructions.</p>
+
+      <div class="code-block">
+        <div class="code-block-header">🎯 Skill via example in CLAUDE.md</div>
+        <pre><span class="c-head">## Pattern: Service Method (Always Follow This)</span>
+
+<span class="c-val">public async Task&lt;PolicyDto&gt; GetPolicyAsync(</span>
+<span class="c-val">    PolicyId policyId,</span>
+<span class="c-val">    CancellationToken ct = default)</span>
+<span class="c-val">{</span>
+<span class="c-comment">    // 1. Validate input</span>
+<span class="c-comment">    // 2. Call repository</span>
+<span class="c-comment">    // 3. Map to DTO</span>
+<span class="c-comment">    // 4. Return — never throw from here</span>
+<span class="c-val">}</span>
+
+<span class="c-comment"># Claude will mirror this structure every time</span></pre>
+      </div>
+
+      <div class="pill-row">
+        <span class="pill pill-purple">Example Context</span>
+        <span class="pill pill-green">Pattern Matching</span>
+        <span class="pill pill-yellow">Beats Instructions</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- HOW IT FLOWS -->
+<div class="flow-section animate d5">
+  <div class="section-title">The Full Flow — A Real Day with Context Engineering</div>
+
+  <div class="flow-diagram">
+
+    <div style="margin-bottom:28px">
+      <p style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:16px;letter-spacing:2px;text-transform:uppercase">MORNING — Jira ticket arrives</p>
+      <div class="flow-row">
+        <div class="flow-node fn-yellow">Jira Ticket</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node fn-red">/jira-agent</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node fn-purple">Acceptance Criteria<br>+ Edge Cases</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node fn-green">Test Cases (TC-001)</div>
+      </div>
+      <p style="font-size:11px;color:var(--text-dim);font-family:var(--mono);margin-top:8px">Context used: jira-agent.md (identity) + CLAUDE.md (insurance domain rules) + agents system context</p>
+    </div>
+
+    <div style="margin-bottom:28px;padding-top:24px;border-top:1px solid var(--border)">
+      <p style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:16px;letter-spacing:2px;text-transform:uppercase">CODING — Build the feature</p>
+      <div class="flow-row">
+        <div class="flow-node fn-white">You open /src</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node fn-purple">Auto-load CLAUDE.md<br>+ src/CLAUDE.md</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node fn-yellow">Write code prompt<br>(RICE template)</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node fn-green">✅ Code follows your<br>exact patterns</div>
+      </div>
+      <p style="font-size:11px;color:var(--text-dim);font-family:var(--mono);margin-top:8px">Context used: CLAUDE.md (global) + src/CLAUDE.md (service patterns) + your prompt example</p>
+    </div>
+
+    <div style="margin-bottom:28px;padding-top:24px;border-top:1px solid var(--border)">
+      <p style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:16px;letter-spacing:2px;text-transform:uppercase">TESTING — Generate Playwright tests</p>
+      <div class="flow-row">
+        <div class="flow-node fn-white">TC-001 cases</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node fn-red">/qa-agent</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node fn-purple">tests/CLAUDE.md<br>(selector rules)</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node fn-green">✅ Self-healing<br>Playwright tests</div>
+      </div>
+      <p style="font-size:11px;color:var(--text-dim);font-family:var(--mono);margin-top:8px">Context used: qa-agent.md (isolated specialist) + tests/CLAUDE.md (POM rules, selector priority)</p>
+    </div>
+
+    <div style="padding-top:24px;border-top:1px solid var(--border)">
+      <p style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:16px;letter-spacing:2px;text-transform:uppercase">PR REVIEW — Before push</p>
+      <div class="flow-row">
+        <div class="flow-node fn-white">Paste your diff</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node fn-yellow">/review</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node fn-purple">review.md injects<br>checklist + rules</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node fn-green">APPROVED /<br>BLOCKED verdict</div>
+      </div>
+      <p style="font-size:11px;color:var(--text-dim);font-family:var(--mono);margin-top:8px">Context used: review.md (role + checklist) + CLAUDE.md hard rules (async, decimal, PII)</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- THE FULL MAPPING TABLE -->
+<div style="padding: 0 40px 40px">
+  <div class="section-title">Complete Mapping: File → Context Layer → Purpose</div>
+
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+    <table class="rules-table">
+      <thead>
+        <tr>
+          <th>File / Mechanism</th>
+          <th>Context Layer</th>
+          <th>Context Engineering Role</th>
+          <th>When It Fires</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="file-col">CLAUDE.md (root)</td>
+          <td><span class="pill pill-purple">System</span></td>
+          <td class="ce-col">Global identity + hard rules. The "always true" foundation of every context window.</td>
+          <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">Every session</td>
+        </tr>
+        <tr>
+          <td class="file-col">src/CLAUDE.md</td>
+          <td><span class="pill pill-purple">System</span></td>
+          <td class="ce-col">Scoped context injection. Adds service-layer rules only when you're working in /src.</td>
+          <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">When in /src folder</td>
+        </tr>
+        <tr>
+          <td class="file-col">tests/CLAUDE.md</td>
+          <td><span class="pill pill-purple">System</span></td>
+          <td class="ce-col">Scoped context injection. Test-specific rules (selectors, POM, builders) without polluting main context.</td>
+          <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">When in /tests folder</td>
+        </tr>
+        <tr>
+          <td class="file-col">.claude/settings.json</td>
+          <td><span class="pill pill-green">Tool</span></td>
+          <td class="ce-col">Defines the tool availability context. Controls what Claude can do autonomously vs. what requires confirmation.</td>
+          <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">Every session</td>
+        </tr>
+        <tr>
+          <td class="file-col">.claude/commands/*.md</td>
+          <td><span class="pill pill-yellow">Task</span></td>
+          <td class="ce-col">One-word context bundles. Inject role + checklist + output format instantly. Zero typing overhead.</td>
+          <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">When you type /cmd</td>
+        </tr>
+        <tr>
+          <td class="file-col">.claude/agents/*.md</td>
+          <td><span class="pill pill-red">Isolated</span></td>
+          <td class="ce-col">Creates clean-slate context environments. Prevents cross-contamination. Each specialist stays specialist.</td>
+          <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">When agent is spawned</td>
+        </tr>
+        <tr>
+          <td class="file-col">Hard Rules (in CLAUDE.md)</td>
+          <td><span class="pill pill-red">Negative</span></td>
+          <td class="ce-col">Negative context. Blocks Claude's default patterns. "Never float for money" overrides training defaults.</td>
+          <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">Every code generation</td>
+        </tr>
+        <tr>
+          <td class="file-col">Code Examples (in CLAUDE.md)</td>
+          <td><span class="pill pill-yellow">Example</span></td>
+          <td class="ce-col">Positive context via demonstration. One real code pattern beats three paragraphs of description.</td>
+          <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">Every code generation</td>
+        </tr>
+        <tr>
+          <td class="file-col">Your prompt (RICE template)</td>
+          <td><span class="pill pill-green">Task</span></td>
+          <td class="ce-col">The task-specific context layer. Role + Information + Constraints + Example = complete task brief.</td>
+          <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">Per prompt</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- CONTEXT ENGINEERING PRINCIPLES per LAYER -->
+<div style="padding: 0 40px 40px">
+  <div class="section-title">Context Engineering Decisions — FAQ</div>
+
+  <div class="accordion">
+    <button class="acc-trigger" onclick="toggleAcc(this)">
+      What goes in CLAUDE.md vs. a slash command?
+      <span class="chevron">▼</span>
+    </button>
+    <div class="acc-content">
+      <p><strong>CLAUDE.md:</strong> Information that is ALWAYS true about you, your stack, and your domain. Identity, hard rules, coding standards, and domain constants (decimal for money, etc.). If it's true on every task, every day — it belongs here.</p>
+      <p><strong>Slash commands:</strong> Context that is true for a specific TYPE of task but not all tasks. A review checklist only matters when reviewing. A test-gen template only matters when generating tests. Don't pollute the main context with task-specific instructions.</p>
+      <p>Rule of thumb: <em>Would I want this in context even when I'm just asking Claude to explain a concept?</em> If no → slash command. If yes → CLAUDE.md.</p>
+    </div>
+  </div>
+
+  <div class="accordion">
+    <button class="acc-trigger" onclick="toggleAcc(this)">
+      When should I use a subagent vs. a slash command?
+      <span class="chevron">▼</span>
+    </button>
+    <div class="acc-content">
+      <p><strong>Use a slash command</strong> when you want Claude to do something specific within your current conversation context, and you want it to have access to everything you've discussed so far.</p>
+      <p><strong>Use a subagent</strong> when you want a completely clean-slate Claude instance that is focused ONLY on one specialist job and should NOT be influenced by your conversation history or current code context. Example: your QA agent should not know about the implementation details of the service it's testing — it should only know the requirements and test patterns.</p>
+      <p>The key insight: subagents provide <em>context isolation</em>, not just specialization. That isolation prevents drift and hallucination from irrelevant context accumulating over a long session.</p>
+    </div>
+  </div>
+
+  <div class="accordion">
+    <button class="acc-trigger" onclick="toggleAcc(this)">
+      How do I know when my context is "full" or bloated?
+      <span class="chevron">▼</span>
+    </button>
+    <div class="acc-content">
+      <p>Signs of context bloat: Claude starts making mistakes it didn't make earlier in the session, response quality drops, it contradicts earlier good output, or it starts combining patterns incorrectly.</p>
+      <p>When you see this: <strong>start a new session</strong>. Don't try to correct within the same context window — the noise has accumulated too much. Your CLAUDE.md will re-establish all the important context instantly on the fresh session.</p>
+      <p>This is why CLAUDE.md is so important — it means a fresh session costs you nothing. You don't lose your context; you just reload it cleanly.</p>
+    </div>
+  </div>
+
+  <div class="accordion">
+    <button class="acc-trigger" onclick="toggleAcc(this)">
+      What's the best way to add context for an insurance domain rule?
+      <span class="chevron">▼</span>
+    </button>
+    <div class="acc-content">
+      <p><strong>Level 1 — Rule only:</strong> "Always use decimal for monetary amounts." Claude knows what to do but may not know why.</p>
+      <p><strong>Level 2 — Rule + reason:</strong> "Always use decimal for monetary amounts — float/double cause rounding errors that fail APAC regulatory precision requirements." Claude now applies this judgment in ambiguous cases too.</p>
+      <p><strong>Level 3 — Rule + reason + example:</strong> Add a code snippet showing the correct pattern. This is the most powerful form. Claude will pattern-match precisely to your example rather than interpreting the rule.</p>
+      <p>For insurance domain, always use Level 3 for rules around money, dates, PII, and concurrent operations — these are where generic patterns cause real production bugs.</p>
+    </div>
+  </div>
+
+  <div class="accordion">
+    <button class="acc-trigger" onclick="toggleAcc(this)">
+      How does Context Engineering help with self-healing Playwright tests?
+      <span class="chevron">▼</span>
+    </button>
+    <div class="acc-content">
+      <p>Self-healing is itself a context engineering problem. The context you give the test system determines how it responds when a selector breaks.</p>
+      <p>In your tests/CLAUDE.md and qa-agent.md, define the fallback hierarchy as an explicit rule: "1. data-testid → 2. aria-label → 3. visible text (log warning)". This becomes the agent's decision tree whenever it generates or repairs a selector.</p>
+      <p>You can also add a "self-healing protocol" section: when a selector fails at runtime, the agent re-reads the DOM context (tool result) and re-applies the selector priority rules from its context to find the element. The context is what makes the healing intelligent rather than just random retries.</p>
+    </div>
+  </div>
+</div>
+
+<!-- CHEATSHEET -->
+<div class="cheatsheet">
+  <div class="section-title">Context Engineering Cheatsheet — Print This</div>
+  <div class="cs-grid">
+
+    <div class="cs-card">
+      <h4 style="color:var(--accent)">📄 CLAUDE.md — Do This</h4>
+      <div class="cs-rule good"><span class="icon">✓</span><span>Stack, identity, domain rules — global always-true context</span></div>
+      <div class="cs-rule good"><span class="icon">✓</span><span>Hard rules (async/await, decimal, no PII in logs)</span></div>
+      <div class="cs-rule good"><span class="icon">✓</span><span>One working code example for each core pattern</span></div>
+      <div class="cs-rule good"><span class="icon">✓</span><span>Update it every time Claude gets something wrong</span></div>
+      <div class="cs-rule bad"><span class="icon">✗</span><span>Don't add task-specific instructions (those go in commands)</span></div>
+      <div class="cs-rule bad"><span class="icon">✗</span><span>Don't make it so long Claude loses the key rules</span></div>
+    </div>
+
+    <div class="cs-card">
+      <h4 style="color:var(--accent3)">⚙️ settings.json — Do This</h4>
+      <div class="cs-rule good"><span class="icon">✓</span><span>Allow: dotnet, git, playwright, read all C# files</span></div>
+      <div class="cs-rule good"><span class="icon">✓</span><span>Restrict writes to src/ and tests/ only</span></div>
+      <div class="cs-rule good"><span class="icon">✓</span><span>Deny: rm -rf, write to .env, write to production configs</span></div>
+      <div class="cs-rule bad"><span class="icon">✗</span><span>Don't give blanket Write(**) — too risky</span></div>
+      <div class="cs-rule bad"><span class="icon">✗</span><span>Don't deny read access — Claude needs to read to understand</span></div>
+    </div>
+
+    <div class="cs-card">
+      <h4 style="color:var(--accent4)">⚡ Commands — Do This</h4>
+      <div class="cs-rule good"><span class="icon">✓</span><span>One command per task type: /review, /test-gen, /fix-bug</span></div>
+      <div class="cs-rule good"><span class="icon">✓</span><span>Include role + checklist + output format in every command</span></div>
+      <div class="cs-rule good"><span class="icon">✓</span><span>Reference CLAUDE.md rules ("apply CLAUDE.md standards")</span></div>
+      <div class="cs-rule bad"><span class="icon">✗</span><span>Don't duplicate what's already in CLAUDE.md</span></div>
+      <div class="cs-rule bad"><span class="icon">✗</span><span>Don't make commands so long they bloat the context</span></div>
+    </div>
+
+    <div class="cs-card">
+      <h4 style="color:var(--accent2)">🤖 Agents — Do This</h4>
+      <div class="cs-rule good"><span class="icon">✓</span><span>One specialist per agent — QA, Jira, Review, Doc</span></div>
+      <div class="cs-rule good"><span class="icon">✓</span><span>Define explicit Input → Output contract in every agent</span></div>
+      <div class="cs-rule good"><span class="icon">✓</span><span>Add "Never do" constraints to keep agent in its lane</span></div>
+      <div class="cs-rule bad"><span class="icon">✗</span><span>Don't create one "super agent" that does everything</span></div>
+      <div class="cs-rule bad"><span class="icon">✗</span><span>Don't let agents share context — defeats the isolation point</span></div>
+    </div>
+
+    <div class="cs-card">
+      <h4 style="color:var(--accent)">📏 Rules — Do This</h4>
+      <div class="cs-rule good"><span class="icon">✓</span><span>Phrase rules as "ALWAYS X" or "NEVER Y" — be absolute</span></div>
+      <div class="cs-rule good"><span class="icon">✓</span><span>Add the reason: "NEVER float — APAC regulatory precision"</span></div>
+      <div class="cs-rule good"><span class="icon">✓</span><span>Add an example for every critical rule</span></div>
+      <div class="cs-rule bad"><span class="icon">✗</span><span>Don't use vague rules: "prefer async" → Claude will ignore it</span></div>
+      <div class="cs-rule bad"><span class="icon">✗</span><span>Don't add 50 rules — prioritize your top 10 hard ones</span></div>
+    </div>
+
+    <div class="cs-card">
+      <h4 style="color:var(--accent3)">🎯 Prompts — Do This</h4>
+      <div class="cs-rule good"><span class="icon">✓</span><span>RICE: Role, Information, Constraints, Example — always</span></div>
+      <div class="cs-rule good"><span class="icon">✓</span><span>Paste only the relevant code, not entire files</span></div>
+      <div class="cs-rule good"><span class="icon">✓</span><span>End with "tell me if anything is unclear before writing code"</span></div>
+      <div class="cs-rule bad"><span class="icon">✗</span><span>Don't paste the whole codebase — wastes context budget</span></div>
+      <div class="cs-rule bad"><span class="icon">✗</span><span>Don't re-explain what's already in CLAUDE.md</span></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div style="padding:24px 40px;border-top:1px solid var(--border);font-family:var(--mono);font-size:11px;color:var(--text-dim);display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px">
+  <span>Context Engineering × Claude Code — Raj's Reference Guide</span>
+  <span>Stack: .NET 8 · Azure · Playwright · APAC Insurance Domain</span>
+</div>
+
+</div><!-- end wrapper -->
+
+<script>
+function toggleAcc(trigger) {
+  const content = trigger.nextElementSibling;
+  const isOpen = trigger.classList.contains('open');
+  
+  // Close all
+  document.querySelectorAll('.acc-trigger').forEach(t => t.classList.remove('open'));
+  document.querySelectorAll('.acc-content').forEach(c => c.classList.remove('open'));
+  
+  // Open clicked if it was closed
+  if (!isOpen) {
+    trigger.classList.add('open');
+    content.classList.add('open');
+  }
+}
+</script>
+
+</body>
+</html>

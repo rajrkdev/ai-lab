@@ -12,6 +12,8 @@ exclude:
   - LICENSE
   - .gitignore
   - "*.docx"
+  - "reference/*.docx"
+  - "prompts/document.md"
 
 # Default layout for all pages
 defaults:
