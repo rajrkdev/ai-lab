@@ -1,0 +1,91 @@
+%% InsureChat v3.0 — Package & Component Diagram
+%% Shows Python packages, modules, and their import dependencies
+
+graph LR
+    subgraph web["web/ — HTTP Layer"]
+        direction TB
+        FSP["fastapi_server.py<br/>REST API (11 endpoints)<br/>Rate limiting, CORS"]
+        STM["streamlit_microsite.py<br/>Insurance Chatbot UI<br/>Port 8501"]
+        STS["streamlit_support.py<br/>Support Chatbot UI<br/>Port 8502"]
+    end
+
+    subgraph mcp["mcp_server/ — MCP + Tool Layer"]
+        direction TB
+        SRV["server.py<br/>FastMCP Server<br/>10 tool registrations"]
+
+        subgraph tools["tools/ — Core Business Logic"]
+            direction TB
+            IV2["input_validator.py<br/>validate_input()"]
+            IC3["intent_classifier.py<br/>classify_intent()"]
+            EMB2["embedder.py<br/>embed_query()<br/>embed_documents()"]
+            VDB2["vector_db.py<br/>retrieve_chunks()<br/>add_documents()"]
+            LLM2["llm_router.py<br/>call_claude()<br/>_call_gemini_fallback()"]
+            OV2["output_validator.py<br/>validate_output()"]
+            ING2["ingest.py<br/>ingest_document()<br/>extract_text() / chunk_text()"]
+            AL2["analytics_logger.py<br/>log_interaction()<br/>log_feedback()"]
+            CM2["config_manager.py<br/>get_*_config()"]
+            VE["voyage_embedder.py<br/>(Alternative embedder)"]
+        end
+    end
+
+    subgraph analytics["analytics/ — Reporting & Monitoring"]
+        direction TB
+        DASH2["dashboard.py<br/>Streamlit charts"]
+        ANOM2["anomaly_detector.py<br/>detect_anomalies()"]
+        REP2["reports.py<br/>PDF + Excel generation"]
+    end
+
+    subgraph security["security/ — Audit"]
+        direction TB
+        AUD["audit_logger.py<br/>log_security_event()"]
+    end
+
+    %% Dependencies
+    FSP --> IV2
+    FSP --> EMB2
+    FSP --> VDB2
+    FSP --> LLM2
+    FSP --> OV2
+    FSP --> IC3
+    FSP --> AL2
+    FSP --> ING2
+    FSP --> CM2
+    FSP --> ANOM2
+    FSP --> REP2
+
+    STM -->|"HTTP"| FSP
+    STS -->|"HTTP"| FSP
+
+    SRV --> IV2
+    SRV --> EMB2
+    SRV --> VDB2
+    SRV --> LLM2
+    SRV --> OV2
+    SRV --> IC3
+    SRV --> AL2
+    SRV --> ING2
+    SRV --> CM2
+
+    ING2 --> EMB2
+    ING2 --> VDB2
+    ANOM2 --> AL2
+    ANOM2 --> CM2
+    DASH2 --> AL2
+    REP2 --> AL2
+
+    IV2 --> CM2
+    LLM2 --> CM2
+    OV2 --> CM2
+    IC3 --> CM2
+    VDB2 --> CM2
+    EMB2 --> CM2
+
+    classDef webPkg fill:#4CAF50,stroke:#2E7D32,color:#fff
+    classDef toolPkg fill:#FF9800,stroke:#E65100,color:#fff
+    classDef analyticsPkg fill:#00BCD4,stroke:#006064,color:#fff
+    classDef secPkg fill:#F44336,stroke:#B71C1C,color:#fff
+
+    class FSP,STM,STS webPkg
+    class SRV,IV2,IC3,EMB2,VDB2,LLM2,OV2,ING2,AL2,CM2,VE toolPkg
+    class DASH2,ANOM2,REP2 analyticsPkg
+    class AUD secPkg

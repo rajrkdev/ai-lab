@@ -1,0 +1,63 @@
+%% InsureChat v3.0 — State Diagram
+%% Chat message lifecycle states from submission to completion
+
+stateDiagram-v2
+    [*] --> Received: User sends query
+
+    Received --> RateLimitCheck: FastAPI receives request
+    
+    RateLimitCheck --> RateLimited: Exceeded 10/min
+    RateLimitCheck --> LengthCheck: Within limit
+    
+    RateLimited --> [*]: 429 response
+
+    state InputValidation {
+        LengthCheck --> LengthBlocked: > 500 chars
+        LengthCheck --> InjectionScan: ≤ 500 chars
+        
+        InjectionScan --> InjectionBlocked: Pattern matched
+        InjectionScan --> PIIRedaction: No injection
+        
+        PIIRedaction --> Sanitized: PII redacted
+    }
+    
+    LengthBlocked --> Logged: Log blocked interaction
+    InjectionBlocked --> Logged: Log blocked interaction
+    
+    Sanitized --> Embedding: Query sanitized
+    
+    state RAGRetrieval {
+        Embedding --> VectorSearch: 768-dim vector generated
+        VectorSearch --> LowConfidence: Top score < 0.60
+        VectorSearch --> ContextReady: Top score ≥ 0.60
+    }
+    
+    LowConfidence --> IntentClassified: Best-effort classify
+    IntentClassified --> Logged: Log low-confidence
+    
+    state LLMGeneration {
+        ContextReady --> ClaudeCall: Send to Claude Sonnet
+        ClaudeCall --> ClaudeSuccess: API success
+        ClaudeCall --> GeminiCall: Claude APIError
+        GeminiCall --> GeminiSuccess: API success
+        GeminiCall --> StaticFallback: Gemini also failed
+    }
+    
+    state OutputValidation {
+        ClaudeSuccess --> PIIMasking: Raw response
+        GeminiSuccess --> PIIMasking: Fallback response
+        PIIMasking --> ConfidenceGate: PII masked
+        ConfidenceGate --> ConfidenceRejected: Score < 0.60
+        ConfidenceGate --> HallucinationCheck: Score ≥ 0.60
+        HallucinationCheck --> HallucinationRejected: Failed checks
+        HallucinationCheck --> Validated: Passed all checks
+    }
+    
+    StaticFallback --> Logged: Log error
+    ConfidenceRejected --> Logged: Log low confidence
+    HallucinationRejected --> Logged: Log hallucination
+    Validated --> IntentClassification: Valid response
+    
+    IntentClassification --> Logged: Classify + log
+    
+    Logged --> [*]: Return ChatResponse to user
