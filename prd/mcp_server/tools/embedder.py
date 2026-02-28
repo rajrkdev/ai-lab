@@ -1,4 +1,17 @@
-"""Embedding client — Google Gemini gemini-embedding-001."""
+"""Embedding client — Google Gemini gemini-embedding-001.
+
+Converts text strings into 768-dimensional float vectors that capture
+semantic meaning.  These vectors are stored in ChromaDB during ingestion
+and generated on-the-fly for user queries during retrieval.
+
+Used by:
+  - ingest.py         → embed_documents() to vectorize document chunks
+  - fastapi_server.py → embed_query() to vectorize the user's question
+
+The Gemini embedding model supports different 'task_type' hints:
+  - RETRIEVAL_DOCUMENT  → for chunks being stored
+  - RETRIEVAL_QUERY     → for the search query at retrieval time
+"""
 
 import logging
 import os
@@ -6,17 +19,23 @@ from typing import List
 
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv()  # Load GEMINI_API_KEY / GOOGLE_API_KEY from .env
 logger = logging.getLogger(__name__)
 
-MODEL = "gemini-embedding-001"
-OUTPUT_DIMENSIONALITY = 768
+# Model constants
+MODEL = "gemini-embedding-001"  # Google Gemini embedding model
+OUTPUT_DIMENSIONALITY = 768     # Embedding vector size (must match ChromaDB collection)
 
+# Singleton client — initialised lazily on first call
 _gemini_client = None
 
 
 def _get_gemini_client():
-    """Lazy-init Google Gemini client."""
+    """Lazy-init Google Gemini client.
+
+    Checks GEMINI_API_KEY first, then GOOGLE_API_KEY as a fallback.
+    Raises RuntimeError if neither key is set.
+    """
     global _gemini_client
     if _gemini_client is None:
         api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
@@ -25,7 +44,7 @@ def _get_gemini_client():
         from google import genai
         _gemini_client = genai.Client(
             api_key=api_key,
-            http_options={"timeout": 120_000},
+            http_options={"timeout": 120_000},  # 2-minute timeout for large batches
         )
     return _gemini_client
 
@@ -60,7 +79,11 @@ def embed_query(text: str) -> List[float]:
 
 
 def embed_documents(texts: List[str], batch_size: int = 100) -> List[List[float]]:
-    """Embed document chunks for ingestion in batches to avoid API timeouts."""
+    """Embed document chunks for ingestion, processing in batches.
+
+    Large documents may produce hundreds of chunks; this function sends
+    them to the API in groups of `batch_size` to avoid timeout errors.
+    """
     all_embeddings = []
     for i in range(0, len(texts), batch_size):
         batch = texts[i : i + batch_size]

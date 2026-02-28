@@ -1,12 +1,25 @@
-"""Streamlit Support Chatbot — Developer support chat UI (Port 8502)."""
+"""Streamlit Support Chatbot — Developer support chat UI (Port 8502).
+
+This is the frontend for API developers and integration partners.  It provides:
+  - A chat interface for asking about API errors, payload structure, integration
+  - A sidebar for uploading API docs (.md, .txt, .json, .yaml, .yml)
+  - Confidence scores, source citations, and LLM model labels per answer
+  - Thumbs-up / thumbs-down feedback buttons on each response
+  - Session management with auto-generated session IDs
+
+All backend calls go to the FastAPI server at http://localhost:8000.
+This app runs on port 8502 (started by run.ps1).
+"""
 
 import uuid
 
 import requests
 import streamlit as st
 
+# Base URL of the FastAPI backend (must be running before this app starts)
 API_BASE = "http://localhost:8000"
 
+# Page configuration — sets the browser tab title and icon
 st.set_page_config(
     page_title="InsureChat — API Support",
     page_icon="🔧",
@@ -15,6 +28,7 @@ st.set_page_config(
 
 
 def init_session():
+    """Initialize Streamlit session state with a unique session ID and empty chat history."""
     if "session_id" not in st.session_state:
         st.session_state.session_id = f"sess_{uuid.uuid4().hex[:8]}"
     if "messages" not in st.session_state:
@@ -22,7 +36,11 @@ def init_session():
 
 
 def send_chat(query: str) -> dict:
-    """Send chat query to FastAPI backend."""
+    """Send the user's query to the FastAPI /chat/support endpoint.
+
+    Returns the JSON response dict with: response, sources, confidence_score,
+    llm_used, response_time_ms, blocked, reason, message_id.
+    """
     try:
         resp = requests.post(
             f"{API_BASE}/chat/support",
@@ -38,7 +56,11 @@ def send_chat(query: str) -> dict:
 
 
 def upload_document(file) -> dict:
-    """Upload document to backend for ingestion."""
+    """Upload a document to the FastAPI /ingest endpoint for ingestion.
+
+    Sends the file as multipart form data with chatbot_type='support'.
+    Returns the ingestion result: chunks_ingested, status, source.
+    """
     try:
         resp = requests.post(
             f"{API_BASE}/ingest",
@@ -55,9 +77,10 @@ def upload_document(file) -> dict:
 
 
 def main():
+    """Main entry point — renders the full support chatbot UI."""
     init_session()
 
-    # Sidebar
+    # --- Sidebar: branding, document upload, session controls, analytics link ---
     with st.sidebar:
         st.title("🔧 InsureChat Support")
         st.caption("API Developer Support — v3.0")
@@ -93,11 +116,11 @@ def main():
         st.subheader("📊 Analytics")
         st.markdown("[Open Analytics Dashboard](http://localhost:8000/analytics)")
 
-    # Main chat area
+    # --- Main chat area ---
     st.title("🔧 InsureChat — API Developer Support")
     st.caption("Paste error messages, describe API issues, or ask about integration details.")
 
-    # Display chat history
+    # --- Render chat history (all previous messages in this session) ---
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
@@ -117,9 +140,9 @@ def main():
                 if meta.get("blocked"):
                     st.warning(f"🚫 BLOCKED — Reason: {meta.get('reason', 'security')}")
 
-    # Chat input
+    # --- Chat input: process new messages from the user ---
     if prompt := st.chat_input("Describe your API error or integration issue..."):
-        # Display user message
+        # Display user message immediately
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)

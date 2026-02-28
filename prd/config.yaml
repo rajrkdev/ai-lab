@@ -1,39 +1,61 @@
+# ============================================================================
+# InsureChat v3.0 — Central Configuration
+# ============================================================================
+# This file drives the behaviour of the entire RAG pipeline, security layer,
+# embedding provider, analytics engine, and anomaly detection.
+# Changes here are hot-reloaded by config_manager.py on every request.
+# ============================================================================
+
+# ── LLM Routing ─────────────────────────────────────────────────────────────
+# Controls which language models are used for answer generation and intent
+# classification.  "mode: auto" lets the system pick; you could also force
+# a specific model by name.
 llm_routing:
-  primary: claude-sonnet-4-6
-  fallback: gemini-2.0-flash
-  classifier: claude-haiku-4-5-20251001
-  mode: auto
-  max_tokens: 1024
-  temperature: 0.2
+  primary: claude-sonnet-4-6            # Main answer-generation model (Anthropic)
+  fallback: gemini-2.0-flash            # Fallback if Claude API is unreachable
+  classifier: claude-haiku-4-5-20251001 # Lightweight model used for intent classification
+  mode: auto                            # "auto" = system chooses; or specify a model name
+  max_tokens: 1024                      # Maximum tokens the LLM may generate per response
+  temperature: 0.2                      # Low temperature → more deterministic / factual answers
 
+# ── Embeddings ──────────────────────────────────────────────────────────────
+# Defines which embedding model turns text into vectors for RAG retrieval.
 embeddings:
-  provider: gemini
-  model: gemini-embedding-001
-  dimensions: 768
+  provider: gemini                      # Embedding provider ("gemini" is the default)
+  model: gemini-embedding-001           # Google Gemini embedding model name
+  dimensions: 768                       # Output vector dimensionality (must match ChromaDB)
 
+# ── Security ────────────────────────────────────────────────────────────────
+# Two-layer security: INPUT validation runs *before* the LLM call;
+# OUTPUT validation runs *after* the LLM responds.
 security:
   input:
-    max_length: 500
-    pii_detection: true
-    injection_detection: true
-    rate_limit_per_minute: 10
+    max_length: 500                     # Max characters allowed per user message
+    pii_detection: true                 # Detect PII (names, SSNs, emails, etc.) via Presidio
+    injection_detection: true           # Block prompt-injection attempts (12 regex patterns)
+    rate_limit_per_minute: 10           # Per-IP rate limit on chat endpoints
   output:
-    pii_masking: true
-    min_confidence_score: 0.60
-    hallucination_check: true
-    hallucination_min_overlap: 0.30
+    pii_masking: true                   # Mask any PII that leaks into the LLM response
+    min_confidence_score: 0.60          # Below this → low-confidence fallback message
+    hallucination_check: true           # Enable word-overlap hallucination detector
+    hallucination_min_overlap: 0.30     # Minimum word overlap between response and retrieved chunks
 
+# ── RAG (Retrieval-Augmented Generation) ────────────────────────────────────
+# Governs how documents are chunked, stored, and retrieved from ChromaDB.
 rag:
-  top_k: 5
-  chunk_size: 512
-  chunk_overlap: 64
-  persist_dir: ./data/chroma_db
-  collections:
-    microsite: insurance_docs
-    support: support_docs
+  top_k: 5                              # How many similar chunks to retrieve per query
+  chunk_size: 512                       # Approximate token count per chunk during ingestion
+  chunk_overlap: 64                     # Overlap tokens between consecutive chunks (avoids losing context at boundaries)
+  persist_dir: ./data/chroma_db         # On-disk directory for the ChromaDB persistent store
+  collections:                          # Maps each chatbot type to its own ChromaDB collection
+    microsite: insurance_docs           # Collection for insurance policy / coverage documents
+    support: support_docs               # Collection for API error docs / integration guides
 
+# ── Analytics & Anomaly Detection ───────────────────────────────────────────
+# Paths and thresholds for the analytics subsystem (SQLite DB, JSONL audit
+# log, and Z-score-based anomaly detection).
 analytics:
-  db_path: ./data/analytics.db
-  audit_log_path: ./data/audit_log.jsonl
-  anomaly_window_days: 7
-  anomaly_zscore_threshold: 2.0
+  db_path: ./data/analytics.db          # SQLite database storing sessions, messages, events
+  audit_log_path: ./data/audit_log.jsonl # Append-only JSONL file for security/compliance audit
+  anomaly_window_days: 7                # Rolling window (in days) for anomaly baseline
+  anomaly_zscore_threshold: 2.0         # Z-score ≥ this flags a metric as anomalous

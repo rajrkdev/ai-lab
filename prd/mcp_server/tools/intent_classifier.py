@@ -1,4 +1,16 @@
-"""Intent classification — Async Claude Haiku classification of user queries."""
+"""Intent classification — Claude Haiku classification of user queries.
+
+Before the RAG pipeline retrieves documents, this module classifies the user's
+query into a specific intent category using a lightweight Claude Haiku call.
+The classified intent is stored in analytics and helps track which topics users
+ask about most frequently.
+
+Intents are split by chatbot type:
+  - microsite: policy_coverage, claims_process, premium_billing, etc.
+  - support:   authentication_error, validation_error, endpoint_usage, etc.
+
+If classification fails (API error, missing key), it gracefully returns 'other'.
+"""
 
 import os
 from typing import Optional
@@ -10,6 +22,10 @@ from mcp_server.tools.config_manager import get_llm_config
 
 load_dotenv()
 
+# ---------------------------------------------------------------------------
+# Classification prompt template — sent to Claude Haiku with the user's query.
+# The model is instructed to return ONLY the category name (one word/phrase).
+# ---------------------------------------------------------------------------
 INTENT_PROMPT = """Classify the following customer query into exactly ONE category.
 Respond with ONLY the category name, nothing else.
 
@@ -38,6 +54,8 @@ Query: {user_query}
 Chatbot type: {chatbot_type}
 Category:"""
 
+# Whitelist of valid intent names per chatbot type.
+# If the LLM returns something outside this list, we fall back to 'other'.
 VALID_INTENTS = {
     "microsite": [
         "policy_coverage", "claims_process", "premium_billing",
@@ -55,8 +73,14 @@ VALID_INTENTS = {
 def classify_intent(query: str, chatbot_type: str = "microsite") -> str:
     """Classify user query intent using Claude Haiku.
 
-    Returns intent category string, or 'other' on failure.
+    Makes a single LLM call with temperature=0 for deterministic output.
+    Validates the response against the known intent list and returns 'other'
+    if the model hallucinates an unknown category or the API fails.
+
+    Returns:
+        Intent category string (e.g. 'policy_coverage'), or 'other' on failure.
     """
+    # Read which classifier model to use from config.yaml
     llm_cfg = get_llm_config()
     classifier_model = llm_cfg.get("classifier", "claude-haiku-4-5-20251001")
 

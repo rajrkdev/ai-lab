@@ -1,4 +1,21 @@
-"""Analytics logger — SQLite write + JSONL audit log for every interaction."""
+"""Analytics logger — SQLite write + JSONL audit log for every interaction.
+
+This is the central logging module for InsureChat.  Every chat message flows
+through here after the RAG pipeline completes.  It records data in two places:
+
+  1. SQLite database (analytics.db)
+     ─ chat_sessions      — one row per conversation session
+     ─ messages            — one row per user message (query + outcome)
+     ─ feedback            — thumbs-up/down ratings from users
+     ─ security_events     — injection blocks, PII detections
+     ─ analytics_metrics   — pre-aggregated daily roll-ups (currently unused)
+
+  2. JSONL audit file (audit_log.jsonl)
+     ─ Append-only log for compliance; contains hashed queries, no raw PII.
+
+Query functions (get_analytics_summary, get_sessions_list, etc.) are read by
+the /analytics endpoints and the report generators.
+"""
 
 import hashlib
 import json
@@ -10,20 +27,24 @@ from typing import Dict, List, Optional
 
 from mcp_server.tools.config_manager import get_analytics_config
 
+# Singleton database connection — shared across all calls (check_same_thread=False)
 _db_conn = None
 
 
 def _get_db_path() -> str:
+    """Read the SQLite database path from config.yaml."""
     cfg = get_analytics_config()
     return cfg.get("db_path", "./data/analytics.db")
 
 
 def _get_audit_log_path() -> str:
+    """Read the JSONL audit log path from config.yaml."""
     cfg = get_analytics_config()
     return cfg.get("audit_log_path", "./data/audit_log.jsonl")
 
 
 def _get_db() -> sqlite3.Connection:
+    """Return the singleton SQLite connection, creating the DB + schema on first call."""
     global _db_conn
     if _db_conn is None:
         db_path = _get_db_path()
@@ -35,7 +56,15 @@ def _get_db() -> sqlite3.Connection:
 
 
 def _init_schema(conn: sqlite3.Connection) -> None:
-    """Create all analytics tables if they don't exist."""
+    """Create all analytics tables if they don't exist.
+
+    Tables:
+      - chat_sessions:     Conversation-level metadata (start, end, outcome)
+      - messages:          Per-message details (intent, LLM, confidence, timing)
+      - feedback:          User thumbs-up/down ratings linked to messages
+      - security_events:   Injection blocks, PII detections with severity
+      - analytics_metrics: Pre-aggregated daily roll-ups (for future dashboards)
+    """
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS chat_sessions (
             session_id TEXT PRIMARY KEY,
@@ -106,7 +135,19 @@ def classify_outcome(
     response_valid: bool,
     user_feedback: int = None,
 ) -> str:
-    """Classify message outcome per PRD algorithm."""
+    """Classify a message's outcome using a weighted scoring algorithm.
+
+    Scoring formula (weights sum to 1.0):
+      - 40% confidence_score  (0.0–1.0 from vector retrieval)
+      - 40% response_valid    (1.0 if output validation passed, else 0.0)
+      - 20% user_feedback     (1.0 if positive, 0.0 if negative, 0.5 if none)
+
+    Thresholds:
+      - ≥ 0.75 → 'success'
+      - ≥ 0.45 → 'partial'
+      - < 0.45 → 'failure'
+      - Any security flag → 'security_flagged' (overrides score)
+    """
     if injection_blocked or (pii_detected and len(pii_detected) > 0):
         return "security_flagged"
 
@@ -244,6 +285,12 @@ def write_audit_log(entry: dict) -> None:
 def log_interaction(data: dict) -> dict:
     """Full interaction logging — SQLite + JSONL audit.
 
+    This is the main entry point called after every chat message.  It:
+      1. Ensures the session row exists in chat_sessions
+      2. Inserts a message row with outcome classification
+      3. Logs security events if injection was blocked or PII was detected
+      4. Appends a hashed audit entry to the JSONL file (no raw PII)
+
     Expected data keys:
         session_id, chatbot_type, query, intent, llm_used,
         confidence_score, response_time_ms, pii_entities_detected,
@@ -297,7 +344,9 @@ def log_interaction(data: dict) -> dict:
     return {"status": "logged", "message_id": message_id}
 
 
-# --- Query functions for analytics ---
+# ===========================================================================
+# Query functions — read-only helpers used by /analytics endpoints and reports
+# ===========================================================================
 
 def get_analytics_summary(
     chatbot_type: str = None,

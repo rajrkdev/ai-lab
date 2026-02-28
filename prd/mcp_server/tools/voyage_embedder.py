@@ -1,4 +1,14 @@
-"""Embedding client — Voyage AI voyage-3.5 (primary) with Gemini fallback."""
+"""Embedding client — Voyage AI voyage-3.5 (primary) with Gemini fallback.
+
+This is an alternative embedding provider that can be used instead of the
+default Gemini embedder (embedder.py).  It tries Voyage AI first — if the
+VOYAGE_API_KEY is set and valid — and automatically falls back to Gemini
+embeddings if Voyage is unavailable.
+
+Fallback chain:
+  1. Voyage AI (voyage-3.5)  →  if VOYAGE_API_KEY is set and API works
+  2. Google Gemini (text-embedding-004)  →  fallback using GEMINI_API_KEY
+"""
 
 import logging
 import os
@@ -6,15 +16,17 @@ from typing import List
 
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv()  # Load API keys from .env
 logger = logging.getLogger(__name__)
 
-_client = None
-_gemini_client = None
-_active_provider = None  # tracks which provider is in use: "voyage" or "gemini"
+# Singleton clients — lazily initialised on first use
+_client = None          # Voyage AI client
+_gemini_client = None   # Google Gemini client (fallback)
+_active_provider = None # Tracks which provider was used last: "voyage" or "gemini"
 
 
 def _get_client():
+    """Lazy-init Voyage AI client. Requires VOYAGE_API_KEY in environment."""
     global _client
     if _client is None:
         api_key = os.getenv("VOYAGE_API_KEY")
@@ -26,7 +38,10 @@ def _get_client():
 
 
 def _get_gemini_client():
-    """Lazy-init Google Gemini client for embedding fallback."""
+    """Lazy-init Google Gemini client for embedding fallback.
+
+    Checks GEMINI_API_KEY first, then GOOGLE_API_KEY.
+    """
     global _gemini_client
     if _gemini_client is None:
         api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")

@@ -1,4 +1,14 @@
-"""Anomaly detection — Z-score based anomaly detection on analytics metrics."""
+"""Anomaly detection — Z-score based anomaly detection on analytics metrics.
+
+How it works:
+  1. Pulls a rolling time-series from the analytics SQLite database.
+  2. For each metric (avg_response_time_ms, total_messages, failure_rate),
+     calculates the mean and standard deviation over the configured window.
+  3. Computes the Z-score of the most recent day's value.
+  4. If |Z| ≥ threshold (default 2.0σ), the data point is flagged as an anomaly.
+
+This module is called by the /analytics/anomalies FastAPI endpoint.
+"""
 
 from typing import Dict, List
 
@@ -17,33 +27,38 @@ def detect_anomalies(chatbot_type: str = None) -> Dict:
         anomalies: list of detected anomalies
         metrics_checked: list of metric names checked
     """
+    # Load anomaly detection settings from config.yaml → analytics section
     cfg = get_analytics_config()
-    window_days = cfg.get("anomaly_window_days", 7)
-    z_threshold = cfg.get("anomaly_zscore_threshold", 2.0)
+    window_days = cfg.get("anomaly_window_days", 7)     # Number of days for the rolling baseline
+    z_threshold = cfg.get("anomaly_zscore_threshold", 2.0)  # Z-score cutoff to flag an anomaly
 
+    # Fetch extra days of history so the rolling window has enough data
     time_series = get_time_series(chatbot_type, days=window_days + 7)  # Extra days for context
 
+    # Need at least 3 data points to compute a meaningful std deviation
     if not time_series or len(time_series) < 3:
         return {"anomalies": [], "metrics_checked": [], "message": "Not enough data for anomaly detection"}
 
     anomalies = []
+    # These are the primary numeric metrics we check for spikes / dips
     metrics_to_check = ["avg_response_time_ms", "total_messages"]
 
     for metric in metrics_to_check:
+        # Extract the metric's values from each day in the time series
         values = [row.get(metric, 0) or 0 for row in time_series]
         if not values or len(values) < 3:
             continue
 
         values_arr = np.array(values, dtype=float)
-        mean = np.mean(values_arr)
-        std = np.std(values_arr)
+        mean = np.mean(values_arr)   # Average over the window
+        std = np.std(values_arr)     # Standard deviation over the window
 
         if std == 0:
-            continue
+            continue  # All identical values → no deviation possible
 
-        # Check the most recent value
+        # Compare the LATEST day's value against the window's distribution
         latest = values_arr[-1]
-        z_score = abs(latest - mean) / std
+        z_score = abs(latest - mean) / std  # How many std devs from the mean
 
         if z_score >= z_threshold:
             direction = "above" if latest > mean else "below"
@@ -58,11 +73,12 @@ def detect_anomalies(chatbot_type: str = None) -> Dict:
                 "message": f"{metric} is {z_score:.1f}σ {direction} the {window_days}-day mean ({mean:.1f} → {latest:.1f})",
             })
 
-    # Also check failure rate if we have success/failure data
+    # --- Also check failure rate (derived metric = failure / total) ---
     success_vals = [row.get("success_count", 0) or 0 for row in time_series]
     failure_vals = [row.get("failure_count", 0) or 0 for row in time_series]
-    total_vals = [s + f for s, f in zip(success_vals, failure_vals)]
+    total_vals = [s + f for s, f in zip(success_vals, failure_vals)]  # Total per day
 
+    # Compute daily failure rate (0.0–1.0), guarding against division by zero
     failure_rates = []
     for f, t in zip(failure_vals, total_vals):
         if t > 0:

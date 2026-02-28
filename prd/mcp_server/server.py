@@ -1,9 +1,28 @@
-"""FastMCP server — Registers all InsureChat tools for MCP protocol access."""
+"""FastMCP server — Registers all InsureChat tools for MCP protocol access.
+
+This module creates a FastMCP server instance and registers each tool from
+the `mcp_server.tools` package as an MCP-callable tool.  When run directly
+(`python -m mcp_server.server`), it starts the MCP server so external MCP
+clients (e.g. Claude Desktop) can discover and invoke these tools.
+
+Registered tools (in call order for a typical RAG query):
+  1. validate_input    — sanitize user input (length, injection, PII)
+  2. classify_intent   — categorize the query (e.g. policy_coverage, claims_process)
+  3. embed_query       — convert the query to a 768-dim vector
+  4. retrieve_chunks   — find top-k similar document chunks from ChromaDB
+  5. call_claude       — send query + context to Claude LLM for answer generation
+  6. validate_output   — mask PII, check hallucination, enforce confidence threshold
+  7. log_interaction   — write session/message data to SQLite + JSONL audit log
+  8. ingest_document   — extract, chunk, embed, and store a new document
+  9. get_config        — read the current config.yaml
+  10. update_config    — change LLM routing settings at runtime
+"""
 
 from typing import Dict, List, Optional
 
 from fastmcp import FastMCP
 
+# Import all tool modules from the tools sub-package
 from mcp_server.tools import (
     analytics_logger,
     config_manager,
@@ -16,8 +35,14 @@ from mcp_server.tools import (
     vector_db,
 )
 
+# Create the MCP server instance with a human-readable name
 mcp = FastMCP("InsureChat-v3")
 
+
+# ---------------------------------------------------------------------------
+# Tool registrations — each @mcp.tool() decorator exposes a function to MCP
+# clients.  The docstring becomes the tool description in the MCP catalog.
+# ---------------------------------------------------------------------------
 
 @mcp.tool()
 def validate_input(query: str, max_length: int = 500) -> Dict:
@@ -80,5 +105,6 @@ def update_config(mode: str = None, llm: str = None) -> Dict:
     return config_manager.update_config(mode, llm)
 
 
+# --- Entry point: start the MCP server when run directly ---
 if __name__ == "__main__":
     mcp.run()

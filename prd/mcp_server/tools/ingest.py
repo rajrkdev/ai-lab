@@ -1,4 +1,16 @@
-"""Document ingestion — Extract text from PDF/DOCX/TXT/MD/JSON/YAML, chunk, embed, store in ChromaDB."""
+"""Document ingestion — Extract text from PDF/DOCX/TXT/MD/JSON/YAML, chunk, embed, store in ChromaDB.
+
+This module implements the full document ingestion pipeline that populates the
+RAG knowledge base.  When a user uploads a document via the /ingest endpoint,
+this pipeline runs:
+
+  1. EXTRACT — Read the file and extract raw text (format-specific parsers)
+  2. CHUNK   — Split the text into overlapping chunks (~512 tokens each)
+  3. EMBED   — Convert each chunk to a 768-dim vector via the embedding model
+  4. STORE   — Write chunks + vectors + metadata into the ChromaDB collection
+
+Supported formats: .pdf, .docx, .txt, .md, .json, .yaml, .yml
+"""
 
 import hashlib
 import json
@@ -75,9 +87,10 @@ def chunk_text(text: str, chunk_size: int = 512, chunk_overlap: int = 64) -> Lis
     """Split text into overlapping chunks by approximate token count.
 
     Uses word-based splitting as a proxy for tokens (~0.75 words per token).
+    Overlapping ensures that context at chunk boundaries is not lost.
     """
     words = text.split()
-    # Approximate words per chunk (tokens * 1.3 to convert token count to word count)
+    # Convert token-based sizes to word-based sizes (~0.75 words per token)
     words_per_chunk = int(chunk_size * 0.75)
     words_overlap = int(chunk_overlap * 0.75)
 
@@ -86,6 +99,7 @@ def chunk_text(text: str, chunk_size: int = 512, chunk_overlap: int = 64) -> Lis
     if words_overlap >= words_per_chunk:
         words_overlap = words_per_chunk // 8
 
+    # Slide a window across the word list, advancing by (chunk_size - overlap)
     chunks = []
     start = 0
     while start < len(words):
@@ -113,14 +127,14 @@ def ingest_document(
     Returns:
         dict with chunks_ingested count and status
     """
-    source_name = Path(file_path).name
+    source_name = Path(file_path).name  # Human-readable filename for metadata
 
-    # 1. Extract text
+    # --- Step 1: Extract raw text from the file ---
     text = extract_text(file_path)
     if not text.strip():
         return {"chunks_ingested": 0, "status": "empty_document", "source": source_name}
 
-    # 2. Chunk
+    # --- Step 2: Split text into overlapping chunks ---
     rag_cfg = get_rag_config()
     chunks = chunk_text(
         text,
@@ -130,10 +144,10 @@ def ingest_document(
     if not chunks:
         return {"chunks_ingested": 0, "status": "no_chunks", "source": source_name}
 
-    # 3. Embed (batch)
+    # --- Step 3: Embed all chunks in batches ---
     embeddings = embed_documents(chunks)
 
-    # 4. Prepare IDs and metadata
+    # --- Step 4: Prepare unique IDs and metadata for each chunk ---
     ids = []
     metadatas = []
     for i, chunk in enumerate(chunks):
@@ -146,7 +160,7 @@ def ingest_document(
             "total_chunks": len(chunks),
         })
 
-    # 5. Store in ChromaDB
+    # --- Step 5: Store chunks + embeddings in ChromaDB ---
     add_documents(
         collection_name=collection,
         ids=ids,

@@ -1,4 +1,19 @@
-"""LLM router — Claude claude-sonnet-4-6 (primary) + Gemini (fallback) + Haiku (classification)."""
+"""LLM router — Claude claude-sonnet-4-6 (primary) + Gemini (fallback) + Haiku (classification).
+
+This module handles all Large Language Model calls for the InsureChat system.
+It implements a two-tier fallback strategy:
+
+  1. PRIMARY  → Anthropic Claude claude-sonnet-4-6 — high-quality RAG answers
+  2. FALLBACK → Google Gemini 2.0 Flash — used automatically if Claude API fails
+
+Each chatbot type (microsite / support) has its own system prompt that
+constrains the LLM's behaviour, tone, and scope of allowed answers.
+
+The call flow:
+  build_rag_prompt()  → formats retrieved chunks + user query into a single prompt
+  call_claude()       → sends the prompt to Claude; on APIError falls back to Gemini
+  _call_gemini_fallback() → sends the same prompt to Gemini 2.0 Flash
+"""
 
 import logging
 import os
@@ -9,13 +24,18 @@ from dotenv import load_dotenv
 
 from mcp_server.tools.config_manager import get_llm_config
 
-load_dotenv()
+load_dotenv()  # Load API keys from .env
 logger = logging.getLogger(__name__)
 
-_client = None
-_gemini_client = None
+# Singleton LLM clients — created lazily on first call to avoid import-time API hits
+_client = None         # Anthropic client
+_gemini_client = None  # Google Gemini client
 
-# System prompts per chatbot type
+# ---------------------------------------------------------------------------
+# System prompts — one per chatbot type.
+# These are prepended to every LLM call as the 'system' message.  They define
+# the assistant's persona, rules, and boundaries.
+# ---------------------------------------------------------------------------
 SYSTEM_PROMPTS = {
     "microsite": """You are InsureChat, a helpful insurance assistant.
 
@@ -45,6 +65,11 @@ RULES:
 
 
 def _get_client() -> anthropic.Anthropic:
+    """Lazy-init the Anthropic client singleton.
+
+    Reads ANTHROPIC_API_KEY from the environment.  Raises RuntimeError
+    if the key is missing.
+    """
     global _client
     if _client is None:
         api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -55,7 +80,11 @@ def _get_client() -> anthropic.Anthropic:
 
 
 def _get_gemini_client():
-    """Lazy-init Google Gemini client for fallback."""
+    """Lazy-init Google Gemini client for fallback LLM calls.
+
+    Checks GEMINI_API_KEY first, then GOOGLE_API_KEY as a fallback.
+    Raises RuntimeError if neither key is set.
+    """
     global _gemini_client
     if _gemini_client is None:
         api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
@@ -67,7 +96,11 @@ def _get_gemini_client():
 
 
 def build_rag_prompt(query: str, chunks: List[str], sources: List[str]) -> str:
-    """Build the user message with retrieved context."""
+    """Build the user message that combines retrieved context with the user's question.
+
+    Each chunk is labelled with its source document name so the LLM can cite
+    sources in its answer.  Chunks are separated by horizontal rules.
+    """
     context_parts = []
     for i, (chunk, source) in enumerate(zip(chunks, sources), 1):
         context_parts.append(f"[Source {i}: {source}]\n{chunk}")
@@ -135,7 +168,11 @@ def call_claude(
 def _call_gemini_fallback(
     llm_cfg: Dict, system_prompt: str, user_message: str, primary_error: str = ""
 ) -> Dict:
-    """Fallback to Google Gemini when Claude is unavailable."""
+    """Fallback to Google Gemini when Claude is unavailable.
+
+    Uses the same system prompt + user message.  If Gemini also fails,
+    returns a generic error message so the user still gets a response.
+    """
     fallback_model = llm_cfg.get("fallback", "gemini-2.0-flash")
     try:
         client = _get_gemini_client()

@@ -1,17 +1,35 @@
-"""Analytics Dashboard — Streamlit component with 5 KPI cards and 4 charts."""
+"""Analytics Dashboard — Streamlit component with 5 KPI cards and 4 charts.
+
+This module is imported and rendered inside the Streamlit chatbot UIs.
+It fetches all data from the FastAPI backend REST endpoints (/analytics,
+/analytics/sessions, /analytics/anomalies) rather than querying the DB
+directly, so it works as a pure frontend component.
+
+Sections rendered:
+  1. KPI Cards      — Total Chats, Success Rate, Avg Response Time, CSAT, Security Events
+  2. Line Chart     — Response time trend over time
+  3. Bar Chart      — Intent distribution (which categories users ask about)
+  4. Outcome Donut  — Success / Partial / Failure / Security Flagged breakdown
+  5. Area Chart     — Daily message volume
+  6. Sessions Table — Recent chat sessions with key metadata
+  7. Anomalies      — Z-score anomaly warnings
+  8. Report Downloads — Buttons to generate & download PDF/Excel reports
+"""
 
 import requests
 import streamlit as st
 
+# Base URL of the FastAPI backend (must be running on the same host)
 API_BASE = "http://localhost:8000"
 
 
 def fetch_analytics(chatbot_type: str = None, days: int = 30) -> dict:
-    """Fetch analytics data from FastAPI."""
+    """Fetch aggregated analytics (KPIs + time-series + intents) from FastAPI."""
     try:
         params = {"days": days}
         if chatbot_type:
             params["chatbot_type"] = chatbot_type
+        # GET /analytics returns summary, time_series, and intent_distribution
         resp = requests.get(f"{API_BASE}/analytics", params=params, timeout=10)
         resp.raise_for_status()
         return resp.json()
@@ -20,7 +38,7 @@ def fetch_analytics(chatbot_type: str = None, days: int = 30) -> dict:
 
 
 def fetch_sessions(chatbot_type: str = None, limit: int = 20) -> list:
-    """Fetch recent sessions."""
+    """Fetch a list of recent chat sessions from /analytics/sessions."""
     try:
         params = {"limit": limit}
         if chatbot_type:
@@ -29,30 +47,36 @@ def fetch_sessions(chatbot_type: str = None, limit: int = 20) -> list:
         resp.raise_for_status()
         return resp.json()
     except Exception:
-        return []
+        return []  # Gracefully return empty on failure
 
 
 def fetch_anomalies() -> dict:
-    """Fetch anomaly detection results."""
+    """Fetch Z-score anomaly detection results from /analytics/anomalies."""
     try:
         resp = requests.get(f"{API_BASE}/analytics/anomalies", timeout=10)
         resp.raise_for_status()
         return resp.json()
     except Exception:
-        return {}
+        return {}  # Gracefully return empty on failure
 
 
 def render_dashboard():
-    """Render the full analytics dashboard as a Streamlit component."""
+    """Render the full analytics dashboard as a Streamlit component.
+
+    This is the main entry point called by the chatbot UIs to embed the
+    analytics dashboard.  It draws filters, KPI cards, charts, session
+    tables, anomaly alerts, and report download buttons.
+    """
     st.header("📊 Analytics Dashboard")
 
-    # Filters
+    # --- Filters: let the user narrow by chatbot type and time range ---
     col1, col2 = st.columns(2)
     with col1:
         chatbot_filter = st.selectbox("Chatbot Type", ["All", "microsite", "support"])
     with col2:
         days_filter = st.selectbox("Time Range", [7, 14, 30, 90], index=2)
 
+    # Fetch all analytics data from the FastAPI backend
     cb_type = None if chatbot_filter == "All" else chatbot_filter
     data = fetch_analytics(cb_type, days_filter)
 
@@ -60,11 +84,12 @@ def render_dashboard():
         st.error(f"Cannot fetch analytics: {data['error']}")
         return
 
-    summary = data.get("summary", {})
-    time_series = data.get("time_series", [])
-    intents = data.get("intent_distribution", [])
+    # Unpack the three sections returned by the /analytics endpoint
+    summary = data.get("summary", {})           # Aggregated KPI numbers
+    time_series = data.get("time_series", [])    # Daily rows for charts
+    intents = data.get("intent_distribution", [])  # Intent name + count pairs
 
-    # --- KPI Cards (5) ---
+    # --- KPI Cards (5) — top-level summary metrics ---
     st.subheader("Key Performance Indicators")
     kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
 
@@ -77,7 +102,7 @@ def render_dashboard():
 
     st.divider()
 
-    # --- Chart 1: Response Time Trend (Line) ---
+    # --- Chart 1: Response Time Trend (Line) — shows latency over time ---
     if time_series:
         st.subheader("Response Time Trend")
         import pandas as pd
@@ -88,7 +113,7 @@ def render_dashboard():
             if "avg_response_time_ms" in ts_df.columns:
                 st.line_chart(ts_df["avg_response_time_ms"])
 
-    # --- Chart 2: Intent Distribution (Bar) ---
+    # --- Chart 2: Intent Distribution (Bar) — what topics users ask about ---
     if intents:
         st.subheader("Intent Distribution")
         import pandas as pd
@@ -98,6 +123,7 @@ def render_dashboard():
             st.bar_chart(intent_df["count"])
 
     # --- Chart 3: Outcome Distribution (Donut approximation) ---
+    # Shows the proportion of success, partial, failure, and security-flagged results
     st.subheader("Outcome Distribution")
     outcomes = {
         "Success": summary.get("success_count", 0),
@@ -114,7 +140,7 @@ def render_dashboard():
     else:
         st.info("No data yet. Start chatting to see outcome distribution.")
 
-    # --- Chart 4: Security Events over time ---
+    # --- Chart 4: Daily Message Volume (Area chart) ---
     if time_series:
         st.subheader("Daily Message Volume")
         import pandas as pd
@@ -127,7 +153,7 @@ def render_dashboard():
 
     st.divider()
 
-    # --- Recent Sessions Table ---
+    # --- Recent Sessions Table — shows the last 20 chat sessions ---
     st.subheader("Recent Sessions")
     sessions = fetch_sessions(cb_type, limit=20)
     if sessions:
@@ -141,7 +167,7 @@ def render_dashboard():
 
     st.divider()
 
-    # --- Anomalies ---
+    # --- Anomaly Alerts — Z-score based warnings for unusual metrics ---
     st.subheader("Anomaly Detection")
     anomalies = fetch_anomalies()
     if anomalies and anomalies.get("anomalies"):
@@ -150,7 +176,7 @@ def render_dashboard():
     else:
         st.success("No anomalies detected.")
 
-    # --- Report Downloads ---
+    # --- Report Downloads — generate and download PDF/Excel reports on-demand ---
     st.divider()
     st.subheader("📥 Download Reports")
     col1, col2, col3, col4 = st.columns(4)

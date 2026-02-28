@@ -1,4 +1,24 @@
-"""FastAPI server — All API endpoints for InsureChat v3.0."""
+"""FastAPI server — All API endpoints for InsureChat v3.0.
+
+This is the central REST API that both Streamlit chatbot UIs call.  It hosts:
+
+  POST /chat/microsite      — Insurance customer chat (full RAG pipeline)
+  POST /chat/support        — Developer support chat (full RAG pipeline)
+  POST /ingest              — Upload & ingest a document into the knowledge base
+  GET  /health              — System health (ChromaDB, SQLite, API keys)
+  GET  /analytics           — Aggregated KPIs + time-series + intent distribution
+  GET  /analytics/sessions  — Paginated session list
+  GET  /analytics/sessions/{id} — Single session detail with all messages
+  POST /feedback            — Submit thumbs-up / thumbs-down for a message
+  GET  /reports/{type}      — Generate & download PDF or Excel reports
+  GET  /analytics/anomalies — Z-score anomaly detection results
+
+Key design decisions:
+  - Lazy imports: heavy ML libraries (Presidio, ChromaDB, Anthropic) are only
+    imported on the first request, keeping startup fast.
+  - Rate limiting: per-IP limits via slowapi to prevent abuse.
+  - CORS: wide-open for local dev (allow_origins=['*']).
+"""
 
 import os
 import shutil
@@ -17,27 +37,36 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-load_dotenv()
+load_dotenv()  # Load API keys from .env file
 
 # --- App setup ---
+# Rate limiter: keyed by client IP address
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="InsureChat v3.0", version="3.0.0")
 app.state.limiter = limiter
+# Register the rate-limit-exceeded handler so clients get a 429 response
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# CORS middleware: allows the Streamlit frontends (different ports) to call the API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],       # Allow all origins (safe for local dev)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- Lazy imports to avoid heavy load at startup ---
+# --- Lazy tool initialisation ---
+# Heavy dependencies (Presidio, spaCy, ChromaDB) are loaded on first request
+# rather than at import time, keeping server startup fast.
 _tools_loaded = False
 
 
 def _ensure_tools():
+    """Lazy-load tool dependencies on first request.
+
+    Forces the SQLite schema to initialise so tables exist before any query.
+    """
     global _tools_loaded
     if not _tools_loaded:
         # Force schema init on first request
@@ -46,31 +75,40 @@ def _ensure_tools():
         _tools_loaded = True
 
 
-# --- Request / Response models ---
+# ---------------------------------------------------------------------------
+# Request / Response Pydantic models
+# ---------------------------------------------------------------------------
 
 class ChatRequest(BaseModel):
-    query: str
+    """Incoming chat message from the user."""
+    query: str  # The user's natural-language question
     session_id: str = Field(default_factory=lambda: f"sess_{uuid.uuid4().hex[:8]}")
+    # Auto-generated session ID if the client doesn't provide one
 
 
 class ChatResponse(BaseModel):
-    response: str
-    sources: list = []
-    confidence_score: float = 0.0
-    llm_used: str = "none"
-    blocked: bool = False
-    reason: Optional[str] = None
-    response_time_ms: int = 0
-    message_id: Optional[str] = None
+    """Response returned to the user after the RAG pipeline completes."""
+    response: str                        # The LLM-generated (or fallback) answer
+    sources: list = []                   # Source document names cited in the answer
+    confidence_score: float = 0.0        # Retrieval confidence (0.0–1.0)
+    llm_used: str = "none"               # Which model generated the answer
+    blocked: bool = False                # True if input validation blocked the query
+    reason: Optional[str] = None         # Why the query was blocked (if applicable)
+    response_time_ms: int = 0            # End-to-end latency in milliseconds
+    message_id: Optional[str] = None     # ID for submitting feedback later
 
 
 class FeedbackRequest(BaseModel):
-    message_id: str
-    rating: int  # 1 or -1
+    """Thumbs-up or thumbs-down feedback for a specific message."""
+    message_id: str  # The message to rate
+    rating: int      # 1 (positive) or -1 (negative)
 
 
-# --- Deterministic fallback messages ---
-
+# ---------------------------------------------------------------------------
+# Deterministic fallback messages — shown when the pipeline cannot produce an
+# LLM answer (injection blocked, rate limited, input too long).
+# These are chatbot-type-specific to match the assistant's persona.
+# ---------------------------------------------------------------------------
 FALLBACK_MESSAGES = {
     "microsite": {
         "injection": "I can only help with insurance policy questions. How can I assist you today?",
@@ -86,7 +124,19 @@ FALLBACK_MESSAGES = {
 
 
 def _run_chat_pipeline(query: str, session_id: str, chatbot_type: str) -> ChatResponse:
-    """Core RAG pipeline shared by both chatbot endpoints."""
+    """Core RAG pipeline shared by both chatbot endpoints.
+
+    Runs through 7 steps:
+      1. Input validation   (length, injection, PII)
+      2. Embedding          (query → 768-dim vector)
+      3. Retrieval          (top-k chunks from ChromaDB)
+      4. LLM call           (Claude primary, Gemini fallback)
+      5. Output validation  (PII mask, hallucination, confidence gate)
+      6. Intent classification (Claude Haiku, best-effort)
+      7. Analytics logging  (SQLite + JSONL audit)
+
+    Returns a ChatResponse with the answer, sources, confidence, and timing.
+    """
     _ensure_tools()
 
     from mcp_server.tools import (
@@ -104,7 +154,7 @@ def _run_chat_pipeline(query: str, session_id: str, chatbot_type: str) -> ChatRe
     rag_cfg = get_rag_config()
     collection_name = rag_cfg["collections"][chatbot_type]
 
-    # Step 1: Input validation
+    # Step 1: Input validation — check length, scan for injection, redact PII
     validation = input_validator.validate_input(query)
 
     if validation["blocked"]:
@@ -143,7 +193,7 @@ def _run_chat_pipeline(query: str, session_id: str, chatbot_type: str) -> ChatRe
     sanitized_query = validation["sanitized_query"]
     pii_detected = validation["pii_detected"]
 
-    # Step 2: Embed query
+    # Step 2: Embed the sanitised query into a 768-dim vector
     try:
         embedding = embedder.embed_query(sanitized_query)
     except Exception as e:
@@ -155,13 +205,13 @@ def _run_chat_pipeline(query: str, session_id: str, chatbot_type: str) -> ChatRe
             response_time_ms=elapsed,
         )
 
-    # Step 3: Retrieve chunks
+    # Step 3: Retrieve top-k similar document chunks from ChromaDB
     retrieval = vector_db.retrieve_chunks(embedding, collection_name, rag_cfg.get("top_k", 5))
     chunks = retrieval["chunks"]
     sources = retrieval["sources"]
     scores = retrieval["scores"]
 
-    # Check confidence threshold
+    # Check confidence threshold — if best chunk score is too low, don't call the LLM
     top_confidence = max(scores) if scores else 0.0
 
     if top_confidence < 0.60 or not chunks:
@@ -195,17 +245,17 @@ def _run_chat_pipeline(query: str, session_id: str, chatbot_type: str) -> ChatRe
             response_time_ms=elapsed,
         )
 
-    # Step 4: Call Claude
+    # Step 4: Call Claude (primary) with RAG context; auto-falls back to Gemini
     llm_result = llm_router.call_claude(
         sanitized_query, chunks, sources, chatbot_type
     )
 
-    # Step 5: Validate output
+    # Step 5: Validate output — PII masking, confidence gate, hallucination check
     output_val = output_validator.validate_output(
         llm_result["response"], chunks, top_confidence
     )
 
-    # Step 6: Classify intent (best-effort)
+    # Step 6: Classify intent (best-effort; failure is non-fatal)
     intent = "other"
     try:
         intent = intent_classifier.classify_intent(query, chatbot_type)
@@ -214,7 +264,7 @@ def _run_chat_pipeline(query: str, session_id: str, chatbot_type: str) -> ChatRe
 
     elapsed = int((time.time() - start) * 1000)
 
-    # Step 7: Log interaction
+    # Step 7: Log the full interaction to SQLite + JSONL audit log
     log_result = analytics_logger.log_interaction({
         "session_id": session_id,
         "chatbot_type": chatbot_type,
@@ -241,19 +291,21 @@ def _run_chat_pipeline(query: str, session_id: str, chatbot_type: str) -> ChatRe
     )
 
 
-# --- Endpoints ---
+# ===========================================================================
+# API Endpoints
+# ===========================================================================
 
 @app.post("/chat/microsite", response_model=ChatResponse)
 @limiter.limit("10/minute")
 def chat_microsite(request: Request, body: ChatRequest):
-    """Insurance customer chat — full RAG pipeline."""
+    """Insurance customer chat — full RAG pipeline (10 req/min per IP)."""
     return _run_chat_pipeline(body.query, body.session_id, "microsite")
 
 
 @app.post("/chat/support", response_model=ChatResponse)
 @limiter.limit("10/minute")
 def chat_support(request: Request, body: ChatRequest):
-    """Developer support chat — full RAG pipeline."""
+    """Developer support chat — full RAG pipeline (10 req/min per IP)."""
     return _run_chat_pipeline(body.query, body.session_id, "support")
 
 
@@ -265,7 +317,11 @@ def ingest_document(
     chatbot_type: str = Form("microsite"),
     category: str = Form("general"),
 ):
-    """Upload and ingest a document into the specified knowledge base."""
+    """Upload and ingest a document into the specified knowledge base.
+
+    Accepts multipart form with: file, chatbot_type (microsite|support), category.
+    The file is saved to a temp location, ingested, and then deleted.
+    """
     _ensure_tools()
     from mcp_server.tools.ingest import ingest_file_for_chatbot
 
@@ -287,7 +343,11 @@ def ingest_document(
 @app.get("/health")
 @limiter.limit("60/minute")
 def health_check(request: Request):
-    """System health: ChromaDB, SQLite, API status."""
+    """System health check — ChromaDB, SQLite, and API key status.
+
+    Returns 'healthy' if both databases are reachable, 'degraded' otherwise.
+    Also reports whether Claude and Gemini API keys are configured.
+    """
     _ensure_tools()
     from mcp_server.tools.analytics_logger import db_health_check
     from mcp_server.tools.vector_db import health_check as chroma_health
@@ -312,7 +372,10 @@ def health_check(request: Request):
 @app.get("/analytics")
 @limiter.limit("30/minute")
 def get_analytics(request: Request, chatbot_type: str = None, days: int = 30):
-    """Aggregated KPIs, time-series, intent breakdown, outcomes."""
+    """Get aggregated analytics: KPIs, time-series, and intent distribution.
+
+    Query params: chatbot_type (optional), days (default 30).
+    """
     _ensure_tools()
     from mcp_server.tools.analytics_logger import (
         get_analytics_summary,
@@ -334,7 +397,7 @@ def get_analytics(request: Request, chatbot_type: str = None, days: int = 30):
 @app.get("/analytics/sessions")
 @limiter.limit("30/minute")
 def get_sessions(request: Request, chatbot_type: str = None, limit: int = 50, offset: int = 0):
-    """Paginated chat session list."""
+    """Paginated list of chat sessions, newest first."""
     _ensure_tools()
     from mcp_server.tools.analytics_logger import get_sessions_list
     return get_sessions_list(chatbot_type, limit, offset)
@@ -343,7 +406,7 @@ def get_sessions(request: Request, chatbot_type: str = None, limit: int = 50, of
 @app.get("/analytics/sessions/{session_id}")
 @limiter.limit("30/minute")
 def get_session(request: Request, session_id: str):
-    """Single session detail with all messages."""
+    """Single session detail with all its messages. Returns 404 if not found."""
     _ensure_tools()
     from mcp_server.tools.analytics_logger import get_session_detail
     result = get_session_detail(session_id)
@@ -355,7 +418,7 @@ def get_session(request: Request, session_id: str):
 @app.post("/feedback")
 @limiter.limit("30/minute")
 def submit_feedback(request: Request, body: FeedbackRequest):
-    """Submit thumbs up/down for a message."""
+    """Submit thumbs up (+1) or thumbs down (-1) for a specific message."""
     _ensure_tools()
     from mcp_server.tools.analytics_logger import log_feedback
 
@@ -369,7 +432,11 @@ def submit_feedback(request: Request, body: FeedbackRequest):
 @app.get("/reports/{report_type}")
 @limiter.limit("10/minute")
 def generate_report(request: Request, report_type: str):
-    """Generate report: daily_pdf, weekly_pdf, security_pdf, full_excel."""
+    """Generate and download a report.
+
+    Valid report_type values: daily_pdf, weekly_pdf, security_pdf, full_excel.
+    Returns the generated file as a downloadable attachment.
+    """
     _ensure_tools()
     from analytics.reports import generate_daily_pdf, generate_full_excel, generate_security_pdf, generate_weekly_pdf
 
@@ -396,7 +463,7 @@ def generate_report(request: Request, report_type: str):
 @app.get("/analytics/anomalies")
 @limiter.limit("30/minute")
 def get_anomalies(request: Request):
-    """Z-score anomaly detection results."""
+    """Run Z-score anomaly detection and return flagged metrics."""
     _ensure_tools()
     from analytics.anomaly_detector import detect_anomalies
     return detect_anomalies()

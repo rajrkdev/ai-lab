@@ -1,4 +1,14 @@
-"""ChromaDB vector database operations — query both collections."""
+"""ChromaDB vector database operations — query both collections.
+
+This module wraps ChromaDB's PersistentClient and provides functions to:
+  - Create / get collections (one per chatbot type)
+  - Add document embeddings during ingestion
+  - Query for top-k similar chunks during RAG retrieval
+  - Health-check the database
+
+ChromaDB stores vectors on disk at the path configured in config.yaml
+(default: ./data/chroma_db) using cosine similarity for nearest-neighbor search.
+"""
 
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -7,10 +17,16 @@ import chromadb
 
 from mcp_server.tools.config_manager import get_rag_config
 
+# Singleton ChromaDB client — lazy-initialised on first call
 _chroma_client: Optional[Any] = None
 
 
 def _get_client():
+    """Lazy-init the ChromaDB persistent client.
+
+    Creates the persist directory if it doesn't exist and returns a
+    singleton client instance.
+    """
     global _chroma_client
     if _chroma_client is None:
         rag_cfg = get_rag_config()
@@ -21,7 +37,11 @@ def _get_client():
 
 
 def get_or_create_collection(name: str) -> chromadb.Collection:
-    """Get or create a ChromaDB collection by name."""
+    """Get or create a ChromaDB collection by name.
+
+    Collections use cosine similarity ('hnsw:space': 'cosine') so that
+    retrieval scores range from 0 (identical) to 2 (opposite).
+    """
     client = _get_client()
     return client.get_or_create_collection(
         name=name,
@@ -30,7 +50,11 @@ def get_or_create_collection(name: str) -> chromadb.Collection:
 
 
 def get_collection_name(chatbot_type: str) -> str:
-    """Map chatbot_type to collection name from config."""
+    """Map chatbot_type ('microsite' or 'support') to its ChromaDB collection name.
+
+    Collection names are defined in config.yaml under rag.collections.
+    Raises ValueError for unknown chatbot types.
+    """
     rag_cfg = get_rag_config()
     collections = rag_cfg.get("collections", {})
     if chatbot_type == "microsite":
@@ -85,7 +109,7 @@ def retrieve_chunks(
 
     sources = [m.get("source", "unknown") for m in metadatas]
     # ChromaDB cosine distance: 0 = identical, 2 = opposite
-    # Convert to similarity score: 1 - (distance / 2)
+    # Convert to a similarity score between 0.0 (opposite) and 1.0 (identical)
     scores = [1.0 - (d / 2.0) for d in distances]
 
     return {"chunks": chunks, "sources": sources, "scores": scores}

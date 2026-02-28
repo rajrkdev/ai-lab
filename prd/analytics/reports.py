@@ -1,4 +1,16 @@
-"""Report generation — Daily PDF, Weekly PDF, Security PDF, Full Excel."""
+"""Report generation — Daily PDF, Weekly PDF, Security PDF, Full Excel.
+
+This module generates downloadable reports from the analytics data stored in
+SQLite.  Each generator function queries the DB, builds a formatted document,
+writes it to a temporary file, and returns the file path for the FastAPI
+endpoint to serve.
+
+Report types:
+  - daily_pdf     → 24-hour KPIs, outcome distribution, top intents, security summary
+  - weekly_pdf    → 7-day KPIs with daily breakdown table
+  - security_pdf  → Full list of security events (injection blocks, PII detections)
+  - full_excel    → 4-sheet workbook: Summary, Chat Details, Security Events, Intent Breakdown
+"""
 
 import tempfile
 from datetime import datetime, timezone
@@ -15,12 +27,23 @@ from mcp_server.tools.analytics_logger import (
 
 
 def _make_temp_path(suffix: str) -> str:
-    """Create a temp file path for report output."""
+    """Create a temporary file path for report output.
+
+    The file is NOT created here — just a unique path is generated.
+    The caller (reportlab / openpyxl) will write to this path.
+    """
     return tempfile.mktemp(suffix=suffix, prefix="insurechat_report_")
 
 
 def generate_daily_pdf() -> str:
-    """Generate daily summary PDF. Returns file path."""
+    """Generate a daily summary PDF report.
+
+    Includes: KPI table (last 24 h), outcome distribution, top 10 intents,
+    and up to 10 recent security events.
+    Returns the file path to the generated PDF.
+    """
+    # ReportLab imports are deferred to avoid slow startup when reports
+    # are not being generated.
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -39,7 +62,7 @@ def generate_daily_pdf() -> str:
     elements.append(Paragraph(f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}", styles["Normal"]))
     elements.append(Spacer(1, 24))
 
-    # KPIs
+    # --- KPI Table: aggregated numbers for the last 24 hours ---
     elements.append(Paragraph("Key Performance Indicators (Last 24 hours)", styles["Heading2"]))
     summary = get_analytics_summary(days=1)
     kpi_data = [
@@ -66,7 +89,7 @@ def generate_daily_pdf() -> str:
     elements.append(kpi_table)
     elements.append(Spacer(1, 24))
 
-    # Outcome Distribution
+    # --- Outcome Distribution table: success / partial / failure / flagged ---
     elements.append(Paragraph("Outcome Distribution", styles["Heading2"]))
     outcome_data = [
         ["Outcome", "Count"],
@@ -85,7 +108,7 @@ def generate_daily_pdf() -> str:
     elements.append(outcome_table)
     elements.append(Spacer(1, 24))
 
-    # Top Intents
+    # --- Top Intents table: most-asked query categories ---
     elements.append(Paragraph("Top Intents", styles["Heading2"]))
     intents = get_intent_distribution(days=1)
     if intents:
@@ -105,7 +128,7 @@ def generate_daily_pdf() -> str:
 
     elements.append(Spacer(1, 24))
 
-    # Security Summary
+    # --- Security Summary table: last 10 security events ---
     elements.append(Paragraph("Security Summary", styles["Heading2"]))
     sec_events = get_security_events(limit=10)
     if sec_events:
@@ -134,7 +157,12 @@ def generate_daily_pdf() -> str:
 
 
 def generate_weekly_pdf() -> str:
-    """Generate weekly trends PDF. Returns file path."""
+    """Generate a weekly trends PDF report.
+
+    Includes 7-day KPI summary and a day-by-day breakdown table showing
+    message volumes, average confidence, and response times.
+    Returns the file path to the generated PDF.
+    """
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import getSampleStyleSheet
@@ -151,7 +179,7 @@ def generate_weekly_pdf() -> str:
     elements.append(Paragraph(f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}", styles["Normal"]))
     elements.append(Spacer(1, 24))
 
-    # 7-day KPIs
+    # --- 7-day KPI summary table ---
     elements.append(Paragraph("7-Day KPI Summary", styles["Heading2"]))
     summary = get_analytics_summary(days=7)
     kpi_data = [
@@ -171,7 +199,7 @@ def generate_weekly_pdf() -> str:
     elements.append(table)
     elements.append(Spacer(1, 24))
 
-    # Daily breakdown
+    # --- Daily breakdown table: one row per day ---
     elements.append(Paragraph("Daily Breakdown", styles["Heading2"]))
     ts = get_time_series(days=7)
     if ts:
@@ -200,7 +228,12 @@ def generate_weekly_pdf() -> str:
 
 
 def generate_security_pdf() -> str:
-    """Generate security incidents PDF. Returns file path."""
+    """Generate a security incidents PDF report.
+
+    Lists up to 100 recent security events (injection blocks, PII detections)
+    with timestamps, event type, severity, chatbot, and truncated details.
+    Returns the file path to the generated PDF.
+    """
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import getSampleStyleSheet
@@ -250,7 +283,16 @@ def generate_security_pdf() -> str:
 
 
 def generate_full_excel() -> str:
-    """Generate full analytics Excel with 4 sheets. Returns file path."""
+    """Generate a comprehensive Excel workbook with 4 sheets.
+
+    Sheets:
+      1. Summary          — 30-day aggregated KPI key–value pairs
+      2. Chat Details      — Up to 500 recent sessions with metadata
+      3. Security Events   — Up to 500 recent security events
+      4. Intent Breakdown  — Intent name + count over last 30 days
+
+    Returns the file path to the generated .xlsx file.
+    """
     import json
 
     from openpyxl import Workbook
@@ -259,17 +301,19 @@ def generate_full_excel() -> str:
     path = _make_temp_path(".xlsx")
     wb = Workbook()
 
+    # Shared header styling for all 4 sheets (blue background, white text)
     header_font = Font(bold=True, color="FFFFFF")
     header_fill = PatternFill(start_color="2196F3", end_color="2196F3", fill_type="solid")
 
     def style_header(ws, cols):
+        """Apply header font, fill, and alignment to the first row of a worksheet."""
         for col_idx, header in enumerate(cols, 1):
             cell = ws.cell(row=1, column=col_idx, value=header)
             cell.font = header_font
             cell.fill = header_fill
             cell.alignment = Alignment(horizontal="center")
 
-    # Sheet 1: Summary
+    # --- Sheet 1: Summary — 30-day aggregated KPIs as key–value rows ---
     ws1 = wb.active
     ws1.title = "Summary"
     summary = get_analytics_summary(days=30)
@@ -280,7 +324,7 @@ def generate_full_excel() -> str:
     ws1.column_dimensions["A"].width = 25
     ws1.column_dimensions["B"].width = 20
 
-    # Sheet 2: Chat Details
+    # --- Sheet 2: Chat Details — one row per session, up to 500 ---
     ws2 = wb.create_sheet("Chat Details")
     sessions = get_sessions_list(limit=500)
     headers2 = ["session_id", "chatbot_type", "started_at", "outcome", "total_messages", "avg_confidence", "avg_response_time_ms"]
@@ -291,7 +335,7 @@ def generate_full_excel() -> str:
     for j in range(len(headers2)):
         ws2.column_dimensions[chr(65 + j)].width = 20
 
-    # Sheet 3: Security Events
+    # --- Sheet 3: Security Events — one row per event, up to 500 ---
     ws3 = wb.create_sheet("Security Events")
     sec_events = get_security_events(limit=500)
     headers3 = ["timestamp", "event_type", "severity", "chatbot_type", "details"]
@@ -305,7 +349,7 @@ def generate_full_excel() -> str:
     for j in range(len(headers3)):
         ws3.column_dimensions[chr(65 + j)].width = 22
 
-    # Sheet 4: Intent Breakdown
+    # --- Sheet 4: Intent Breakdown — intent name + count over 30 days ---
     ws4 = wb.create_sheet("Intent Breakdown")
     intents = get_intent_distribution(days=30)
     style_header(ws4, ["Intent", "Count"])
