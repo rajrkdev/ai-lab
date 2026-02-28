@@ -1,0 +1,39 @@
+llm_routing:
+  primary: claude-sonnet-4-6
+  fallback: gemini-2.0-flash
+  classifier: claude-haiku-4-5-20251001
+  mode: auto
+  max_tokens: 1024
+  temperature: 0.2
+
+embeddings:
+  provider: gemini
+  model: gemini-embedding-001
+  dimensions: 768
+
+security:
+  input:
+    max_length: 500
+    pii_detection: true
+    injection_detection: true
+    rate_limit_per_minute: 10
+  output:
+    pii_masking: true
+    min_confidence_score: 0.60
+    hallucination_check: true
+    hallucination_min_overlap: 0.30
+
+rag:
+  top_k: 5
+  chunk_size: 512
+  chunk_overlap: 64
+  persist_dir: ./data/chroma_db
+  collections:
+    microsite: insurance_docs
+    support: support_docs
+
+analytics:
+  db_path: ./data/analytics.db
+  audit_log_path: ./data/audit_log.jsonl
+  anomaly_window_days: 7
+  anomaly_zscore_threshold: 2.0

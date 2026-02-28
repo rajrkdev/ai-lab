@@ -1,0 +1,30 @@
+# Environment
+.env
+__pycache__/
+*.pyc
+*.pyo
+
+# Data
+data/chroma_db/
+data/audit_log.jsonl
+data/analytics.db
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Virtual env
+.venv/
+
+# Reports output
+*.pdf
+*.xlsx
+
+# Environment files (but not example)
+.env
+.env.*
+!.env.example
