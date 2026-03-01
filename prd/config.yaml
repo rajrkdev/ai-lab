@@ -8,12 +8,19 @@
 
 # ── LLM Routing ─────────────────────────────────────────────────────────────
 # Controls which language models are used for answer generation and intent
-# classification.  "mode: auto" lets the system pick; you could also force
-# a specific model by name.
+# classification.  Each role (primary, fallback, classifier) specifies a
+# provider ("anthropic" or "gemini") and a model name.  This lets you mix
+# providers freely — e.g. Gemini as primary and Claude as fallback.
 llm_routing:
-  primary: claude-sonnet-4-6            # Main answer-generation model (Anthropic)
-  fallback: gemini-2.0-flash            # Fallback if Claude API is unreachable
-  classifier: claude-haiku-4-5-20251001 # Lightweight model used for intent classification
+  primary:
+    provider: anthropic                 # "anthropic" or "gemini"
+    model: claude-sonnet-4-6            # Model name for the provider's API
+  fallback:
+    provider: gemini                    # "anthropic" or "gemini"
+    model: gemini-2.0-flash             # Model name for the provider's API
+  classifier:
+    provider: anthropic                 # "anthropic" or "gemini"
+    model: claude-haiku-4-5-20251001    # Lightweight model for intent classification
   mode: auto                            # "auto" = system chooses; or specify a model name
   max_tokens: 1024                      # Maximum tokens the LLM may generate per response
   temperature: 0.2                      # Low temperature → more deterministic / factual answers

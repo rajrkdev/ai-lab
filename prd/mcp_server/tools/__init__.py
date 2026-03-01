@@ -11,5 +11,5 @@
 #   llm_router.py        — Claude (primary) + Gemini (fallback) LLM calls
 #   output_validator.py  — PII masking, hallucination check, confidence gate
 #   session_store.py     — In-memory conversation history per session (multi-turn)
-#   vector_db.py         — ChromaDB operations (add / query / health)
+#   vector_db.py         — ChromaDB operations (add / query / help)
 #   voyage_embedder.py   — Voyage AI embedding client with Gemini fallback

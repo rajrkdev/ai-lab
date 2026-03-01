@@ -1,18 +1,19 @@
-"""LLM router — Claude claude-sonnet-4-6 (primary) + Gemini (fallback) + Haiku (classification).
+"""LLM router — Provider-agnostic primary + fallback LLM routing.
 
 This module handles all Large Language Model calls for the InsureChat system.
-It implements a two-tier fallback strategy:
+It implements a two-tier fallback strategy where each tier can use any
+supported provider (Anthropic or Gemini), as configured in config.yaml:
 
-  1. PRIMARY  → Anthropic Claude claude-sonnet-4-6 — high-quality RAG answers
-  2. FALLBACK → Google Gemini 2.0 Flash — used automatically if Claude API fails
+  1. PRIMARY  → configured via llm_routing.primary  (provider + model)
+  2. FALLBACK → configured via llm_routing.fallback (provider + model)
 
 Each chatbot type (microsite / support) has its own system prompt that
 constrains the LLM's behaviour, tone, and scope of allowed answers.
 
 The call flow:
   build_rag_prompt()  → formats retrieved chunks + user query into a single prompt
-  call_claude()       → sends the prompt to Claude; on APIError falls back to Gemini
-  _call_gemini_fallback() → sends the same prompt to Gemini 2.0 Flash
+  call_llm()          → sends the prompt to the primary provider; on failure falls back
+  _call_provider()    → dispatches to _call_anthropic() or _call_gemini()
 """
 
 import logging
@@ -89,12 +90,82 @@ def _get_gemini_client():
     """
     global _gemini_client
     if _gemini_client is None:
-        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-        if not api_key:
-            raise RuntimeError("GEMINI_API_KEY not set in environment")
-        from google import genai
-        _gemini_client = genai.Client(api_key=api_key)
+        from mcp_server.tools.gemini_factory import create_gemini_client
+        _gemini_client = create_gemini_client()
     return _gemini_client
+
+
+def _build_messages(history, user_message):
+    """Build the messages array from conversation history and current query."""
+    messages = []
+    if history:
+        for turn in history:
+            messages.append({"role": "user", "content": turn["user"]})
+            messages.append({"role": "assistant", "content": turn["assistant"]})
+    messages.append({"role": "user", "content": user_message})
+    return messages
+
+
+# ---------------------------------------------------------------------------
+# Provider-specific call helpers
+# ---------------------------------------------------------------------------
+
+def _call_anthropic(model: str, llm_cfg: Dict, system_prompt: str,
+                    messages: List[Dict]) -> Dict:
+    """Send a request to the Anthropic Messages API."""
+    client = _get_client()
+    message = client.messages.create(
+        model=model,
+        max_tokens=llm_cfg.get("max_tokens", 1024),
+        temperature=llm_cfg.get("temperature", 0.2),
+        system=system_prompt,
+        messages=messages,
+    )
+    response_text = message.content[0].text
+    tokens_used = (message.usage.input_tokens or 0) + (message.usage.output_tokens or 0)
+    return {"response": response_text, "tokens_used": tokens_used, "model": model}
+
+
+def _call_gemini(model: str, llm_cfg: Dict, system_prompt: str,
+                 user_message: str, history: List[Dict] = None) -> Dict:
+    """Send a request to the Google Gemini API."""
+    history_text = ""
+    if history:
+        turns = []
+        for turn in history:
+            turns.append(f"User: {turn['user']}\nAssistant: {turn['assistant']}")
+        history_text = "\n\nCONVERSATION HISTORY:\n" + "\n\n".join(turns) + "\n"
+
+    client = _get_gemini_client()
+    response = client.models.generate_content(
+        model=model,
+        contents=f"{system_prompt}{history_text}\n\n{user_message}",
+        config={
+            "max_output_tokens": llm_cfg.get("max_tokens", 1024),
+            "temperature": llm_cfg.get("temperature", 0.2),
+        },
+    )
+    response_text = response.text or ""
+    tokens_used = 0
+    if response.usage_metadata:
+        tokens_used = (
+            (response.usage_metadata.prompt_token_count or 0)
+            + (response.usage_metadata.candidates_token_count or 0)
+        )
+    return {"response": response_text, "tokens_used": tokens_used, "model": model}
+
+
+def _call_provider(provider: str, model: str, llm_cfg: Dict,
+                   system_prompt: str, user_message: str,
+                   history: List[Dict] = None) -> Dict:
+    """Dispatch an LLM call to the correct provider."""
+    if provider == "anthropic":
+        messages = _build_messages(history, user_message)
+        return _call_anthropic(model, llm_cfg, system_prompt, messages)
+    elif provider == "gemini":
+        return _call_gemini(model, llm_cfg, system_prompt, user_message, history)
+    else:
+        raise ValueError(f"Unknown LLM provider: {provider}")
 
 
 def build_rag_prompt(query: str, chunks: List[str], sources: List[str]) -> str:
@@ -120,7 +191,7 @@ USER QUESTION:
 Provide a clear, accurate answer citing the source documents. If the context doesn't contain enough information, say so."""
 
 
-def call_claude(
+def call_llm(
     query: str,
     chunks: List[str],
     sources: List[str] = None,
@@ -128,14 +199,17 @@ def call_claude(
     model: str = None,
     history: List[Dict] = None,
 ) -> Dict:
-    """Call Claude with RAG context and optional conversation history.
+    """Call the primary LLM with RAG context, falling back on failure.
+
+    The provider and model for both primary and fallback are read from
+    config.yaml (llm_routing.primary / llm_routing.fallback).
 
     Args:
         query: The user's current question.
         chunks: Retrieved document chunks from ChromaDB.
         sources: Source document names for each chunk.
         chatbot_type: 'microsite' or 'support'.
-        model: Override the primary model name.
+        model: Override the primary model name (provider still from config).
         history: Prior conversation turns [{"user": ..., "assistant": ...}, ...].
 
     Returns:
@@ -144,8 +218,9 @@ def call_claude(
         model: str — model used
     """
     llm_cfg = get_llm_config()
-    if model is None:
-        model = llm_cfg.get("primary", "claude-sonnet-4-6")
+    primary_cfg = llm_cfg.get("primary", {})
+    primary_provider = primary_cfg.get("provider", "anthropic")
+    primary_model = model or primary_cfg.get("model", "claude-sonnet-4-6")
 
     if sources is None:
         sources = [f"chunk_{i}" for i in range(len(chunks))]
@@ -153,88 +228,35 @@ def call_claude(
     system_prompt = SYSTEM_PROMPTS.get(chatbot_type, SYSTEM_PROMPTS["microsite"])
     user_message = build_rag_prompt(query, chunks, sources)
 
-    # Build the messages array: history turns + current RAG query
-    messages = []
-    if history:
-        for turn in history:
-            messages.append({"role": "user", "content": turn["user"]})
-            messages.append({"role": "assistant", "content": turn["assistant"]})
-    messages.append({"role": "user", "content": user_message})
-
     try:
-        client = _get_client()
-        message = client.messages.create(
-            model=model,
-            max_tokens=llm_cfg.get("max_tokens", 1024),
-            temperature=llm_cfg.get("temperature", 0.2),
-            system=system_prompt,
-            messages=messages,
+        return _call_provider(
+            primary_provider, primary_model, llm_cfg,
+            system_prompt, user_message, history,
         )
-
-        response_text = message.content[0].text
-        tokens_used = (message.usage.input_tokens or 0) + (message.usage.output_tokens or 0)
-
-        return {
-            "response": response_text,
-            "tokens_used": tokens_used,
-            "model": model,
-        }
-    except anthropic.APIError as e:
-        logger.warning("Claude API failed (%s), attempting Gemini fallback", e)
-        return _call_gemini_fallback(
-            llm_cfg, system_prompt, user_message,
-            primary_error=str(e), history=history,
+    except Exception as primary_err:
+        logger.warning(
+            "Primary LLM (%s/%s) failed (%s), attempting fallback",
+            primary_provider, primary_model, primary_err,
         )
-
-
-def _call_gemini_fallback(
-    llm_cfg: Dict, system_prompt: str, user_message: str,
-    primary_error: str = "", history: List[Dict] = None,
-) -> Dict:
-    """Fallback to Google Gemini when Claude is unavailable.
-
-    Uses the same system prompt + user message.  If Gemini also fails,
-    returns a generic error message so the user still gets a response.
-    Conversation history is prepended as text when available.
-    """
-    fallback_model = llm_cfg.get("fallback", "gemini-2.0-flash")
-    try:
-        # Build history text block for Gemini (no native multi-turn in single call)
-        history_text = ""
-        if history:
-            turns = []
-            for turn in history:
-                turns.append(f"User: {turn['user']}\nAssistant: {turn['assistant']}")
-            history_text = "\n\nCONVERSATION HISTORY:\n" + "\n\n".join(turns) + "\n"
-
-        client = _get_gemini_client()
-        response = client.models.generate_content(
-            model=fallback_model,
-            contents=f"{system_prompt}{history_text}\n\n{user_message}",
-            config={
-                "max_output_tokens": llm_cfg.get("max_tokens", 1024),
-                "temperature": llm_cfg.get("temperature", 0.2),
-            },
-        )
-
-        response_text = response.text or ""
-        tokens_used = 0
-        if response.usage_metadata:
-            tokens_used = (
-                (response.usage_metadata.prompt_token_count or 0)
-                + (response.usage_metadata.candidates_token_count or 0)
+        fallback_cfg = llm_cfg.get("fallback", {})
+        fallback_provider = fallback_cfg.get("provider", "gemini")
+        fallback_model = fallback_cfg.get("model", "gemini-2.0-flash")
+        try:
+            result = _call_provider(
+                fallback_provider, fallback_model, llm_cfg,
+                system_prompt, user_message, history,
             )
+            result["model"] = f"{result['model']} (fallback)"
+            return result
+        except Exception as fallback_err:
+            logger.error("Fallback LLM also failed: %s", fallback_err)
+            return {
+                "response": "Our AI service is temporarily unavailable. Please try again in a moment.",
+                "tokens_used": 0,
+                "model": "none",
+                "error": f"primary: {primary_err}; fallback: {fallback_err}",
+            }
 
-        return {
-            "response": response_text,
-            "tokens_used": tokens_used,
-            "model": f"{fallback_model} (fallback)",
-        }
-    except Exception as fallback_err:
-        logger.error("Gemini fallback also failed: %s", fallback_err)
-        return {
-            "response": "Our AI service is temporarily unavailable. Please try again in a moment.",
-            "tokens_used": 0,
-            "model": "none",
-            "error": f"primary: {primary_error}; fallback: {fallback_err}",
-        }
+
+# Backward-compatible alias
+call_claude = call_llm

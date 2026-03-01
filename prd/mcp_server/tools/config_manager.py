@@ -75,12 +75,13 @@ def get_conversation_config() -> dict:
     })
 
 
-def update_config(mode: str = None, llm: str = None) -> dict:
+def update_config(mode: str = None, llm: str = None, fallback: str = None) -> dict:
     """Update LLM routing config and persist to disk.
 
     Args:
         mode: New routing mode (e.g. 'auto' or a specific model name).
         llm:  Override the primary LLM model name.
+        fallback: Override the fallback LLM model name.
 
     Returns:
         dict with 'status' and the updated llm_routing section.
@@ -89,6 +90,8 @@ def update_config(mode: str = None, llm: str = None) -> dict:
     if mode is not None:
         cfg["llm_routing"]["mode"] = mode
     if llm is not None:
-        cfg["llm_routing"]["primary"] = llm
+        cfg["llm_routing"]["primary"]["model"] = llm
+    if fallback is not None:
+        cfg["llm_routing"]["fallback"]["model"] = fallback
     _save_yaml(cfg)
     return {"status": "ok", "config": cfg["llm_routing"]}

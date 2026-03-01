@@ -44,11 +44,8 @@ def _get_gemini_client():
     """
     global _gemini_client
     if _gemini_client is None:
-        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-        if not api_key:
-            raise RuntimeError("GEMINI_API_KEY not set in environment")
-        from google import genai
-        _gemini_client = genai.Client(api_key=api_key, http_options={"timeout": 30_000})
+        from mcp_server.tools.gemini_factory import create_gemini_client
+        _gemini_client = create_gemini_client(http_options={"timeout": 30_000})
     return _gemini_client
 
 

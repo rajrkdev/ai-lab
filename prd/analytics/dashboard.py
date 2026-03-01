@@ -60,36 +60,19 @@ def fetch_anomalies() -> dict:
         return {}  # Gracefully return empty on failure
 
 
-def render_dashboard():
-    """Render the full analytics dashboard as a Streamlit component.
-
-    This is the main entry point called by the chatbot UIs to embed the
-    analytics dashboard.  It draws filters, KPI cards, charts, session
-    tables, anomaly alerts, and report download buttons.
-    """
-    st.header("📊 Analytics Dashboard")
-
-    # --- Filters: let the user narrow by chatbot type and time range ---
+def _render_filters():
+    """Render chatbot type and time range filter controls. Returns (cb_type, days)."""
     col1, col2 = st.columns(2)
     with col1:
         chatbot_filter = st.selectbox("Chatbot Type", ["All", "microsite", "support"])
     with col2:
         days_filter = st.selectbox("Time Range", [7, 14, 30, 90], index=2)
-
-    # Fetch all analytics data from the FastAPI backend
     cb_type = None if chatbot_filter == "All" else chatbot_filter
-    data = fetch_analytics(cb_type, days_filter)
+    return cb_type, days_filter
 
-    if "error" in data:
-        st.error(f"Cannot fetch analytics: {data['error']}")
-        return
 
-    # Unpack the three sections returned by the /analytics endpoint
-    summary = data.get("summary", {})           # Aggregated KPI numbers
-    time_series = data.get("time_series", [])    # Daily rows for charts
-    intents = data.get("intent_distribution", [])  # Intent name + count pairs
-
-    # --- KPI Cards (5) — top-level summary metrics ---
+def _render_kpi_cards(summary):
+    """Render the 5 top-level KPI metric cards."""
     st.subheader("Key Performance Indicators")
     kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
 
@@ -102,28 +85,35 @@ def render_dashboard():
 
     st.divider()
 
-    # --- Chart 1: Response Time Trend (Line) — shows latency over time ---
-    if time_series:
-        st.subheader("Response Time Trend")
-        import pandas as pd
-        ts_df = pd.DataFrame(time_series)
-        if not ts_df.empty and "date" in ts_df.columns:
-            ts_df["date"] = pd.to_datetime(ts_df["date"])
-            ts_df = ts_df.set_index("date")
-            if "avg_response_time_ms" in ts_df.columns:
-                st.line_chart(ts_df["avg_response_time_ms"])
 
-    # --- Chart 2: Intent Distribution (Bar) — what topics users ask about ---
-    if intents:
-        st.subheader("Intent Distribution")
-        import pandas as pd
-        intent_df = pd.DataFrame(intents)
-        if not intent_df.empty:
-            intent_df = intent_df.set_index("intent")
-            st.bar_chart(intent_df["count"])
+def _render_response_time_chart(time_series):
+    """Render response time trend line chart."""
+    if not time_series:
+        return
+    st.subheader("Response Time Trend")
+    import pandas as pd
+    ts_df = pd.DataFrame(time_series)
+    if not ts_df.empty and "date" in ts_df.columns:
+        ts_df["date"] = pd.to_datetime(ts_df["date"])
+        ts_df = ts_df.set_index("date")
+        if "avg_response_time_ms" in ts_df.columns:
+            st.line_chart(ts_df["avg_response_time_ms"])
 
-    # --- Chart 3: Outcome Distribution (Donut approximation) ---
-    # Shows the proportion of success, partial, failure, and security-flagged results
+
+def _render_intent_chart(intents):
+    """Render intent distribution bar chart."""
+    if not intents:
+        return
+    st.subheader("Intent Distribution")
+    import pandas as pd
+    intent_df = pd.DataFrame(intents)
+    if not intent_df.empty:
+        intent_df = intent_df.set_index("intent")
+        st.bar_chart(intent_df["count"])
+
+
+def _render_outcome_distribution(summary):
+    """Render outcome distribution (success/partial/failure/flagged)."""
     st.subheader("Outcome Distribution")
     outcomes = {
         "Success": summary.get("success_count", 0),
@@ -135,31 +125,44 @@ def render_dashboard():
     if total > 0:
         for name, count in outcomes.items():
             pct = count / total * 100
-            color = {"Success": "🟢", "Partial": "🟡", "Failure": "🔴", "Security Flagged": "🔴"}.get(name, "⚪")
+            color = {
+                "Success": "\U0001f7e2",
+                "Partial": "\U0001f7e1",
+                "Failure": "\U0001f534",
+                "Security Flagged": "\U0001f534",
+            }.get(name, "\u26aa")
             st.markdown(f"{color} **{name}:** {count} ({pct:.1f}%)")
     else:
         st.info("No data yet. Start chatting to see outcome distribution.")
 
-    # --- Chart 4: Daily Message Volume (Area chart) ---
-    if time_series:
-        st.subheader("Daily Message Volume")
-        import pandas as pd
-        ts_df = pd.DataFrame(time_series)
-        if not ts_df.empty and "date" in ts_df.columns:
-            ts_df["date"] = pd.to_datetime(ts_df["date"])
-            ts_df = ts_df.set_index("date")
-            if "total_messages" in ts_df.columns:
-                st.area_chart(ts_df["total_messages"])
 
-    st.divider()
+def _render_volume_chart(time_series):
+    """Render daily message volume area chart."""
+    if not time_series:
+        return
+    st.subheader("Daily Message Volume")
+    import pandas as pd
+    ts_df = pd.DataFrame(time_series)
+    if not ts_df.empty and "date" in ts_df.columns:
+        ts_df["date"] = pd.to_datetime(ts_df["date"])
+        ts_df = ts_df.set_index("date")
+        if "total_messages" in ts_df.columns:
+            st.area_chart(ts_df["total_messages"])
 
-    # --- Recent Sessions Table — shows the last 20 chat sessions ---
+
+def _render_sessions_table(cb_type):
+    """Render the recent sessions table."""
     st.subheader("Recent Sessions")
     sessions = fetch_sessions(cb_type, limit=20)
     if sessions:
         import pandas as pd
         sess_df = pd.DataFrame(sessions)
-        display_cols = [c for c in ["session_id", "chatbot_type", "started_at", "outcome", "total_messages", "avg_confidence"] if c in sess_df.columns]
+        display_cols = [
+            c for c in [
+                "session_id", "chatbot_type", "started_at",
+                "outcome", "total_messages", "avg_confidence",
+            ] if c in sess_df.columns
+        ]
         if display_cols:
             st.dataframe(sess_df[display_cols], use_container_width=True)
     else:
@@ -167,61 +170,92 @@ def render_dashboard():
 
     st.divider()
 
-    # --- Anomaly Alerts — Z-score based warnings for unusual metrics ---
+
+def _render_anomaly_alerts():
+    """Render Z-score anomaly warnings."""
     st.subheader("Anomaly Detection")
     anomalies = fetch_anomalies()
     if anomalies and anomalies.get("anomalies"):
         for a in anomalies["anomalies"]:
-            st.warning(f"⚠️ {a.get('metric', 'Unknown')}: {a.get('message', '')}")
+            st.warning(
+                f"\u26a0\ufe0f {a.get('metric', 'Unknown')}: {a.get('message', '')}")
     else:
         st.success("No anomalies detected.")
 
-    # --- Report Downloads — generate and download PDF/Excel reports on-demand ---
+
+def _download_report_button(label, endpoint, filename, media_type):
+    """Render a single report download button with error handling."""
+    if st.button(label):
+        try:
+            resp = requests.get(f"{API_BASE}{endpoint}", timeout=30)
+            if resp.status_code == 200:
+                st.download_button("Download", resp.content, filename, media_type)
+            else:
+                st.error("Failed to generate report")
+        except Exception as e:
+            st.error(f"Error: {e}")
+
+
+def _render_report_downloads():
+    """Render the report download buttons section."""
     st.divider()
-    st.subheader("📥 Download Reports")
+    st.subheader("\U0001f4e5 Download Reports")
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        if st.button("📄 Daily PDF"):
-            try:
-                resp = requests.get(f"{API_BASE}/reports/daily_pdf", timeout=30)
-                if resp.status_code == 200:
-                    st.download_button("Download", resp.content, "daily_report.pdf", "application/pdf")
-                else:
-                    st.error("Failed to generate daily report")
-            except Exception as e:
-                st.error(f"Error: {e}")
+        _download_report_button(
+            "\U0001f4c4 Daily PDF", "/reports/daily_pdf",
+            "daily_report.pdf", "application/pdf")
 
     with col2:
-        if st.button("📄 Weekly PDF"):
-            try:
-                resp = requests.get(f"{API_BASE}/reports/weekly_pdf", timeout=30)
-                if resp.status_code == 200:
-                    st.download_button("Download", resp.content, "weekly_report.pdf", "application/pdf")
-                else:
-                    st.error("Failed to generate weekly report")
-            except Exception as e:
-                st.error(f"Error: {e}")
+        _download_report_button(
+            "\U0001f4c4 Weekly PDF", "/reports/weekly_pdf",
+            "weekly_report.pdf", "application/pdf")
 
     with col3:
-        if st.button("🔒 Security PDF"):
-            try:
-                resp = requests.get(f"{API_BASE}/reports/security_pdf", timeout=30)
-                if resp.status_code == 200:
-                    st.download_button("Download", resp.content, "security_report.pdf", "application/pdf")
-                else:
-                    st.error("Failed to generate security report")
-            except Exception as e:
-                st.error(f"Error: {e}")
+        _download_report_button(
+            "\U0001f512 Security PDF", "/reports/security_pdf",
+            "security_report.pdf", "application/pdf")
 
     with col4:
-        if st.button("📊 Full Excel"):
-            try:
-                resp = requests.get(f"{API_BASE}/reports/full_excel", timeout=30)
-                if resp.status_code == 200:
-                    st.download_button("Download", resp.content, "full_report.xlsx",
-                                       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                else:
-                    st.error("Failed to generate Excel report")
-            except Exception as e:
-                st.error(f"Error: {e}")
+        _download_report_button(
+            "\U0001f4ca Full Excel", "/reports/full_excel",
+            "full_report.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+def render_dashboard():
+    """Render the full analytics dashboard as a Streamlit component.
+
+    This is the main entry point called by the chatbot UIs to embed the
+    analytics dashboard.  It draws filters, KPI cards, charts, session
+    tables, anomaly alerts, and report download buttons.
+    """
+    st.header("\U0001f4ca Analytics Dashboard")
+
+    # --- Filters: let the user narrow by chatbot type and time range ---
+    cb_type, days_filter = _render_filters()
+
+    # Fetch all analytics data from the FastAPI backend
+    data = fetch_analytics(cb_type, days_filter)
+
+    if "error" in data:
+        st.error(f"Cannot fetch analytics: {data['error']}")
+        return
+
+    # Unpack the three sections returned by the /analytics endpoint
+    summary = data.get("summary", {})
+    time_series = data.get("time_series", [])
+    intents = data.get("intent_distribution", [])
+
+    _render_kpi_cards(summary)
+    _render_response_time_chart(time_series)
+    _render_intent_chart(intents)
+    _render_outcome_distribution(summary)
+    _render_volume_chart(time_series)
+
+    st.divider()
+
+    _render_sessions_table(cb_type)
+    _render_anomaly_alerts()
+    _render_report_downloads()
