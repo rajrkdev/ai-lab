@@ -47,7 +47,8 @@ graph TB
         IV["Input Validator<br/>• Length check<br/>• Injection detection<br/>• PII redaction (Presidio)"]
         EMB["Embedder<br/>Gemini gemini-embedding-001<br/>(768-dim vectors)"]
         VDB["Vector DB<br/>ChromaDB (cosine)"]
-        LLM["LLM Router<br/>Claude Sonnet → Gemini Flash"]
+        SESS["Session Store<br/>• In-memory history<br/>• TTL eviction<br/>• Token-budget trimming"]
+        LLM["LLM Router<br/>Claude Sonnet → Gemini Flash<br/>(multi-turn messages)"]
         OV["Output Validator<br/>• PII masking<br/>• Hallucination check<br/>• Confidence gate"]
         IC2["Intent Classifier<br/>Claude Haiku"]
         ING["Document Ingestor<br/>PDF/DOCX/TXT/MD/JSON/YAML"]
@@ -82,7 +83,8 @@ graph TB
     RL --> IV
     IV --> EMB
     EMB --> VDB
-    VDB --> LLM
+    VDB --> SESS
+    SESS --> LLM
     LLM --> OV
     OV --> IC2
     IC2 --> AL
@@ -141,6 +143,7 @@ graph LR
             ING2["ingest.py"]
             AL2["analytics_logger.py"]
             CM2["config_manager.py"]
+            SS2["session_store.py"]
         end
     end
 
@@ -163,6 +166,7 @@ graph LR
     FSP --> IC3
     FSP --> AL2
     FSP --> ING2
+    FSP --> SS2
     STM -->|"HTTP"| FSP
     STS -->|"HTTP"| FSP
     SRV --> IV2
@@ -184,6 +188,7 @@ graph LR
 ## 3. RAG Chat Request Sequence
 
 Full 7-step pipeline from user question to validated response.
+(Now includes Step 3.5: conversation history loading and Step 6.5: history saving.)
 
 ```mermaid
 sequenceDiagram
@@ -227,7 +232,9 @@ sequenceDiagram
     Note over LLM,CLAUDE: Step 4: LLM Generation
     API->>LLM: call_claude(query, chunks, sources, type)
     LLM->>LLM: build_rag_prompt()
-    LLM->>CLAUDE: messages.create(sonnet, system_prompt, rag_prompt)
+    Note over LLM: Step 3.5: Load conversation history
+    LLM->>LLM: Prepend history turns to messages[]
+    LLM->>CLAUDE: messages.create(sonnet, system_prompt,<br/>history + rag_prompt)
     alt Claude fails
         LLM->>LLM: _call_gemini_fallback()
     end
@@ -249,6 +256,8 @@ sequenceDiagram
     AL-->>API: { message_id }
 
     API-->>ST: ChatResponse
+    Note over API: Step 6.5: Save conversation turn
+    Note over API: Store sanitized query +<br/>validated response in session history
     ST-->>U: Display answer with sources
 ```
 
@@ -349,7 +358,7 @@ classDiagram
         +health_check() dict
     }
     class LLMRouter {
-        +call_claude(query, chunks, sources, type, model) dict
+        +call_claude(query, chunks, sources, type, model, history) dict
         +build_rag_prompt(query, chunks, sources) str
     }
     class OutputValidator {
@@ -372,7 +381,18 @@ classDiagram
         +get_llm_config() dict
         +get_security_config() dict
         +get_rag_config() dict
+        +get_conversation_config() dict
         +update_config(mode, llm) dict
+    }
+    class SessionStore {
+        -dict _store
+        -Lock _lock
+        +add_turn(session_id, user_query, assistant_response)
+        +get_history(session_id) list
+        +clear_session(session_id)
+        +get_active_session_count() int
+        -_estimate_tokens(text) int
+        -_evict_expired()
     }
     class Ingest {
         +ingest_document(path, collection, category) dict
@@ -385,6 +405,7 @@ classDiagram
     OutputValidator --> ConfigManager
     VectorDB --> ConfigManager
     IntentClassifier --> ConfigManager
+    SessionStore --> ConfigManager
     Ingest --> Embedder
     Ingest --> VectorDB
 ```
@@ -514,8 +535,8 @@ graph TB
 
 | Chatbot | Persona | Key Rules |
 |---------|---------|-----------|
-| **Microsite** | Insurance assistant | Answer only from context, cite sources, empathy for distressed customers, no competitor discussion, no legal/financial advice |
-| **Support** | Technical API assistant | Answer only from docs, include error codes, actionable fixes, developer-friendly, no pricing/contract discussion |
+| **Microsite** | Insurance assistant | Answer only from context, cite sources, empathy for distressed customers, no competitor discussion, no legal/financial advice, use conversation history for follow-ups |
+| **Support** | Technical API assistant | Answer only from docs, include error codes, actionable fixes, developer-friendly, no pricing/contract discussion, use conversation history for follow-ups |
 
 ---
 
@@ -726,6 +747,10 @@ All settings from `config.yaml`:
 | **RAG** | top_k | 5 | Chunks per query |
 | | chunk_size | 512 tokens | Ingestion chunk size |
 | | chunk_overlap | 64 tokens | Overlap between chunks |
+| **Conversation** | max_history_turns | 5 | Prior Q+A pairs sent to LLM |
+| | max_history_tokens | 4000 | Hard cap on history tokens |
+| | session_ttl_minutes | 30 | Evict idle sessions |
+| | max_sessions | 1000 | In-memory session cap |
 | **Analytics** | anomaly_window | 7 days | Rolling baseline |
 | | z_threshold | 2.0σ | Anomaly cutoff |
 

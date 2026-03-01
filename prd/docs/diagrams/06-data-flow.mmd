@@ -13,9 +13,10 @@ graph TB
         P1["P1: Input Validation<br/>──────────────<br/>• Check length ≤ 500<br/>• Scan 12 injection patterns<br/>• Redact PII via Presidio"]
         P2["P2: Query Embedding<br/>──────────────<br/>• Gemini gemini-embedding-001<br/>• 768-dim vector<br/>• task: RETRIEVAL_QUERY"]
         P3["P3: Vector Retrieval<br/>──────────────<br/>• Cosine similarity search<br/>• Top-5 chunks<br/>• Score threshold: 0.60"]
-        P4["P4: LLM Generation<br/>──────────────<br/>• Claude Sonnet primary<br/>• Gemini Flash fallback<br/>• RAG prompt construction"]
+        P4["P4: LLM Generation<br/>──────────────<br/>• Claude Sonnet primary<br/>• Gemini Flash fallback<br/>• RAG prompt construction<br/>• Multi-turn history prepend"]
         P5["P5: Output Validation<br/>──────────────<br/>• PII masking (Presidio)<br/>• Hallucination detection<br/>• Confidence gating"]
         P6["P6: Intent Classification<br/>──────────────<br/>• Claude Haiku<br/>• 9 microsite intents<br/>• 8 support intents"]
+        P6B["P6B: Session History<br/>──────────────<br/>• Load/save per session_id<br/>• TTL eviction (30 min)<br/>• Token-budget trimming"]
         P7["P7: Document Ingestion<br/>──────────────<br/>• Extract (PDF/DOCX/TXT...)<br/>• Chunk (512 tok, 64 overlap)<br/>• Embed → Store"]
         P8["P8: Analytics & Reporting<br/>──────────────<br/>• KPI aggregation<br/>• Z-score anomaly detection<br/>• PDF/Excel reports"]
     end
@@ -31,8 +32,10 @@ graph TB
     USER -->|"query + session_id"| P1
     P1 -->|"sanitized_query + pii_list"| P2
     P2 -->|"768-dim vector"| P3
-    P3 -->|"chunks + sources + scores"| P4
+    P3 -->|"chunks + sources + scores"| P6B
+    P6B -->|"history turns"| P4
     P4 -->|"raw LLM response"| P5
+    P5 -->|"validated response"| P6B
     P5 -->|"validated response"| USER
     P1 -->|"query text"| P6
     P6 -->|"intent category"| D2
@@ -70,6 +73,6 @@ graph TB
     classDef store fill:#607D8B,stroke:#37474F,color:#fff
     classDef external fill:#4CAF50,stroke:#2E7D32,color:#fff
 
-    class P1,P2,P3,P4,P5,P6,P7,P8 process
+    class P1,P2,P3,P4,P5,P6,P6B,P7,P8 process
     class D1,D2,D3,D4 store
     class USER,ADMIN,CLAUDE_API,GEMINI_API external

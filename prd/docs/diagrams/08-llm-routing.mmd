@@ -28,9 +28,10 @@ graph TB
         
         RP["build_rag_prompt()<br/>Chunks + Sources + Query"]
         SP["System Prompt<br/>(per chatbot type)"]
+        HIST["Conversation History<br/>Last N turns (max 5)<br/>Token-budget trimmed (max 4000)"]
         
         subgraph Primary["Primary: Claude Sonnet"]
-            CLAUDE["☁️ Anthropic API<br/>claude-sonnet-4-6<br/>max_tokens=1024<br/>temperature=0.2"]
+            CLAUDE["☁️ Anthropic API<br/>claude-sonnet-4-6<br/>max_tokens=1024<br/>temperature=0.2<br/>messages: history + rag_prompt"]
         end
         
         subgraph Fallback["Fallback: Gemini Flash"]
@@ -46,8 +47,8 @@ graph TB
 
     subgraph Prompts["📋 System Prompts"]
         direction TB
-        PM["Microsite Prompt:<br/>• Insurance assistant persona<br/>• Answer ONLY from context<br/>• No made-up policy details<br/>• Cite source documents<br/>• Empathy for distressed customers<br/>• No competitor discussion<br/>• No legal/financial advice"]
-        PS["Support Prompt:<br/>• Technical assistant persona<br/>• Answer ONLY from docs<br/>• Include error codes<br/>• Actionable fix suggestions<br/>• Developer-friendly tone<br/>• No pricing/contract discussion"]
+        PM["Microsite Prompt:<br/>• Insurance assistant persona<br/>• Answer ONLY from context<br/>• No made-up policy details<br/>• Cite source documents<br/>• Empathy for distressed customers<br/>• No competitor discussion<br/>• No legal/financial advice<br/>• Use history for follow-ups"]
+        PS["Support Prompt:<br/>• Technical assistant persona<br/>• Answer ONLY from docs<br/>• Include error codes<br/>• Actionable fix suggestions<br/>• Developer-friendly tone<br/>• No pricing/contract discussion<br/>• Use history for follow-ups"]
     end
 
     CQ --> CP
@@ -59,6 +60,8 @@ graph TB
 
     RP --> CLAUDE
     SP --> CLAUDE
+    HIST --> CLAUDE
+    HIST -.-> GEMINI
     CLAUDE -->|Success| RESULT
     CLAUDE -->|APIError| GEMINI
     GEMINI -->|Success| RESULT

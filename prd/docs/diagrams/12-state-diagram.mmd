@@ -29,7 +29,8 @@ stateDiagram-v2
     state RAGRetrieval {
         Embedding --> VectorSearch: 768-dim vector generated
         VectorSearch --> LowConfidence: Top score < 0.60
-        VectorSearch --> ContextReady: Top score ≥ 0.60
+        VectorSearch --> HistoryLoad: Top score ≥ 0.60
+        HistoryLoad --> ContextReady: Load last N turns<br/>(token-trimmed)
     }
     
     LowConfidence --> IntentClassified: Best-effort classify
@@ -58,6 +59,7 @@ stateDiagram-v2
     HallucinationRejected --> Logged: Log hallucination
     Validated --> IntentClassification: Valid response
     
-    IntentClassification --> Logged: Classify + log
+    IntentClassification --> HistorySave: Classify + log
+    HistorySave --> Logged: Save turn to session history
     
     Logged --> [*]: Return ChatResponse to user

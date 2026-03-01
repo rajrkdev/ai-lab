@@ -2,8 +2,8 @@
 
 This is the central REST API that both Streamlit chatbot UIs call.  It hosts:
 
-  POST /chat/microsite      — Insurance customer chat (full RAG pipeline)
-  POST /chat/support        — Developer support chat (full RAG pipeline)
+  POST /chat/microsite      — Insurance customer chat (full RAG pipeline + multi-turn history)
+  POST /chat/support        — Developer support chat (full RAG pipeline + multi-turn history)
   POST /ingest              — Upload & ingest a document into the knowledge base
   GET  /health              — System health (ChromaDB, SQLite, API keys)
   GET  /analytics           — Aggregated KPIs + time-series + intent distribution
@@ -18,6 +18,8 @@ Key design decisions:
     imported on the first request, keeping startup fast.
   - Rate limiting: per-IP limits via slowapi to prevent abuse.
   - CORS: wide-open for local dev (allow_origins=['*']).
+  - Multi-turn: server-side session store loads/saves conversation history
+    per session_id, with token-budget trimming and TTL eviction.
 """
 
 import os
@@ -31,7 +33,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -123,6 +125,76 @@ FALLBACK_MESSAGES = {
 }
 
 
+def _respond_blocked(validation, query, session_id, chatbot_type, elapsed):
+    """Handle blocked input: log the interaction and return a fallback response."""
+    from mcp_server.tools import analytics_logger
+
+    reason = validation["block_reason"]
+    analytics_logger.log_interaction({
+        "session_id": session_id,
+        "chatbot_type": chatbot_type,
+        "query": query,
+        "intent": "blocked",
+        "llm_used": "none",
+        "confidence_score": 0.0,
+        "response_time_ms": elapsed,
+        "pii_entities_detected": validation["pii_detected"],
+        "injection_blocked": reason == "injection_detected",
+        "response_valid": False,
+    })
+
+    fallback_msg = FALLBACK_MESSAGES.get(chatbot_type, FALLBACK_MESSAGES["microsite"])
+    if reason == "injection_detected":
+        msg = fallback_msg["injection"]
+    elif reason == "input_too_long":
+        msg = fallback_msg["input_too_long"]
+    else:
+        msg = validation.get("block_message", "Request blocked.")
+
+    return ChatResponse(
+        response=msg,
+        blocked=True,
+        reason=reason,
+        response_time_ms=elapsed,
+    )
+
+
+def _respond_low_confidence(query, session_id, chatbot_type, context):
+    """Handle low-confidence retrieval: classify intent, log, and return fallback.
+
+    Args:
+        context: dict with keys top_confidence, pii_detected, elapsed.
+    """
+    from mcp_server.tools import analytics_logger, intent_classifier
+
+    intent = "other"
+    try:
+        intent = intent_classifier.classify_intent(query, chatbot_type)
+    except Exception:
+        pass
+
+    analytics_logger.log_interaction({
+        "session_id": session_id,
+        "chatbot_type": chatbot_type,
+        "query": query,
+        "intent": intent,
+        "llm_used": "none",
+        "confidence_score": context["top_confidence"],
+        "response_time_ms": context["elapsed"],
+        "pii_entities_detected": context["pii_detected"],
+        "injection_blocked": False,
+        "response_valid": False,
+    })
+
+    return ChatResponse(
+        response="I don't have enough information in my knowledge base to answer this accurately. Please contact our support team.",
+        sources=[],
+        confidence_score=context["top_confidence"],
+        blocked=False,
+        response_time_ms=context["elapsed"],
+    )
+
+
 def _run_chat_pipeline(query: str, session_id: str, chatbot_type: str) -> ChatResponse:
     """Core RAG pipeline shared by both chatbot endpoints.
 
@@ -130,7 +202,7 @@ def _run_chat_pipeline(query: str, session_id: str, chatbot_type: str) -> ChatRe
       1. Input validation   (length, injection, PII)
       2. Embedding          (query → 768-dim vector)
       3. Retrieval          (top-k chunks from ChromaDB)
-      4. LLM call           (Claude primary, Gemini fallback)
+      4. LLM call           (primary provider, auto-fallback)
       5. Output validation  (PII mask, hallucination, confidence gate)
       6. Intent classification (Claude Haiku, best-effort)
       7. Analytics logging  (SQLite + JSONL audit)
@@ -140,13 +212,8 @@ def _run_chat_pipeline(query: str, session_id: str, chatbot_type: str) -> ChatRe
     _ensure_tools()
 
     from mcp_server.tools import (
-        analytics_logger,
-        input_validator,
-        intent_classifier,
-        llm_router,
-        output_validator,
-        vector_db,
-        embedder,
+        input_validator, embedder, vector_db, llm_router,
+        output_validator, session_store, intent_classifier, analytics_logger,
     )
     from mcp_server.tools.config_manager import get_rag_config
 
@@ -158,37 +225,8 @@ def _run_chat_pipeline(query: str, session_id: str, chatbot_type: str) -> ChatRe
     validation = input_validator.validate_input(query)
 
     if validation["blocked"]:
-        reason = validation["block_reason"]
         elapsed = int((time.time() - start) * 1000)
-
-        # Log blocked interaction
-        analytics_logger.log_interaction({
-            "session_id": session_id,
-            "chatbot_type": chatbot_type,
-            "query": query,
-            "intent": "blocked",
-            "llm_used": "none",
-            "confidence_score": 0.0,
-            "response_time_ms": elapsed,
-            "pii_entities_detected": validation["pii_detected"],
-            "injection_blocked": reason == "injection_detected",
-            "response_valid": False,
-        })
-
-        fallback_msg = FALLBACK_MESSAGES.get(chatbot_type, FALLBACK_MESSAGES["microsite"])
-        if reason == "injection_detected":
-            msg = fallback_msg["injection"]
-        elif reason == "input_too_long":
-            msg = fallback_msg["input_too_long"]
-        else:
-            msg = validation.get("block_message", "Request blocked.")
-
-        return ChatResponse(
-            response=msg,
-            blocked=True,
-            reason=reason,
-            response_time_ms=elapsed,
-        )
+        return _respond_blocked(validation, query, session_id, chatbot_type, elapsed)
 
     sanitized_query = validation["sanitized_query"]
     pii_detected = validation["pii_detected"]
@@ -196,7 +234,7 @@ def _run_chat_pipeline(query: str, session_id: str, chatbot_type: str) -> ChatRe
     # Step 2: Embed the sanitised query into a 768-dim vector
     try:
         embedding = embedder.embed_query(sanitized_query)
-    except Exception as e:
+    except Exception:
         elapsed = int((time.time() - start) * 1000)
         return ChatResponse(
             response="Our AI service is temporarily unavailable. Please try again in a moment.",
@@ -206,53 +244,31 @@ def _run_chat_pipeline(query: str, session_id: str, chatbot_type: str) -> ChatRe
         )
 
     # Step 3: Retrieve top-k similar document chunks from ChromaDB
-    retrieval = vector_db.retrieve_chunks(embedding, collection_name, rag_cfg.get("top_k", 5))
-    chunks = retrieval["chunks"]
-    sources = retrieval["sources"]
-    scores = retrieval["scores"]
+    retrieval = vector_db.retrieve_chunks(
+        embedding, collection_name, rag_cfg.get("top_k", 5))
+    top_confidence = max(retrieval["scores"]) if retrieval["scores"] else 0.0
 
     # Check confidence threshold — if best chunk score is too low, don't call the LLM
-    top_confidence = max(scores) if scores else 0.0
-
-    if top_confidence < 0.60 or not chunks:
+    if top_confidence < 0.60 or not retrieval["chunks"]:
         elapsed = int((time.time() - start) * 1000)
-
-        # Classify intent in background (best effort)
-        intent = "other"
-        try:
-            intent = intent_classifier.classify_intent(query, chatbot_type)
-        except Exception:
-            pass
-
-        analytics_logger.log_interaction({
-            "session_id": session_id,
-            "chatbot_type": chatbot_type,
-            "query": query,
-            "intent": intent,
-            "llm_used": "none",
-            "confidence_score": top_confidence,
-            "response_time_ms": elapsed,
-            "pii_entities_detected": pii_detected,
-            "injection_blocked": False,
-            "response_valid": False,
+        return _respond_low_confidence(query, session_id, chatbot_type, {
+            "top_confidence": top_confidence,
+            "pii_detected": pii_detected,
+            "elapsed": elapsed,
         })
 
-        return ChatResponse(
-            response="I don't have enough information in my knowledge base to answer this accurately. Please contact our support team.",
-            sources=[],
-            confidence_score=top_confidence,
-            blocked=False,
-            response_time_ms=elapsed,
-        )
+    # Step 4: Call primary LLM with RAG context; auto-falls back on failure
+    # Step 3.5: Load conversation history for this session
+    history = session_store.get_history(session_id)
 
-    # Step 4: Call Claude (primary) with RAG context; auto-falls back to Gemini
-    llm_result = llm_router.call_claude(
-        sanitized_query, chunks, sources, chatbot_type
+    llm_result = llm_router.call_llm(
+        sanitized_query, retrieval["chunks"], retrieval["sources"],
+        chatbot_type, history=history,
     )
 
     # Step 5: Validate output — PII masking, confidence gate, hallucination check
     output_val = output_validator.validate_output(
-        llm_result["response"], chunks, top_confidence
+        llm_result["response"], retrieval["chunks"], top_confidence
     )
 
     # Step 6: Classify intent (best-effort; failure is non-fatal)
@@ -278,11 +294,13 @@ def _run_chat_pipeline(query: str, session_id: str, chatbot_type: str) -> ChatRe
         "response_valid": output_val["valid"],
     })
 
-    unique_sources = list(dict.fromkeys(sources))
+    # Step 7.5: Save turn to conversation history (sanitized query + validated response)
+    session_store.add_turn(
+        session_id, sanitized_query, output_val["final_response"])
 
     return ChatResponse(
         response=output_val["final_response"],
-        sources=unique_sources,
+        sources=list(dict.fromkeys(retrieval["sources"])),
         confidence_score=top_confidence,
         llm_used=llm_result.get("model", "unknown"),
         blocked=False,
@@ -335,7 +353,10 @@ def ingest_document(
         result = ingest_file_for_chatbot(tmp_path, chatbot_type, category)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ingestion failed: {type(e).__name__}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Ingestion failed: {type(e).__name__}: {e}"
+        ) from e
     finally:
         Path(tmp_path).unlink(missing_ok=True)
 

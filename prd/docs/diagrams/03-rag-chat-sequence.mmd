@@ -86,7 +86,9 @@ sequenceDiagram
     Note over LLM,CLAUDE: Step 6: LLM Generation
     API->>LLM: call_claude(query, chunks,<br/>sources, chatbot_type)
     LLM->>LLM: build_rag_prompt()
-    LLM->>CLAUDE: messages.create(model=sonnet,<br/>system_prompt, user_message,<br/>max_tokens=1024, temp=0.2)
+    Note over LLM: Step 5.5: Load conversation history<br/>(last N turns, token-trimmed)
+    LLM->>LLM: Prepend history turns to messages[]
+    LLM->>CLAUDE: messages.create(model=sonnet,<br/>system_prompt, history + user_message,<br/>max_tokens=1024, temp=0.2)
     
     alt Claude API Error
         CLAUDE--xLLM: APIError
@@ -121,6 +123,9 @@ sequenceDiagram
     AL->>DB: INSERT INTO messages
     AL->>LOG: Append JSONL line
     AL-->>API: { message_id }
+
+    Note over API: Step 9.5: Save Conversation Turn
+    API->>API: session_store.add_turn(<br/>session_id, sanitized_query,<br/>validated_response)
     
     API-->>ST: ChatResponse {<br/>response, sources,<br/>confidence_score,<br/>llm_used, message_id }
     ST-->>U: Display answer<br/>with sources

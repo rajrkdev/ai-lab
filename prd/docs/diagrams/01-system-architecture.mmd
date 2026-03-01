@@ -26,7 +26,8 @@ graph TB
         IV["Input Validator<br/>• Length check<br/>• Injection detection<br/>• PII redaction (Presidio)"]
         EMB["Embedder<br/>Gemini gemini-embedding-001<br/>(768-dim vectors)"]
         VDB["Vector DB<br/>ChromaDB (cosine)"]
-        LLM["LLM Router<br/>Claude Sonnet → Gemini Flash"]
+        SESS["Session Store<br/>• In-memory history<br/>• TTL eviction (30 min)<br/>• Token-budget trimming"]
+        LLM["LLM Router<br/>Claude Sonnet → Gemini Flash<br/>(multi-turn messages)"]
         OV["Output Validator<br/>• PII masking<br/>• Hallucination check<br/>• Confidence gate"]
         IC2["Intent Classifier<br/>Claude Haiku"]
         ING["Document Ingestor<br/>PDF/DOCX/TXT/MD/JSON/YAML"]
@@ -61,7 +62,8 @@ graph TB
     RL --> IV
     IV --> EMB
     EMB --> VDB
-    VDB --> LLM
+    VDB --> SESS
+    SESS --> LLM
     LLM --> OV
     OV --> IC2
     IC2 --> AL

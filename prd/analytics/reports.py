@@ -14,8 +14,6 @@ Report types:
 
 import tempfile
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import List
 
 from mcp_server.tools.analytics_logger import (
     get_analytics_summary,
@@ -35,36 +33,63 @@ def _make_temp_path(suffix: str) -> str:
     return tempfile.mktemp(suffix=suffix, prefix="insurechat_report_")
 
 
-def generate_daily_pdf() -> str:
-    """Generate a daily summary PDF report.
-
-    Includes: KPI table (last 24 h), outcome distribution, top 10 intents,
-    and up to 10 recent security events.
-    Returns the file path to the generated PDF.
-    """
-    # ReportLab imports are deferred to avoid slow startup when reports
-    # are not being generated.
+def _build_styled_table(data, col_widths, header_color,
+                        font_size=10, row_alt_color=None, extra_styles=None):
+    """Build a ReportLab Table with standard InsureChat report styling."""
     from reportlab.lib import colors
+    from reportlab.platypus import Table, TableStyle
+
+    style_cmds = [
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(header_color)),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), font_size),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+    ]
+    if row_alt_color:
+        style_cmds.append(
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1),
+             [colors.white, colors.HexColor(row_alt_color)])
+        )
+    if extra_styles:
+        style_cmds.extend(extra_styles)
+
+    table = Table(data, colWidths=col_widths)
+    table.setStyle(TableStyle(style_cmds))
+    return table
+
+
+def _init_report(title):
+    """Create a PDF document with standard InsureChat report header.
+
+    Returns (file_path, doc, styles, elements).
+    """
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-    from reportlab.lib.units import inch
-    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
     path = _make_temp_path(".pdf")
     doc = SimpleDocTemplate(path, pagesize=A4)
     styles = getSampleStyleSheet()
-    elements = []
+    title_style = ParagraphStyle("ReportTitle", parent=styles["Title"], fontSize=18)
+    elements = [
+        Paragraph(title, title_style),
+        Spacer(1, 12),
+        Paragraph(
+            f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+            styles["Normal"],
+        ),
+        Spacer(1, 24),
+    ]
+    return path, doc, styles, elements
 
-    # Title
-    title_style = ParagraphStyle("Title", parent=styles["Title"], fontSize=18)
-    elements.append(Paragraph("InsureChat v3.0 — Daily Summary Report", title_style))
-    elements.append(Spacer(1, 12))
-    elements.append(Paragraph(f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}", styles["Normal"]))
-    elements.append(Spacer(1, 24))
 
-    # --- KPI Table: aggregated numbers for the last 24 hours ---
+def _add_daily_kpi_table(elements, styles, summary):
+    """Add the daily KPI summary table to report elements."""
+    from reportlab.lib.units import inch
+    from reportlab.platypus import Paragraph, Spacer
+
     elements.append(Paragraph("Key Performance Indicators (Last 24 hours)", styles["Heading2"]))
-    summary = get_analytics_summary(days=1)
     kpi_data = [
         ["Metric", "Value"],
         ["Total Sessions", str(summary.get("total_sessions", 0))],
@@ -75,21 +100,22 @@ def generate_daily_pdf() -> str:
         ["Security Events", str(summary.get("security_events", 0))],
         ["CSAT Score", f"{summary.get('csat', 3.0):.1f}/5.0"],
     ]
-    kpi_table = Table(kpi_data, colWidths=[3 * inch, 2 * inch])
-    kpi_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2196F3")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 10),
-        ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F5F5F5")]),
-    ]))
-    elements.append(kpi_table)
+    elements.append(_build_styled_table(
+        kpi_data, [3 * inch, 2 * inch], "#2196F3",
+        extra_styles=[
+            ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+            ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+        ],
+        row_alt_color="#F5F5F5",
+    ))
     elements.append(Spacer(1, 24))
 
-    # --- Outcome Distribution table: success / partial / failure / flagged ---
+
+def _add_outcome_table(elements, styles, summary):
+    """Add outcome distribution table to report elements."""
+    from reportlab.lib.units import inch
+    from reportlab.platypus import Paragraph, Spacer
+
     elements.append(Paragraph("Outcome Distribution", styles["Heading2"]))
     outcome_data = [
         ["Outcome", "Count"],
@@ -98,60 +124,65 @@ def generate_daily_pdf() -> str:
         ["Failure", str(summary.get("failure_count", 0))],
         ["Security Flagged", str(summary.get("flagged_count", 0))],
     ]
-    outcome_table = Table(outcome_data, colWidths=[3 * inch, 2 * inch])
-    outcome_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#4CAF50")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-    ]))
-    elements.append(outcome_table)
+    elements.append(_build_styled_table(outcome_data, [3 * inch, 2 * inch], "#4CAF50"))
     elements.append(Spacer(1, 24))
 
-    # --- Top Intents table: most-asked query categories ---
+
+def _add_intent_table(elements, styles, days):
+    """Add top intents table to report elements."""
+    from reportlab.lib.units import inch
+    from reportlab.platypus import Paragraph, Spacer
+
     elements.append(Paragraph("Top Intents", styles["Heading2"]))
-    intents = get_intent_distribution(days=1)
+    intents = get_intent_distribution(days=days)
     if intents:
         intent_data = [["Intent", "Count"]]
         for i in intents[:10]:
             intent_data.append([i["intent"], str(i["count"])])
-        intent_table = Table(intent_data, colWidths=[3 * inch, 2 * inch])
-        intent_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#FF9800")),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-        ]))
-        elements.append(intent_table)
+        elements.append(_build_styled_table(intent_data, [3 * inch, 2 * inch], "#FF9800"))
     else:
         elements.append(Paragraph("No intent data for the last 24 hours.", styles["Normal"]))
-
     elements.append(Spacer(1, 24))
 
-    # --- Security Summary table: last 10 security events ---
+
+def _add_security_summary_table(elements, styles, limit):
+    """Add security events summary table to report elements."""
+    from reportlab.lib.units import inch
+    from reportlab.platypus import Paragraph
+
     elements.append(Paragraph("Security Summary", styles["Heading2"]))
-    sec_events = get_security_events(limit=10)
+    sec_events = get_security_events(limit=limit)
     if sec_events:
         sec_data = [["Timestamp", "Type", "Severity", "Chatbot"]]
-        for ev in sec_events[:10]:
+        for ev in sec_events[:limit]:
             sec_data.append([
                 ev.get("timestamp", "")[:19],
                 ev.get("event_type", ""),
                 ev.get("severity", ""),
                 ev.get("chatbot_type", ""),
             ])
-        sec_table = Table(sec_data, colWidths=[2.5 * inch, 1.5 * inch, 1 * inch, 1 * inch])
-        sec_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F44336")),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 8),
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-        ]))
-        elements.append(sec_table)
+        elements.append(_build_styled_table(
+            sec_data,
+            [2.5 * inch, 1.5 * inch, 1 * inch, 1 * inch],
+            "#F44336", font_size=8,
+        ))
     else:
         elements.append(Paragraph("No security events in the last 24 hours.", styles["Normal"]))
 
+
+def generate_daily_pdf() -> str:
+    """Generate a daily summary PDF report.
+
+    Includes: KPI table (last 24 h), outcome distribution, top 10 intents,
+    and up to 10 recent security events.
+    Returns the file path to the generated PDF.
+    """
+    path, doc, styles, elements = _init_report("InsureChat v3.0 \u2014 Daily Summary Report")
+    summary = get_analytics_summary(days=1)
+    _add_daily_kpi_table(elements, styles, summary)
+    _add_outcome_table(elements, styles, summary)
+    _add_intent_table(elements, styles, days=1)
+    _add_security_summary_table(elements, styles, limit=10)
     doc.build(elements)
     return path
 
@@ -163,21 +194,10 @@ def generate_weekly_pdf() -> str:
     message volumes, average confidence, and response times.
     Returns the file path to the generated PDF.
     """
-    from reportlab.lib import colors
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.lib.units import inch
-    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    from reportlab.platypus import Paragraph, Spacer
 
-    path = _make_temp_path(".pdf")
-    doc = SimpleDocTemplate(path, pagesize=A4)
-    styles = getSampleStyleSheet()
-    elements = []
-
-    elements.append(Paragraph("InsureChat v3.0 — Weekly Trends Report", styles["Title"]))
-    elements.append(Spacer(1, 12))
-    elements.append(Paragraph(f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}", styles["Normal"]))
-    elements.append(Spacer(1, 24))
+    path, doc, styles, elements = _init_report("InsureChat v3.0 \u2014 Weekly Trends Report")
 
     # --- 7-day KPI summary table ---
     elements.append(Paragraph("7-Day KPI Summary", styles["Heading2"]))
@@ -189,14 +209,7 @@ def generate_weekly_pdf() -> str:
         ["Avg Response Time", f"{summary.get('avg_response_time_ms', 0):.0f}ms"],
         ["Security Events", str(summary.get("security_events", 0))],
     ]
-    table = Table(kpi_data, colWidths=[3 * inch, 2 * inch])
-    table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2196F3")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-    ]))
-    elements.append(table)
+    elements.append(_build_styled_table(kpi_data, [3 * inch, 2 * inch], "#2196F3"))
     elements.append(Spacer(1, 24))
 
     # --- Daily breakdown table: one row per day ---
@@ -211,15 +224,11 @@ def generate_weekly_pdf() -> str:
                 f"{row.get('avg_confidence', 0):.3f}",
                 f"{row.get('avg_response_time_ms', 0):.0f}",
             ])
-        ts_table = Table(ts_data, colWidths=[1.5 * inch, 1.2 * inch, 1.5 * inch, 2 * inch])
-        ts_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#4CAF50")),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 9),
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-        ]))
-        elements.append(ts_table)
+        elements.append(_build_styled_table(
+            ts_data,
+            [1.5 * inch, 1.2 * inch, 1.5 * inch, 2 * inch],
+            "#4CAF50", font_size=9,
+        ))
     else:
         elements.append(Paragraph("No data for the last 7 days.", styles["Normal"]))
 
@@ -234,21 +243,10 @@ def generate_security_pdf() -> str:
     with timestamps, event type, severity, chatbot, and truncated details.
     Returns the file path to the generated PDF.
     """
-    from reportlab.lib import colors
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.lib.units import inch
-    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    from reportlab.platypus import Paragraph, Spacer
 
-    path = _make_temp_path(".pdf")
-    doc = SimpleDocTemplate(path, pagesize=A4)
-    styles = getSampleStyleSheet()
-    elements = []
-
-    elements.append(Paragraph("InsureChat v3.0 — Security Incidents Report", styles["Title"]))
-    elements.append(Spacer(1, 12))
-    elements.append(Paragraph(f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}", styles["Normal"]))
-    elements.append(Spacer(1, 24))
+    path, doc, styles, elements = _init_report("InsureChat v3.0 \u2014 Security Incidents Report")
 
     events = get_security_events(limit=100)
 
@@ -265,16 +263,11 @@ def generate_security_pdf() -> str:
                 ev.get("chatbot_type", ""),
                 str(ev.get("details", ""))[:50],
             ])
-        sec_table = Table(sec_data, colWidths=[1.5 * inch, 1 * inch, 0.8 * inch, 0.8 * inch, 2 * inch])
-        sec_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F44336")),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 7),
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#FFF3F0")]),
-        ]))
-        elements.append(sec_table)
+        elements.append(_build_styled_table(
+            sec_data,
+            [1.5 * inch, 1 * inch, 0.8 * inch, 0.8 * inch, 2 * inch],
+            "#F44336", font_size=7, row_alt_color="#FFF3F0",
+        ))
     else:
         elements.append(Paragraph("No security events recorded.", styles["Heading2"]))
 
@@ -282,82 +275,104 @@ def generate_security_pdf() -> str:
     return path
 
 
-def generate_full_excel() -> str:
-    """Generate a comprehensive Excel workbook with 4 sheets.
+def _init_excel_workbook():
+    """Create an openpyxl Workbook with shared header styling.
 
-    Sheets:
-      1. Summary          — 30-day aggregated KPI key–value pairs
-      2. Chat Details      — Up to 500 recent sessions with metadata
-      3. Security Events   — Up to 500 recent security events
-      4. Intent Breakdown  — Intent name + count over last 30 days
-
-    Returns the file path to the generated .xlsx file.
+    Returns (workbook, style_header_func).
     """
-    import json
-
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Font, PatternFill
 
-    path = _make_temp_path(".xlsx")
     wb = Workbook()
-
-    # Shared header styling for all 4 sheets (blue background, white text)
     header_font = Font(bold=True, color="FFFFFF")
     header_fill = PatternFill(start_color="2196F3", end_color="2196F3", fill_type="solid")
 
     def style_header(ws, cols):
-        """Apply header font, fill, and alignment to the first row of a worksheet."""
+        """Apply header font, fill, and alignment to the first row."""
         for col_idx, header in enumerate(cols, 1):
             cell = ws.cell(row=1, column=col_idx, value=header)
             cell.font = header_font
             cell.fill = header_fill
             cell.alignment = Alignment(horizontal="center")
 
-    # --- Sheet 1: Summary — 30-day aggregated KPIs as key–value rows ---
-    ws1 = wb.active
-    ws1.title = "Summary"
+    return wb, style_header
+
+
+def _add_summary_sheet(wb, style_header):
+    """Add Summary sheet — 30-day aggregated KPIs as key-value rows."""
+    ws = wb.active
+    ws.title = "Summary"
     summary = get_analytics_summary(days=30)
-    style_header(ws1, ["Metric", "Value"])
+    style_header(ws, ["Metric", "Value"])
     for i, (k, v) in enumerate(summary.items(), 2):
-        ws1.cell(row=i, column=1, value=k)
-        ws1.cell(row=i, column=2, value=str(v))
-    ws1.column_dimensions["A"].width = 25
-    ws1.column_dimensions["B"].width = 20
+        ws.cell(row=i, column=1, value=k)
+        ws.cell(row=i, column=2, value=str(v))
+    ws.column_dimensions["A"].width = 25
+    ws.column_dimensions["B"].width = 20
 
-    # --- Sheet 2: Chat Details — one row per session, up to 500 ---
-    ws2 = wb.create_sheet("Chat Details")
+
+def _add_chat_details_sheet(wb, style_header):
+    """Add Chat Details sheet — one row per session, up to 500."""
+    ws = wb.create_sheet("Chat Details")
     sessions = get_sessions_list(limit=500)
-    headers2 = ["session_id", "chatbot_type", "started_at", "outcome", "total_messages", "avg_confidence", "avg_response_time_ms"]
-    style_header(ws2, headers2)
+    headers = [
+        "session_id", "chatbot_type", "started_at", "outcome",
+        "total_messages", "avg_confidence", "avg_response_time_ms",
+    ]
+    style_header(ws, headers)
     for i, sess in enumerate(sessions, 2):
-        for j, h in enumerate(headers2, 1):
-            ws2.cell(row=i, column=j, value=str(sess.get(h, "")))
-    for j in range(len(headers2)):
-        ws2.column_dimensions[chr(65 + j)].width = 20
+        for j, h in enumerate(headers, 1):
+            ws.cell(row=i, column=j, value=str(sess.get(h, "")))
+    for j in range(len(headers)):
+        ws.column_dimensions[chr(65 + j)].width = 20
 
-    # --- Sheet 3: Security Events — one row per event, up to 500 ---
-    ws3 = wb.create_sheet("Security Events")
+
+def _add_security_events_sheet(wb, style_header):
+    """Add Security Events sheet — one row per event, up to 500."""
+    import json
+
+    ws = wb.create_sheet("Security Events")
     sec_events = get_security_events(limit=500)
-    headers3 = ["timestamp", "event_type", "severity", "chatbot_type", "details"]
-    style_header(ws3, headers3)
+    headers = ["timestamp", "event_type", "severity", "chatbot_type", "details"]
+    style_header(ws, headers)
     for i, ev in enumerate(sec_events, 2):
-        for j, h in enumerate(headers3, 1):
+        for j, h in enumerate(headers, 1):
             val = ev.get(h, "")
             if isinstance(val, dict):
                 val = json.dumps(val)
-            ws3.cell(row=i, column=j, value=str(val)[:200])
-    for j in range(len(headers3)):
-        ws3.column_dimensions[chr(65 + j)].width = 22
+            ws.cell(row=i, column=j, value=str(val)[:200])
+    for j in range(len(headers)):
+        ws.column_dimensions[chr(65 + j)].width = 22
 
-    # --- Sheet 4: Intent Breakdown — intent name + count over 30 days ---
-    ws4 = wb.create_sheet("Intent Breakdown")
+
+def _add_intent_breakdown_sheet(wb, style_header):
+    """Add Intent Breakdown sheet — intent name + count over 30 days."""
+    ws = wb.create_sheet("Intent Breakdown")
     intents = get_intent_distribution(days=30)
-    style_header(ws4, ["Intent", "Count"])
+    style_header(ws, ["Intent", "Count"])
     for i, item in enumerate(intents, 2):
-        ws4.cell(row=i, column=1, value=item.get("intent", ""))
-        ws4.cell(row=i, column=2, value=item.get("count", 0))
-    ws4.column_dimensions["A"].width = 25
-    ws4.column_dimensions["B"].width = 15
+        ws.cell(row=i, column=1, value=item.get("intent", ""))
+        ws.cell(row=i, column=2, value=item.get("count", 0))
+    ws.column_dimensions["A"].width = 25
+    ws.column_dimensions["B"].width = 15
 
+
+def generate_full_excel() -> str:
+    """Generate a comprehensive Excel workbook with 4 sheets.
+
+    Sheets:
+      1. Summary          — 30-day aggregated KPI key-value pairs
+      2. Chat Details      — Up to 500 recent sessions with metadata
+      3. Security Events   — Up to 500 recent security events
+      4. Intent Breakdown  — Intent name + count over last 30 days
+
+    Returns the file path to the generated .xlsx file.
+    """
+    path = _make_temp_path(".xlsx")
+    wb, style_header = _init_excel_workbook()
+    _add_summary_sheet(wb, style_header)
+    _add_chat_details_sheet(wb, style_header)
+    _add_security_events_sheet(wb, style_header)
+    _add_intent_breakdown_sheet(wb, style_header)
     wb.save(path)
     return path

@@ -77,9 +77,9 @@ classDiagram
         -Anthropic _client
         -Client _gemini_client
         -dict SYSTEM_PROMPTS
-        +call_claude(query, chunks, sources, chatbot_type, model) dict
+        +call_claude(query, chunks, sources, chatbot_type, model, history) dict
         +build_rag_prompt(query, chunks, sources) str
-        -_call_gemini_fallback(llm_cfg, system_prompt, user_message, error) dict
+        -_call_gemini_fallback(llm_cfg, system_prompt, user_message, error, history) dict
         -_get_client() Anthropic
         -_get_gemini_client() Client
     }
@@ -133,7 +133,19 @@ classDiagram
         +get_rag_config() dict
         +get_embeddings_config() dict
         +get_analytics_config() dict
+        +get_conversation_config() dict
         +update_config(mode, llm) dict
+    }
+
+    class SessionStore {
+        -dict _store
+        -Lock _lock
+        +add_turn(session_id, user_query, assistant_response)
+        +get_history(session_id) list
+        +clear_session(session_id)
+        +get_active_session_count() int
+        -_estimate_tokens(text) int
+        -_evict_expired()
     }
 
     class AnomalyDetector {
@@ -171,6 +183,7 @@ classDiagram
     FastAPIServer --> OutputValidator : Step 5
     FastAPIServer --> IntentClassifier : Step 6
     FastAPIServer --> AnalyticsLogger : Step 7
+    FastAPIServer --> SessionStore : Step 3.5 + 7.5
     FastAPIServer --> Ingest : /ingest
     FastAPIServer --> AnomalyDetector : /anomalies
     FastAPIServer --> ReportGenerator : /reports
@@ -185,6 +198,7 @@ classDiagram
     MCPServer --> Ingest
     MCPServer --> ConfigManager
 
+    SessionStore --> ConfigManager : get_conversation_config()
     Ingest --> Embedder : embed_documents()
     Ingest --> VectorDB : add_documents()
     AnomalyDetector --> AnalyticsLogger : get_time_series()

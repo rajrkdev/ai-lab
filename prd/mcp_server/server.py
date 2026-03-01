@@ -10,7 +10,7 @@ Registered tools (in call order for a typical RAG query):
   2. classify_intent   — categorize the query (e.g. policy_coverage, claims_process)
   3. embed_query       — convert the query to a 768-dim vector
   4. retrieve_chunks   — find top-k similar document chunks from ChromaDB
-  5. call_claude       — send query + context to Claude LLM for answer generation
+  5. call_llm          — send query + context to primary LLM; auto-fallback on failure
   6. validate_output   — mask PII, check hallucination, enforce confidence threshold
   7. log_interaction   — write session/message data to SQLite + JSONL audit log
   8. ingest_document   — extract, chunk, embed, and store a new document
@@ -63,10 +63,10 @@ def retrieve_chunks(embedding: List[float], collection: str, top_k: int = 5) -> 
 
 
 @mcp.tool()
-def call_claude(query: str, chunks: List[str], sources: List[str] = None,
-                chatbot_type: str = "microsite", model: str = None) -> Dict:
-    """Call Claude LLM with RAG context. Returns response + tokens used."""
-    return llm_router.call_claude(query, chunks, sources, chatbot_type, model)
+def call_llm(query: str, chunks: List[str], sources: List[str] = None,
+             chatbot_type: str = "microsite", model: str = None) -> Dict:
+    """Call LLM with RAG context. Primary provider + automatic fallback."""
+    return llm_router.call_llm(query, chunks, sources, chatbot_type, model)
 
 
 @mcp.tool()
@@ -100,9 +100,9 @@ def get_config() -> Dict:
 
 
 @mcp.tool()
-def update_config(mode: str = None, llm: str = None) -> Dict:
+def update_config(mode: str = None, llm: str = None, fallback: str = None) -> Dict:
     """Update LLM routing configuration."""
-    return config_manager.update_config(mode, llm)
+    return config_manager.update_config(mode, llm, fallback)
 
 
 # --- Entry point: start the MCP server when run directly ---
