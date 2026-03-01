@@ -1,0 +1,7 @@
+# Generated files
+concept-validation-results.json
+_site/
+.sass-cache/
+.jekyll-cache/
+.jekyll-metadata
+node_modules/

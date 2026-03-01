@@ -1,0 +1,72 @@
+name: Validate Content
+
+on:
+  push:
+    branches: ["dev", "main"]
+  pull_request:
+    branches: ["dev", "main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  markdown-lint:
+    name: Markdown Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install markdownlint-cli
+        run: npm install -g markdownlint-cli
+
+      - name: Lint markdown files
+        run: |
+          markdownlint \
+            --config .markdownlint.json \
+            --ignore node_modules \
+            '**/*.md'
+
+  link-check:
+    name: Link Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check links with lychee
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --verbose
+            --no-progress
+            --exclude-mail
+            --max-retries 3
+            --timeout 20
+            --accept 200,206,301,302,403,429
+            '**/*.md'
+            '**/*.html'
+          fail: true
+
+  structure-check:
+    name: Structure & Concept Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run concept structure validation
+        run: python scripts/validate_concepts.py
+
+      - name: Upload validation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: concept-validation-report
+          path: concept-validation-results.json
+          retention-days: 30
