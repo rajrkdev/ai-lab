@@ -10,5 +10,6 @@
 #   intent_classifier.py — Claude Haiku–based query intent classification
 #   llm_router.py        — Claude (primary) + Gemini (fallback) LLM calls
 #   output_validator.py  — PII masking, hallucination check, confidence gate
+#   session_store.py     — In-memory conversation history per session (multi-turn)
 #   vector_db.py         — ChromaDB operations (add / query / health)
 #   voyage_embedder.py   — Voyage AI embedding client with Gemini fallback

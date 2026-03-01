@@ -48,7 +48,8 @@ RULES:
 6. Keep answers clear and simple — customers may not be insurance experts.
 7. If the customer seems distressed (e.g., after an accident), respond with empathy first.
 8. Do NOT discuss competitor insurance products.
-9. Do NOT provide legal or financial advice — direct complex questions to a licensed agent.""",
+9. Do NOT provide legal or financial advice — direct complex questions to a licensed agent.
+10. You may receive conversation history from prior turns. Use it to understand follow-up questions, but always ground your answers in the provided CONTEXT from the knowledge base.""",
     "support": """You are InsureChat Support Bot, a technical assistant for API developers and integration partners.
 
 RULES:
@@ -60,7 +61,8 @@ RULES:
 6. Provide actionable fix suggestions — not just error descriptions.
 7. If the developer provides a code snippet or payload, analyze it based on documented specs.
 8. Keep technical answers precise and developer-friendly.
-9. Do NOT discuss pricing, contracts, or business terms — direct to account team.""",
+9. Do NOT discuss pricing, contracts, or business terms — direct to account team.
+10. You may receive conversation history from prior turns. Use it to understand follow-up questions, but always ground your answers in the provided CONTEXT from the knowledge base.""",
 }
 
 
@@ -124,8 +126,17 @@ def call_claude(
     sources: List[str] = None,
     chatbot_type: str = "microsite",
     model: str = None,
+    history: List[Dict] = None,
 ) -> Dict:
-    """Call Claude with RAG context.
+    """Call Claude with RAG context and optional conversation history.
+
+    Args:
+        query: The user's current question.
+        chunks: Retrieved document chunks from ChromaDB.
+        sources: Source document names for each chunk.
+        chatbot_type: 'microsite' or 'support'.
+        model: Override the primary model name.
+        history: Prior conversation turns [{"user": ..., "assistant": ...}, ...].
 
     Returns:
         response: str — LLM generated text
@@ -142,6 +153,14 @@ def call_claude(
     system_prompt = SYSTEM_PROMPTS.get(chatbot_type, SYSTEM_PROMPTS["microsite"])
     user_message = build_rag_prompt(query, chunks, sources)
 
+    # Build the messages array: history turns + current RAG query
+    messages = []
+    if history:
+        for turn in history:
+            messages.append({"role": "user", "content": turn["user"]})
+            messages.append({"role": "assistant", "content": turn["assistant"]})
+    messages.append({"role": "user", "content": user_message})
+
     try:
         client = _get_client()
         message = client.messages.create(
@@ -149,7 +168,7 @@ def call_claude(
             max_tokens=llm_cfg.get("max_tokens", 1024),
             temperature=llm_cfg.get("temperature", 0.2),
             system=system_prompt,
-            messages=[{"role": "user", "content": user_message}],
+            messages=messages,
         )
 
         response_text = message.content[0].text
@@ -162,23 +181,36 @@ def call_claude(
         }
     except anthropic.APIError as e:
         logger.warning("Claude API failed (%s), attempting Gemini fallback", e)
-        return _call_gemini_fallback(llm_cfg, system_prompt, user_message, primary_error=str(e))
+        return _call_gemini_fallback(
+            llm_cfg, system_prompt, user_message,
+            primary_error=str(e), history=history,
+        )
 
 
 def _call_gemini_fallback(
-    llm_cfg: Dict, system_prompt: str, user_message: str, primary_error: str = ""
+    llm_cfg: Dict, system_prompt: str, user_message: str,
+    primary_error: str = "", history: List[Dict] = None,
 ) -> Dict:
     """Fallback to Google Gemini when Claude is unavailable.
 
     Uses the same system prompt + user message.  If Gemini also fails,
     returns a generic error message so the user still gets a response.
+    Conversation history is prepended as text when available.
     """
     fallback_model = llm_cfg.get("fallback", "gemini-2.0-flash")
     try:
+        # Build history text block for Gemini (no native multi-turn in single call)
+        history_text = ""
+        if history:
+            turns = []
+            for turn in history:
+                turns.append(f"User: {turn['user']}\nAssistant: {turn['assistant']}")
+            history_text = "\n\nCONVERSATION HISTORY:\n" + "\n\n".join(turns) + "\n"
+
         client = _get_gemini_client()
         response = client.models.generate_content(
             model=fallback_model,
-            contents=f"{system_prompt}\n\n{user_message}",
+            contents=f"{system_prompt}{history_text}\n\n{user_message}",
             config={
                 "max_output_tokens": llm_cfg.get("max_tokens", 1024),
                 "temperature": llm_cfg.get("temperature", 0.2),

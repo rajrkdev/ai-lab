@@ -24,6 +24,7 @@ graph LR
             ING2["ingest.py<br/>ingest_document()<br/>extract_text() / chunk_text()"]
             AL2["analytics_logger.py<br/>log_interaction()<br/>log_feedback()"]
             CM2["config_manager.py<br/>get_*_config()"]
+            SS2["session_store.py<br/>add_turn() / get_history()<br/>TTL eviction"]
             VE["voyage_embedder.py<br/>(Alternative embedder)"]
         end
     end
@@ -50,6 +51,7 @@ graph LR
     FSP --> AL2
     FSP --> ING2
     FSP --> CM2
+    FSP --> SS2
     FSP --> ANOM2
     FSP --> REP2
 
@@ -79,6 +81,7 @@ graph LR
     IC3 --> CM2
     VDB2 --> CM2
     EMB2 --> CM2
+    SS2 --> CM2
 
     classDef webPkg fill:#4CAF50,stroke:#2E7D32,color:#fff
     classDef toolPkg fill:#FF9800,stroke:#E65100,color:#fff
@@ -86,6 +89,6 @@ graph LR
     classDef secPkg fill:#F44336,stroke:#B71C1C,color:#fff
 
     class FSP,STM,STS webPkg
-    class SRV,IV2,IC3,EMB2,VDB2,LLM2,OV2,ING2,AL2,CM2,VE toolPkg
+    class SRV,IV2,IC3,EMB2,VDB2,LLM2,OV2,ING2,AL2,CM2,SS2,VE toolPkg
     class DASH2,ANOM2,REP2 analyticsPkg
     class AUD secPkg

@@ -141,9 +141,14 @@ User types query
     • Returns top-5 chunks + confidence scores
        ↓ top_confidence < 0.60 → return fallback message
        ↓ PASS
+[3.5] LOAD CONVERSATION HISTORY
+    • Retrieve last N turns from in-memory session store
+    • Trim to max_history_turns (default: 5) and max_history_tokens (default: 4000)
+    • Only sanitized queries and validated responses are stored
+       ↓
 [4] LLM CALL
-    • Build prompt: SYSTEM + chunks + query
-    • Send to Claude claude-sonnet-4-6
+    • Build prompt: SYSTEM + history turns + RAG chunks + query
+    • Send to Claude claude-sonnet-4-6 (with multi-turn messages array)
     • Only sanitized chunks sent — raw documents never leave local storage
        ↓
 [5] OUTPUT VALIDATION
@@ -155,6 +160,10 @@ User types query
     • Write to SQLite: session_id, query_hash (SHA256), llm_used,
       confidence, pii_detected, injection_blocked, response_valid,
       chatbot_type (microsite/support), intent, response_time_ms
+       ↓
+[6.5] SAVE CONVERSATION TURN
+    • Store sanitized query + validated response in session history
+    • Blocked messages are never stored
        ↓
 [7] RESPONSE RETURNED
     • Final response + source citations + confidence score + LLM used
@@ -215,6 +224,9 @@ User types query
 | FR-18 | Rate limiting (10 requests/min per IP) | Both | Must Have |
 | FR-19 | Fallback response when confidence below threshold | Both | Must Have |
 | FR-20 | Separate audit log per chatbot type in JSONL format | Both | Must Have |
+| FR-21 | Multi-turn conversation: send last N turns as context to LLM | Both | Must Have |
+| FR-22 | Configurable history limits (max turns, max tokens) via config.yaml | Both | Must Have |
+| FR-23 | In-memory session store with TTL eviction and max-sessions cap | Both | Must Have |
 
 ---
 
@@ -236,6 +248,9 @@ User types query
 | Chunk Overlap | 64 tokens |
 | Top-K Retrieval | 5 chunks per query |
 | Analytics Retention | All sessions stored in SQLite (no expiry for POC) |
+| Conversation History | Last 5 turns (configurable), 4000 token budget |
+| Session TTL | 30 minutes inactivity eviction |
+| Max Concurrent Sessions | 1000 (in-memory store cap) |
 | Platform | Windows/Mac laptop (local ChromaDB + SQLite) |
 | Authentication | None (POC scope) |
 
@@ -312,7 +327,7 @@ User types query
 | `validate_input` | query: str, max_length: int | valid: bool, sanitized_query: str, pii_detected: list | Length + injection + PII check |
 | `embed_query` | text: str | embedding: list[float] (1024-dim) | Voyage AI voyage-3.5 embedding |
 | `retrieve_chunks` | embedding: list, collection: str, top_k: int | chunks: list, sources: list, scores: list | ChromaDB cosine search |
-| `call_claude` | query: str, chunks: list, model: str | response: str, tokens_used: int | Claude LLM call with system prompt |
+| `call_claude` | query: str, chunks: list, model: str, history: list | response: str, tokens_used: int | Claude LLM call with system prompt and conversation history |
 | `validate_output` | response: str, chunks: list, confidence: float | valid: bool, final_response: str | PII mask + hallucination + threshold |
 | `classify_intent` | query: str | intent: str | Async Claude Haiku classification |
 | `log_interaction` | session data dict | status: str | Write to SQLite + JSONL audit log |
@@ -560,6 +575,7 @@ InsureChat-v3.0/
 │       ├── llm_router.py          # Claude claude-sonnet-4-6 + Haiku routing
 │       ├── intent_classifier.py   # Async Claude Haiku intent classification
 │       ├── config_manager.py      # Read/write config.yaml
+│       ├── session_store.py       # In-memory conversation history (multi-turn)
 │       └── analytics_logger.py    # SQLite write + JSONL audit log
 ├── web/
 │   ├── fastapi_server.py          # All API endpoints
@@ -632,6 +648,14 @@ analytics:
   audit_log_path: ./data/audit_log.jsonl
   anomaly_window_days: 7
   anomaly_zscore_threshold: 2.0
+
+conversation:
+  max_history_turns: 5
+  max_history_tokens: 4000
+  include_sources_in_history: false
+  storage: server
+  session_ttl_minutes: 30
+  max_sessions: 1000
 ```
 
 ### 12.2 .env.example
@@ -659,6 +683,7 @@ RULES:
 7. If the customer seems distressed (e.g., after an accident), respond with empathy first.
 8. Do NOT discuss competitor insurance products.
 9. Do NOT provide legal or financial advice — direct complex questions to a licensed agent.
+10. You may receive conversation history from prior turns. Use it to understand follow-up questions, but always ground your answers in the provided CONTEXT from the knowledge base.
 ```
 
 ### 13.2 Support / Error Chatbot System Prompt
@@ -675,6 +700,7 @@ RULES:
 7. If the developer provides a code snippet or payload, analyze it based on documented specs.
 8. Keep technical answers precise and developer-friendly.
 9. Do NOT discuss pricing, contracts, or business terms — direct to account team.
+10. You may receive conversation history from prior turns. Use it to understand follow-up questions, but always ground your answers in the provided CONTEXT from the knowledge base.
 ```
 
 ### 13.3 Intent Classification Prompt (Claude Haiku)

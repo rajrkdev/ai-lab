@@ -145,6 +145,7 @@ def _run_chat_pipeline(query: str, session_id: str, chatbot_type: str) -> ChatRe
         intent_classifier,
         llm_router,
         output_validator,
+        session_store,
         vector_db,
         embedder,
     )
@@ -246,8 +247,11 @@ def _run_chat_pipeline(query: str, session_id: str, chatbot_type: str) -> ChatRe
         )
 
     # Step 4: Call Claude (primary) with RAG context; auto-falls back to Gemini
+    # Step 3.5: Load conversation history for this session
+    history = session_store.get_history(session_id)
+
     llm_result = llm_router.call_claude(
-        sanitized_query, chunks, sources, chatbot_type
+        sanitized_query, chunks, sources, chatbot_type, history=history
     )
 
     # Step 5: Validate output — PII masking, confidence gate, hallucination check
@@ -280,8 +284,13 @@ def _run_chat_pipeline(query: str, session_id: str, chatbot_type: str) -> ChatRe
 
     unique_sources = list(dict.fromkeys(sources))
 
+    final_response = output_val["final_response"]
+
+    # Step 7.5: Save turn to conversation history (sanitized query + validated response)
+    session_store.add_turn(session_id, sanitized_query, final_response)
+
     return ChatResponse(
-        response=output_val["final_response"],
+        response=final_response,
         sources=unique_sources,
         confidence_score=top_confidence,
         llm_used=llm_result.get("model", "unknown"),

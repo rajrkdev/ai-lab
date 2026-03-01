@@ -63,6 +63,18 @@ def get_analytics_config() -> dict:
     return _load_yaml().get("analytics", {})
 
 
+def get_conversation_config() -> dict:
+    """Return the 'conversation' section (history turns, token budget, TTL, etc.)."""
+    return _load_yaml().get("conversation", {
+        "max_history_turns": 5,
+        "max_history_tokens": 4000,
+        "include_sources_in_history": False,
+        "storage": "server",
+        "session_ttl_minutes": 30,
+        "max_sessions": 1000,
+    })
+
+
 def update_config(mode: str = None, llm: str = None) -> dict:
     """Update LLM routing config and persist to disk.
 

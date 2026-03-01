@@ -51,6 +51,18 @@ rag:
     microsite: insurance_docs           # Collection for insurance policy / coverage documents
     support: support_docs               # Collection for API error docs / integration guides
 
+# ── Conversation Memory ─────────────────────────────────────────────────────
+# Controls multi-turn conversation support.  When enabled, the server keeps
+# recent Q+A pairs per session and injects them into the LLM call so the
+# model can understand follow-up questions.
+conversation:
+  max_history_turns: 5              # Max prior Q+A pairs sent to the LLM (0 = disable)
+  max_history_tokens: 4000          # Hard cap on total tokens used by history
+  include_sources_in_history: false  # Include source citations in history turns (wastes tokens)
+  storage: server                   # "server" = in-memory dict with TTL; "sqlite" reserved for future
+  session_ttl_minutes: 30           # Evict sessions inactive longer than this
+  max_sessions: 1000                # Cap on concurrent sessions in memory
+
 # ── Analytics & Anomaly Detection ───────────────────────────────────────────
 # Paths and thresholds for the analytics subsystem (SQLite DB, JSONL audit
 # log, and Z-score-based anomaly detection).
