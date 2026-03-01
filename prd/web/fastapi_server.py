@@ -2,8 +2,8 @@
 
 This is the central REST API that both Streamlit chatbot UIs call.  It hosts:
 
-  POST /chat/microsite      — Insurance customer chat (full RAG pipeline)
-  POST /chat/support        — Developer support chat (full RAG pipeline)
+  POST /chat/microsite      — Insurance customer chat (full RAG pipeline + multi-turn history)
+  POST /chat/support        — Developer support chat (full RAG pipeline + multi-turn history)
   POST /ingest              — Upload & ingest a document into the knowledge base
   GET  /health              — System health (ChromaDB, SQLite, API keys)
   GET  /analytics           — Aggregated KPIs + time-series + intent distribution
@@ -18,6 +18,8 @@ Key design decisions:
     imported on the first request, keeping startup fast.
   - Rate limiting: per-IP limits via slowapi to prevent abuse.
   - CORS: wide-open for local dev (allow_origins=['*']).
+  - Multi-turn: server-side session store loads/saves conversation history
+    per session_id, with token-budget trimming and TTL eviction.
 """
 
 import os

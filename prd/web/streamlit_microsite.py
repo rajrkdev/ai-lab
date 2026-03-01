@@ -2,12 +2,14 @@
 
 This is the frontend for insurance customers.  It provides:
   - A chat interface where users ask policy, claims, billing questions
+  - Multi-turn conversation history within each session (server-side)
   - A sidebar for uploading insurance documents (.pdf, .docx, .txt, .md)
   - Confidence scores, source citations, and LLM model labels per answer
   - Thumbs-up / thumbs-down feedback buttons on each response
   - Session management (new session button, auto-generated session IDs)
 
 All backend calls go to the FastAPI server at http://localhost:8000.
+Conversation history is maintained server-side per session_id.
 This app runs on port 8501 (started by run.ps1).
 """
 
