@@ -1,5 +1,5 @@
 title: Claude Code Mastery
-description: A comprehensive resource for mastering Claude Code — configuration, architecture, and training
+description: A resource for Claude Code — configuration, architecture, and training
 theme: jekyll-theme-midnight
 
 # Build settings
@@ -11,7 +11,9 @@ exclude:
   - README.md
   - LICENSE
   - .gitignore
-  - "*.png"
+  - "*.docx"
+  - "reference/*.docx"
+  - "prompts/document.md"
 
 # Default layout for all pages
 defaults:

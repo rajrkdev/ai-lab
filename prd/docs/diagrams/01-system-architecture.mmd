@@ -1,0 +1,106 @@
+%% InsureChat v3.0 — System Architecture Overview
+%% Shows all major components, external services, and data stores
+
+graph TB
+    subgraph Users["👤 Users"]
+        IC[Insurance Customers]
+        DEV[API Developers]
+    end
+
+    subgraph Frontends["🖥️ Streamlit Frontends"]
+        SM["Microsite Chatbot<br/>(Port 8501)<br/>streamlit_microsite.py"]
+        SS["Support Chatbot<br/>(Port 8502)<br/>streamlit_support.py"]
+    end
+
+    subgraph Backend["⚙️ FastAPI Backend (Port 8000)"]
+        API["FastAPI Server<br/>fastapi_server.py"]
+        RL["Rate Limiter<br/>(slowapi — 10 req/min)"]
+        CORS["CORS Middleware"]
+    end
+
+    subgraph MCPServer["🔧 MCP Server (FastMCP)"]
+        MCP["MCP Protocol Server<br/>server.py<br/>10 registered tools"]
+    end
+
+    subgraph ToolsPipeline["🛠️ Tools Pipeline"]
+        IV["Input Validator<br/>• Length check<br/>• Injection detection<br/>• PII redaction (Presidio)"]
+        EMB["Embedder<br/>Gemini gemini-embedding-001<br/>(768-dim vectors)"]
+        VDB["Vector DB<br/>ChromaDB (cosine)"]
+        SESS["Session Store<br/>• In-memory history<br/>• TTL eviction (30 min)<br/>• Token-budget trimming"]
+        LLM["LLM Router<br/>Claude Sonnet → Gemini Flash<br/>(multi-turn messages)"]
+        OV["Output Validator<br/>• PII masking<br/>• Hallucination check<br/>• Confidence gate"]
+        IC2["Intent Classifier<br/>Claude Haiku"]
+        ING["Document Ingestor<br/>PDF/DOCX/TXT/MD/JSON/YAML"]
+        AL["Analytics Logger<br/>SQLite + JSONL"]
+        CM["Config Manager<br/>config.yaml reader/writer"]
+    end
+
+    subgraph ExternalAPIs["☁️ External APIs"]
+        CLAUDE["Anthropic Claude<br/>claude-sonnet-4-6"]
+        GEMINI["Google Gemini<br/>2.0 Flash (LLM)<br/>gemini-embedding-001 (Embed)"]
+        HAIKU["Anthropic Claude<br/>Haiku (Classifier)"]
+    end
+
+    subgraph DataStores["💾 Data Stores"]
+        CHROMA[("ChromaDB<br/>./data/chroma_db<br/>• insurance_docs<br/>• support_docs")]
+        SQLITE[("SQLite<br/>./data/analytics.db<br/>sessions, messages, feedback")]
+        JSONL[("JSONL Audit Log<br/>./data/audit_log.jsonl")]
+        CONFIG[("config.yaml<br/>System Configuration")]
+    end
+
+    subgraph Analytics["📊 Analytics"]
+        DASH["Dashboard<br/>dashboard.py"]
+        ANOM["Anomaly Detector<br/>Z-score (2σ threshold)"]
+        REP["Report Generator<br/>PDF + Excel"]
+    end
+
+    IC --> SM
+    DEV --> SS
+    SM -->|"HTTP POST /chat/microsite"| API
+    SS -->|"HTTP POST /chat/support"| API
+    API --> RL
+    RL --> IV
+    IV --> EMB
+    EMB --> VDB
+    VDB --> SESS
+    SESS --> LLM
+    LLM --> OV
+    OV --> IC2
+    IC2 --> AL
+    API -->|"/ingest"| ING
+    API -->|"/analytics"| DASH
+    API -->|"/analytics/anomalies"| ANOM
+    API -->|"/reports/{type}"| REP
+    MCP --> IV
+    MCP --> EMB
+    MCP --> VDB
+    MCP --> LLM
+    MCP --> OV
+
+    EMB -->|"embed_content()"| GEMINI
+    LLM -->|"messages.create()"| CLAUDE
+    LLM -.->|"fallback"| GEMINI
+    IC2 -->|"messages.create()"| HAIKU
+    VDB --> CHROMA
+    AL --> SQLITE
+    AL --> JSONL
+    CM --> CONFIG
+    ING --> EMB
+    ING --> VDB
+    DASH --> SQLITE
+    ANOM --> SQLITE
+    REP --> SQLITE
+
+    classDef frontend fill:#4CAF50,stroke:#2E7D32,color:#fff
+    classDef backend fill:#2196F3,stroke:#1565C0,color:#fff
+    classDef tool fill:#FF9800,stroke:#E65100,color:#fff
+    classDef external fill:#9C27B0,stroke:#6A1B9A,color:#fff
+    classDef store fill:#607D8B,stroke:#37474F,color:#fff
+    classDef analytics fill:#00BCD4,stroke:#006064,color:#fff
+
+    class SM,SS frontend
+    class API,RL,CORS backend
+    class IV,EMB,VDB,LLM,OV,IC2,ING,AL,CM,MCP tool
+    class CLAUDE,GEMINI,HAIKU external
+    class CHROMA,SQLITE,JSONL,CONFIG store
+    class DASH,ANOM,REP analytics

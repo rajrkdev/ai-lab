@@ -1,0 +1,78 @@
+%% InsureChat v3.0 — Document Ingestion Sequence Diagram
+%% Upload → Extract → Chunk → Embed → Store pipeline
+
+sequenceDiagram
+    autonumber
+    participant U as 👤 Admin User
+    participant API as ⚙️ FastAPI<br/>/ingest endpoint
+    participant RL as 🛡️ Rate Limiter<br/>(5/min)
+    participant ING as 📄 Ingest Module
+    participant EXT as 📖 Text Extractors
+    participant CHK as ✂️ Chunker
+    participant EMB as 📐 Embedder
+    participant GEM as ☁️ Gemini<br/>Embedding API
+    participant VDB as 🗄️ ChromaDB
+
+    U->>API: POST /ingest<br/>multipart: file, chatbot_type, category
+    API->>RL: Check rate limit (5/min per IP)
+    
+    alt Rate limit exceeded
+        RL-->>API: 429 Too Many Requests
+        API-->>U: Rate limit error
+    end
+    
+    API->>API: Save file to temp location
+    API->>ING: ingest_file_for_chatbot(<br/>tmp_path, chatbot_type, category)
+    ING->>ING: get_collection_name(chatbot_type)
+    
+    Note over ING,EXT: Step 1: Text Extraction
+    ING->>EXT: extract_text(file_path)
+    
+    alt PDF file
+        EXT->>EXT: PyMuPDF: fitz.open()<br/>page.get_text()
+    else DOCX file
+        EXT->>EXT: python-docx: Document()<br/>para.text
+    else TXT / MD file
+        EXT->>EXT: open().read()
+    else JSON file
+        EXT->>EXT: json.load() → json.dumps()
+    else YAML file
+        EXT->>EXT: yaml.safe_load() → yaml.dump()
+    end
+    
+    EXT-->>ING: raw_text
+    
+    alt Empty document
+        ING-->>API: { status: "empty_document" }
+        API-->>U: Empty document error
+    end
+    
+    Note over CHK: Step 2: Text Chunking
+    ING->>CHK: chunk_text(text,<br/>chunk_size=512,<br/>chunk_overlap=64)
+    CHK->>CHK: Split into words
+    CHK->>CHK: Sliding window:<br/>~384 words/chunk<br/>~48 words overlap
+    CHK-->>ING: chunks[]
+    
+    Note over EMB,GEM: Step 3: Embedding (Batched)
+    ING->>EMB: embed_documents(chunks,<br/>batch_size=100)
+    
+    loop Each batch of 100
+        EMB->>GEM: embed_content(<br/>texts=batch,<br/>task=RETRIEVAL_DOCUMENT,<br/>dim=768)
+        GEM-->>EMB: embeddings[]
+    end
+    
+    EMB-->>ING: all_embeddings[]
+    
+    Note over ING: Step 4: Prepare Metadata
+    ING->>ING: Generate unique IDs<br/>(SHA-256 hash of source + index)
+    ING->>ING: Build metadata:<br/>{ source, category,<br/>chunk_index, total_chunks }
+    
+    Note over VDB: Step 5: Store in ChromaDB
+    ING->>VDB: add_documents(<br/>collection_name,<br/>ids, embeddings,<br/>documents, metadatas)
+    VDB->>VDB: get_or_create_collection()<br/>hnsw:space = cosine
+    VDB->>VDB: collection.add(...)
+    VDB-->>ING: ✓ stored
+    
+    ING-->>API: { chunks_ingested: N,<br/>status: "success",<br/>source: filename }
+    API->>API: Delete temp file
+    API-->>U: Ingestion result
