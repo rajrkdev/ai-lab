@@ -57,6 +57,15 @@ rag:
   collections:                          # Maps each chatbot type to its own ChromaDB collection
     microsite: insurance_docs           # Collection for insurance policy / coverage documents
     support: support_docs               # Collection for API error docs / integration guides
+  # ── HyDE (Hypothetical Document Embeddings) ─────────────────────────────
+  # When enabled, the pipeline generates a short hypothetical answer before
+  # embedding, then embeds that answer instead of the raw query.  This moves
+  # the retrieval vector closer to real document space, improving recall for
+  # vague or short user questions.  The hypothesis is never shown to users.
+  use_hyde: false                       # Set true to enable HyDE retrieval
+  hyde_provider: anthropic              # Provider for hypothesis generation ("anthropic" or "gemini")
+  hyde_model: claude-haiku-4-5-20251001 # Lightweight model — keeps extra latency low
+  hyde_max_tokens: 150                  # Max tokens for the generated hypothesis
 
 # ── Conversation Memory ─────────────────────────────────────────────────────
 # Controls multi-turn conversation support.  When enabled, the server keeps

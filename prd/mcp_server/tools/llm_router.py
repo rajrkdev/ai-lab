@@ -168,6 +168,62 @@ def _call_provider(provider: str, model: str, llm_cfg: Dict,
         raise ValueError(f"Unknown LLM provider: {provider}")
 
 
+def generate_hypothetical_document(query: str, chatbot_type: str = "microsite") -> str:
+    """Generate a short hypothetical answer passage for HyDE retrieval.
+
+    HyDE (Hypothetical Document Embeddings) improves retrieval by embedding a
+    plausible answer instead of the raw user query.  The hypothesis is never
+    shown to the user — it is only used to compute the retrieval vector, which
+    lands closer to real document vectors in the embedding space.
+
+    Provider and model are read from config.yaml (rag.hyde_provider / rag.hyde_model).
+    Falls back to returning the original query if generation fails so the
+    pipeline degrades gracefully without throwing an error.
+
+    Args:
+        query: The user's question.
+        chatbot_type: 'microsite' or 'support' — selects the domain hint.
+
+    Returns:
+        A 2-3 sentence hypothetical passage, or the original query on failure.
+    """
+    from mcp_server.tools.config_manager import get_rag_config
+
+    rag_cfg = get_rag_config()
+    provider = rag_cfg.get("hyde_provider", "anthropic")
+    model = rag_cfg.get("hyde_model", "claude-haiku-4-5-20251001")
+    max_tokens = rag_cfg.get("hyde_max_tokens", 150)
+
+    domain_hint = (
+        "insurance policies, coverage details, claims procedures, and customer support"
+        if chatbot_type == "microsite"
+        else "API error codes, integration guides, endpoint specifications, and developer troubleshooting"
+    )
+
+    system = (
+        "You are a document excerpt generator. Given a question, write a short "
+        f"factual passage (2-3 sentences) about {domain_hint} that would directly "
+        "answer it — as if it appeared verbatim in a reference document. "
+        "Write only the passage with no preamble or explanation."
+    )
+
+    hyde_llm_cfg = {"max_tokens": max_tokens, "temperature": 0.5}
+    try:
+        result = _call_provider(
+            provider=provider,
+            model=model,
+            llm_cfg=hyde_llm_cfg,
+            system_prompt=system,
+            user_message=query,
+            history=None,
+        )
+        hypothesis = result.get("response", "").strip()
+        return hypothesis if hypothesis else query
+    except Exception as err:
+        logger.warning("HyDE generation failed (%s); falling back to raw query", err)
+        return query
+
+
 def build_rag_prompt(query: str, chunks: List[str], sources: List[str]) -> str:
     """Build the user message that combines retrieved context with the user's question.
 

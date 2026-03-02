@@ -231,9 +231,22 @@ def _run_chat_pipeline(query: str, session_id: str, chatbot_type: str) -> ChatRe
     sanitized_query = validation["sanitized_query"]
     pii_detected = validation["pii_detected"]
 
-    # Step 2: Embed the sanitised query into a 768-dim vector
+    # Step 2: Embed the query into a 768-dim vector.
+    # If HyDE is enabled, first generate a short hypothetical answer via an LLM
+    # and embed that instead of the raw query.  The hypothesis is never shown to
+    # users — it only moves the retrieval vector closer to real document space,
+    # improving recall for vague or short questions.
     try:
-        embedding = embedder.embed_query(sanitized_query)
+        if rag_cfg.get("use_hyde", False):
+            hypothesis = llm_router.generate_hypothetical_document(
+                sanitized_query, chatbot_type
+            )
+            # Embed as RETRIEVAL_DOCUMENT to align with stored chunk vectors
+            embedding = embedder.embed_texts(
+                [hypothesis], task_type="RETRIEVAL_DOCUMENT"
+            )[0]
+        else:
+            embedding = embedder.embed_query(sanitized_query)
     except Exception:
         elapsed = int((time.time() - start) * 1000)
         return ChatResponse(
