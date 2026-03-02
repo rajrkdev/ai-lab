@@ -24,7 +24,7 @@ graph TB
 
     subgraph ToolsPipeline["🛠️ Tools Pipeline"]
         IV["Input Validator<br/>• Length check<br/>• Injection detection<br/>• PII redaction (Presidio)"]
-        EMB["Embedder<br/>Gemini gemini-embedding-001<br/>(768-dim vectors)"]
+        EMB["Embedder<br/>sentence-transformers<br/>all-MiniLM-L6-v2 (384-dim, local)"]
         VDB["Vector DB<br/>ChromaDB (cosine)"]
         SESS["Session Store<br/>• In-memory history<br/>• TTL eviction (30 min)<br/>• Token-budget trimming"]
         LLM["LLM Router<br/>Claude Sonnet → Gemini Flash<br/>(multi-turn messages)"]
@@ -37,7 +37,7 @@ graph TB
 
     subgraph ExternalAPIs["☁️ External APIs"]
         CLAUDE["Anthropic Claude<br/>claude-sonnet-4-6"]
-        GEMINI["Google Gemini<br/>2.0 Flash (LLM)<br/>gemini-embedding-001 (Embed)"]
+        GEMINI["Google Gemini<br/>2.0 Flash (LLM fallback)"]
         HAIKU["Anthropic Claude<br/>Haiku (Classifier)"]
     end
 
@@ -77,7 +77,7 @@ graph TB
     MCP --> LLM
     MCP --> OV
 
-    EMB -->|"embed_content()"| GEMINI
+    EMB ---|"local inference"| EMB
     LLM -->|"messages.create()"| CLAUDE
     LLM -.->|"fallback"| GEMINI
     IC2 -->|"messages.create()"| HAIKU

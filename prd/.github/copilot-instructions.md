@@ -19,7 +19,7 @@ Dual-chatbot RAG system for the insurance domain. Two Streamlit UIs talk to a Fa
 - **Backend:** FastAPI + Uvicorn (port 8000)
 - **Frontend:** Streamlit (ports 8501, 8502)
 - **Vector DB:** ChromaDB (local, persistent, cosine similarity)
-- **Embeddings:** Gemini `gemini-embedding-001` (768-dim)
+- **Embeddings:** sentence-transformers `all-MiniLM-L6-v2` (384-dim, local, open source)
 - **Primary LLM:** Claude `claude-sonnet-4-6` (Anthropic)
 - **Fallback LLM:** Gemini `gemini-2.0-flash`
 - **Classifier:** Claude Haiku `claude-haiku-4-5-20251001`
@@ -37,7 +37,7 @@ mcp_server/server.py           ← FastMCP server (10 registered tools)
   ↓ delegates to
 mcp_server/tools/              ← Individual tool modules
   input_validator.py           ← Length + injection + PII checks
-  embedder.py                  ← Gemini embedding (768-dim)
+  embedder.py                  ← sentence-transformers embedding (all-MiniLM-L6-v2, 384-dim)
   vector_db.py                 ← ChromaDB retrieval + storage
   llm_router.py                ← Primary/fallback LLM dispatch
   output_validator.py          ← PII masking + hallucination detection
@@ -47,7 +47,7 @@ mcp_server/tools/              ← Individual tool modules
   ingest.py                    ← Document extraction + chunking
   session_store.py             ← In-memory conversation history (TTL)
   gemini_factory.py            ← Shared Gemini client initialization
-  voyage_embedder.py           ← Voyage AI embedding (optional fallback)
+  reranker.py                  ← Post-retrieval cross-encoder re-ranking (optional)
 
 web/streamlit_common.py        ← Shared Streamlit infrastructure
 web/streamlit_microsite.py     ← Insurance chatbot UI (thin config wrapper)
@@ -66,7 +66,7 @@ data/audit_log.jsonl           ← Append-only audit log
 ```
 POST /chat/{microsite|support}
   1. input_validator.validate_input()     → block or sanitize
-  2. embedder.embed_query()               → 768-dim vector
+  2. embedder.embed_query()               → 384-dim vector (local)
   3. vector_db.retrieve_chunks()          → top-k from ChromaDB
   4. llm_router.call_llm()               → Claude Sonnet → Gemini fallback
   5. output_validator.validate_output()   → PII masking + hallucination check
@@ -81,7 +81,7 @@ POST /chat/{microsite|support}
 POST /ingest (file upload)
   1. Extract text (PDF/DOCX/TXT/MD/JSON/YAML)
   2. Chunk (512 tokens, 64 overlap)
-  3. Embed (Gemini batch, 100 per batch)
+  3. Embed (sentence-transformers batch, 100 per batch)
   4. Deduplicate (SHA-256 IDs)
   5. Store in ChromaDB (with metadata)
 ```
@@ -139,7 +139,7 @@ Split by chatbot type — `insurance_docs` (microsite) and `support_docs` (suppo
 | Section | Key Settings |
 |---|---|
 | `llm_routing` | primary/fallback/classifier models, max_tokens, temperature |
-| `embeddings` | provider, model, dimensions (768) |
+| `embeddings` | provider (sentence-transformers), model (all-MiniLM-L6-v2), dimensions (384) |
 | `security.input` | max_length (500), pii/injection detection toggles |
 | `security.output` | min_confidence (0.60), hallucination_min_overlap (0.30) |
 | `rag` | top_k (5), chunk_size (512), chunk_overlap (64), collections |
@@ -150,13 +150,13 @@ Split by chatbot type — `insurance_docs` (microsite) and `support_docs` (suppo
 
 Required in `.env` (not committed):
 - `ANTHROPIC_API_KEY` — For Claude Sonnet + Haiku
-- `GOOGLE_API_KEY` — For Gemini embeddings + fallback LLM
+- `GOOGLE_API_KEY` — For Gemini fallback LLM (embeddings are local — no API key needed)
 
 ## Dependencies
 
 Install: `pip install -r requirements.txt` + `python -m spacy download en_core_web_lg`
 
-Key: FastAPI, Streamlit, ChromaDB, anthropic, google-genai, presidio-analyzer, presidio-anonymizer, spacy, reportlab, openpyxl, slowapi, scipy
+Key: FastAPI, Streamlit, ChromaDB, anthropic, google-genai, sentence-transformers, presidio-analyzer, presidio-anonymizer, spacy, reportlab, openpyxl, slowapi, scipy
 
 ## Gotchas
 

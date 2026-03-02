@@ -27,10 +27,11 @@ llm_routing:
 
 # ── Embeddings ──────────────────────────────────────────────────────────────
 # Defines which embedding model turns text into vectors for RAG retrieval.
+# Provider "sentence-transformers" runs locally (no API key needed).
 embeddings:
-  provider: gemini                      # Embedding provider ("gemini" is the default)
-  model: gemini-embedding-001           # Google Gemini embedding model name
-  dimensions: 768                       # Output vector dimensionality (must match ChromaDB)
+  provider: sentence-transformers       # "sentence-transformers" (local) or "gemini" / "voyage"
+  model: all-MiniLM-L6-v2              # HuggingFace model name (downloaded on first use)
+  dimensions: 384                       # Output vector dimensionality (must match ChromaDB)
 
 # ── Security ────────────────────────────────────────────────────────────────
 # Two-layer security: INPUT validation runs *before* the LLM call;

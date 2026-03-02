@@ -17,7 +17,7 @@ graph LR
             direction TB
             IV2["input_validator.py<br/>validate_input()"]
             IC3["intent_classifier.py<br/>classify_intent()"]
-            EMB2["embedder.py<br/>embed_query()<br/>embed_documents()"]
+            EMB2["embedder.py<br/>sentence-transformers<br/>all-MiniLM-L6-v2 (384-dim)"]
             VDB2["vector_db.py<br/>retrieve_chunks()<br/>add_documents()"]
             LLM2["llm_router.py<br/>call_claude()<br/>_call_gemini_fallback()"]
             OV2["output_validator.py<br/>validate_output()"]
@@ -25,7 +25,7 @@ graph LR
             AL2["analytics_logger.py<br/>log_interaction()<br/>log_feedback()"]
             CM2["config_manager.py<br/>get_*_config()"]
             SS2["session_store.py<br/>add_turn() / get_history()<br/>TTL eviction"]
-            VE["voyage_embedder.py<br/>(Alternative embedder)"]
+            RR2["reranker.py<br/>(Optional cross-encoder re-ranking)"]
         end
     end
 

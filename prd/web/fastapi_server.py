@@ -200,7 +200,7 @@ def _run_chat_pipeline(query: str, session_id: str, chatbot_type: str) -> ChatRe
 
     Runs through 7 steps:
       1. Input validation   (length, injection, PII)
-      2. Embedding          (query → 768-dim vector)
+      2. Embedding          (query → 384-dim vector, local)
       3. Retrieval          (top-k chunks from ChromaDB)
       4. LLM call           (primary provider, auto-fallback)
       5. Output validation  (PII mask, hallucination, confidence gate)
@@ -231,7 +231,7 @@ def _run_chat_pipeline(query: str, session_id: str, chatbot_type: str) -> ChatRe
     sanitized_query = validation["sanitized_query"]
     pii_detected = validation["pii_detected"]
 
-    # Step 2: Embed the sanitised query into a 768-dim vector
+    # Step 2: Embed the sanitised query via sentence-transformers
     try:
         embedding = embedder.embed_query(sanitized_query)
     except Exception:

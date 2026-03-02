@@ -54,13 +54,14 @@ classDiagram
     }
 
     class Embedder {
-        -Client _gemini_client
-        -str MODEL = "gemini-embedding-001"
-        -int OUTPUT_DIMENSIONALITY = 768
+        -SentenceTransformer _model
+        -str MODEL = "all-MiniLM-L6-v2"
+        -int OUTPUT_DIMENSIONALITY = 384
         +embed_query(text) list~float~
         +embed_documents(texts, batch_size) list
-        +embed_texts(texts, task_type) list
+        +embed_texts(texts) list
         +get_active_provider() str
+        +get_model_name() str
     }
 
     class VectorDB {

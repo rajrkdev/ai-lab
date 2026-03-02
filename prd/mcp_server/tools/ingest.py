@@ -6,7 +6,7 @@ this pipeline runs:
 
   1. EXTRACT — Read the file and extract raw text (format-specific parsers)
   2. CHUNK   — Split the text into overlapping chunks (~512 tokens each)
-  3. EMBED   — Convert each chunk to a 768-dim vector via the embedding model
+  3. EMBED   — Convert each chunk to a vector via the configured embedding model
   4. STORE   — Write chunks + vectors + metadata into the ChromaDB collection
 
 Supported formats: .pdf, .docx, .txt, .md, .json, .yaml, .yml

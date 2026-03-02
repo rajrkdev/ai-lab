@@ -16,8 +16,10 @@ Both chatbots support multi-turn conversations — follow-up questions within a 
 | Backend | FastAPI (Port 8000) |
 | Frontend | Streamlit (Ports 8501, 8502) |
 | Vector DB | ChromaDB (local, persistent) |
-| Embeddings | Gemini text-embedding-004 (768-dim) |
-| LLM | Claude claude-sonnet-4-6 (primary) / Haiku (classification) |
+| Embeddings | all-MiniLM-L6-v2 via sentence-transformers (384-dim, local, open source) |
+| LLM Primary | Claude claude-sonnet-4-6 (Anthropic) |
+| LLM Fallback | Gemini gemini-2.0-flash (Google) |
+| LLM Classify | Claude Haiku (intent classification) |
 | PII Security | Microsoft Presidio |
 | Analytics | SQLite + JSONL audit log |
 
@@ -104,7 +106,7 @@ streamlit run web/streamlit_support.py --server.port 8502
 
 - **Multi-turn conversations** — Server-side session history with token-budget trimming (5 turns / 4,000 tokens), TTL eviction (30 min), and max session cap (1,000)
 - **Dual LLM routing** — Claude Sonnet primary with Gemini Flash fallback; both support conversation history
-- **RAG pipeline** — ChromaDB vector retrieval with Gemini embeddings; retrieved context always takes priority over history
+- **RAG pipeline** — ChromaDB vector retrieval with local sentence-transformers embeddings (all-MiniLM-L6-v2, 384-dim); retrieved context always takes priority over history
 
 ## Security Features
 

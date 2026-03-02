@@ -6,7 +6,7 @@
 
 ## Phase 2: MCP Server Tools
 - [x] config_manager.py — Read/write config.yaml
-- [x] embedder.py — Gemini text-embedding-004 embedding
+- [x] embedder.py — sentence-transformers all-MiniLM-L6-v2 embedding (384-dim, local)
 - [x] input_validator.py — Length + injection + PII + rate limit
 - [x] output_validator.py — PII mask + hallucination + confidence
 - [x] vector_db.py — ChromaDB query (both collections)
@@ -47,6 +47,23 @@
 - All background processes (FastAPI, Streamlit) start and respond correctly
 
 ---
+
+## Phase 8: Replace Embedding Model → all-MiniLM-L6-v2 (Open Source, Local)
+- [x] Rewrite embedder.py — sentence-transformers + all-MiniLM-L6-v2 (384-dim, configurable via config.yaml)
+- [x] Update config.yaml — embeddings section (provider: sentence-transformers, model: all-MiniLM-L6-v2, dimensions: 384)
+- [x] Update requirements.txt — add sentence-transformers dependency
+- [x] Update server.py docstring — 768-dim → 384-dim
+- [x] Update __init__.py comment — Gemini → sentence-transformers
+- [x] Update fastapi_server.py comment — 768-dim → 384-dim
+- [x] Update ingest.py docstring — 768-dim → configurable
+- [x] Delete ChromaDB data (fresh start — dimension mismatch)
+- [x] Delete voyage_embedder.py — removed dead code
+- [x] Verify: import embedder, embed_query, embed_documents work (384-dim confirmed)
+- [x] Verify: no errors across project
+- [x] Update prd.md — all sections reflect sentence-transformers / 384-dim
+- [x] Update ARCHITECTURE.md — all diagrams and tables
+- [x] Update all Mermaid diagrams (01–12) — remove Gemini embedding refs
+- [x] Update README.md, .env.example, copilot-instructions.md
 
 # Feature Spec: Multi-Turn Conversation Support
 
