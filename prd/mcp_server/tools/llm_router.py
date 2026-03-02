@@ -168,7 +168,11 @@ def _call_provider(provider: str, model: str, llm_cfg: Dict,
         raise ValueError(f"Unknown LLM provider: {provider}")
 
 
-def generate_hypothetical_document(query: str, chatbot_type: str = "microsite") -> str:
+def generate_hypothetical_document(
+    query: str,
+    chatbot_type: str = "microsite",
+    rag_cfg: Dict = None,
+) -> str:
     """Generate a short hypothetical answer passage for HyDE retrieval.
 
     HyDE (Hypothetical Document Embeddings) improves retrieval by embedding a
@@ -176,29 +180,45 @@ def generate_hypothetical_document(query: str, chatbot_type: str = "microsite") 
     shown to the user — it is only used to compute the retrieval vector, which
     lands closer to real document vectors in the embedding space.
 
-    Provider and model are read from config.yaml (rag.hyde_provider / rag.hyde_model).
+    Provider and model are read from config.yaml (rag.hyde_provider / rag.hyde_model)
+    via the optional rag_cfg argument.  If rag_cfg is not supplied the config is
+    loaded from disk; callers that already hold a rag_cfg dict (e.g. the FastAPI
+    pipeline) should pass it to avoid a redundant YAML read per request.
+
     Falls back to returning the original query if generation fails so the
     pipeline degrades gracefully without throwing an error.
 
     Args:
         query: The user's question.
         chatbot_type: 'microsite' or 'support' — selects the domain hint.
+            Unknown values default to the 'microsite' domain hint.
+        rag_cfg: Pre-loaded RAG config dict.  If None, it is loaded from disk.
 
     Returns:
         A 2-3 sentence hypothetical passage, or the original query on failure.
     """
-    from mcp_server.tools.config_manager import get_rag_config
+    if rag_cfg is None:
+        from mcp_server.tools.config_manager import get_rag_config
+        rag_cfg = get_rag_config()
 
-    rag_cfg = get_rag_config()
     provider = rag_cfg.get("hyde_provider", "anthropic")
     model = rag_cfg.get("hyde_model", "claude-haiku-4-5-20251001")
     max_tokens = rag_cfg.get("hyde_max_tokens", 150)
 
-    domain_hint = (
-        "insurance policies, coverage details, claims procedures, and customer support"
-        if chatbot_type == "microsite"
-        else "API error codes, integration guides, endpoint specifications, and developer troubleshooting"
-    )
+    if chatbot_type == "microsite":
+        domain_hint = (
+            "insurance policies, coverage details, claims procedures, and customer support"
+        )
+    elif chatbot_type == "support":
+        domain_hint = (
+            "API error codes, integration guides, endpoint specifications, and developer troubleshooting"
+        )
+    else:
+        # For unknown chatbot types, default to the microsite domain hint to match
+        # the fallback behavior used elsewhere in this module (e.g., SYSTEM_PROMPTS.get).
+        domain_hint = (
+            "insurance policies, coverage details, claims procedures, and customer support"
+        )
 
     system = (
         "You are a document excerpt generator. Given a question, write a short "

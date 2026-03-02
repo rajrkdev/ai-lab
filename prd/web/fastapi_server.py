@@ -239,7 +239,7 @@ def _run_chat_pipeline(query: str, session_id: str, chatbot_type: str) -> ChatRe
     try:
         if rag_cfg.get("use_hyde", False):
             hypothesis = llm_router.generate_hypothetical_document(
-                sanitized_query, chatbot_type
+                sanitized_query, chatbot_type, rag_cfg
             )
             # Embed as RETRIEVAL_DOCUMENT to align with stored chunk vectors
             embedding = embedder.embed_texts(
