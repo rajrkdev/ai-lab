@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BGE-small-en-v1.5 — How It Works</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #0f1117;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #f59e0b;
+            font-size: 1.8rem;
+            margin-bottom: 6px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+        }
+
+        .section {
+            background: #1a1d2e;
+            border-radius: 14px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid #2a2d3e;
+        }
+
+        .section h2 {
+            color: #f59e0b;
+            margin-bottom: 16px;
+            font-size: 1.1rem;
+        }
+
+        .text-box {
+            background: #252840;
+            border-radius: 10px;
+            padding: 12px 18px;
+            border: 2px solid #f59e0b;
+            display: inline-block;
+        }
+
+        .arrow {
+            font-size: 1.8rem;
+            color: #f59e0b;
+            margin: 0 12px;
+            vertical-align: middle;
+        }
+
+        .model-box {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            border-radius: 10px;
+            padding: 12px 18px;
+            font-weight: bold;
+            display: inline-block;
+            color: #1a1d2e;
+        }
+
+        .vector-box {
+            background: #1e3a2f;
+            border: 2px solid #4eca8b;
+            border-radius: 10px;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 0.78rem;
+            color: #4eca8b;
+            line-height: 1.8;
+        }
+
+        .flow-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .dims-container {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            height: 80px;
+            margin-top: 10px;
+        }
+
+        .dim-bar {
+            width: 14px;
+            border-radius: 3px 3px 0 0;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .dim-bar:hover::after {
+            content: attr(data-val);
+            position: absolute;
+            top: -22px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            white-space: nowrap;
+            color: #fff;
+        }
+
+        .sim-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .phrase-card {
+            flex: 1;
+            min-width: 200px;
+            background: #252840;
+            border-radius: 10px;
+            padding: 16px;
+        }
+
+        .phrase-card h3 {
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            color: #aaa;
+        }
+
+        .phrase-text {
+            font-size: 1rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        .mini-vector {
+            font-family: monospace;
+            font-size: 0.72rem;
+            color: #f59e0b;
+            line-height: 1.6;
+        }
+
+        .sim-result {
+            background: linear-gradient(135deg, #1e3a2f, #1a2e40);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            margin-top: 16px;
+            border: 2px solid #4eca8b;
+        }
+
+        .sim-score {
+            font-size: 3rem;
+            font-weight: bold;
+        }
+
+        .score-bar-bg {
+            background: #2a2d3e;
+            border-radius: 20px;
+            height: 14px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        .score-bar-fill {
+            height: 100%;
+            border-radius: 20px;
+            background: linear-gradient(90deg, #f44, #fa0, #4eca8b);
+            transition: width 0.8s;
+        }
+
+        .rag-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .step-num {
+            background: #f59e0b;
+            color: #1a1d2e;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .step-content strong {
+            color: #fcd34d;
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .step-content p {
+            color: #aaa;
+            font-size: 0.88rem;
+            line-height: 1.5;
+        }
+
+        .demo-area {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .demo-area input {
+            flex: 1;
+            min-width: 200px;
+            background: #252840;
+            border: 2px solid #2a2d3e;
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: #fff;
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        .demo-area input:focus {
+            border-color: #f59e0b;
+        }
+
+        button {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #1a1d2e;
+            border: none;
+            border-radius: 8px;
+            padding: 9px 18px;
+            cursor: pointer;
+            font-size: 0.88rem;
+            font-weight: bold;
+            margin: 4px;
+            transition: opacity 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.85;
+        }
+
+        .result-panel {
+            background: #252840;
+            border-radius: 10px;
+            padding: 16px;
+            min-height: 60px;
+        }
+
+        .high {
+            color: #4eca8b;
+        }
+
+        .med {
+            color: #fa0;
+        }
+
+        .low {
+            color: #f66;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 14px;
+            margin-top: 14px;
+        }
+
+        .info-card {
+            background: #252840;
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+            border: 1px solid #2a2d3e;
+        }
+
+        .info-card .label {
+            font-size: 0.78rem;
+            color: #888;
+            margin-bottom: 6px;
+        }
+
+        .info-card .value {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #f59e0b;
+        }
+
+        .info-card .detail {
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .prefix-box {
+            background: #2a1f0a;
+            border: 2px dashed #f59e0b;
+            border-radius: 10px;
+            padding: 14px 18px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #fcd34d;
+            margin: 12px 0;
+        }
+
+        .prefix-highlight {
+            background: rgba(245, 158, 11, 0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .compare-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 14px;
+        }
+
+        .compare-table th, .compare-table td {
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 1px solid #2a2d3e;
+            font-size: 0.88rem;
+        }
+
+        .compare-table th {
+            color: #888;
+            font-weight: normal;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .compare-table td:first-child {
+            color: #aaa;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .badge-bge {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+        }
+
+        .badge-mini {
+            background: rgba(124, 111, 247, 0.2);
+            color: #7c6ff7;
+        }
+
+        .arch-flow {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 12px 0;
+        }
+
+        .arch-block {
+            background: #252840;
+            border: 1px solid #2a2d3e;
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-size: 0.82rem;
+            text-align: center;
+        }
+
+        .arch-block.active {
+            border-color: #f59e0b;
+            background: #2a1f0a;
+        }
+
+        .arch-arrow {
+            color: #f59e0b;
+            font-size: 1.2rem;
+        }
+
+        .toggle-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+
+        .toggle-btn {
+            background: #252840;
+            color: #aaa;
+            border: 1px solid #2a2d3e;
+        }
+
+        .toggle-btn.active {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #1a1d2e;
+            border-color: transparent;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>🔶 BGE-small-en-v1.5 — Deep Dive</h1>
+    <p class="subtitle">BAAI General Embedding · Instruction-Tuned · Interactive Visual Guide</p>
+
+    <!-- MODEL OVERVIEW -->
+    <div class="section">
+        <h2>📋 Model Overview</h2>
+        <p style="color:#aaa;margin-bottom:14px;">BGE (BAAI General Embedding) is a family of embedding models created by the <strong style="color:#fcd34d;">Beijing Academy of Artificial Intelligence (BAAI)</strong>. The <code style="color:#f59e0b;">bge-small-en-v1.5</code> variant is optimized for English text with a small footprint and strong retrieval performance.</p>
+
+        <div class="info-grid">
+            <div class="info-card">
+                <div class="label">Developer</div>
+                <div class="value">BAAI</div>
+                <div class="detail">Beijing Academy of AI</div>
+            </div>
+            <div class="info-card">
+                <div class="label">Dimensions</div>
+                <div class="value">384</div>
+                <div class="detail">384-dimensional vectors</div>
+            </div>
+            <div class="info-card">
+                <div class="label">Parameters</div>
+                <div class="value">~33.4M</div>
+                <div class="detail">Compact & fast</div>
+            </div>
+            <div class="info-card">
+                <div class="label">Max Tokens</div>
+                <div class="value">512</div>
+                <div class="detail">Input sequence limit</div>
+            </div>
+            <div class="info-card">
+                <div class="label">Architecture</div>
+                <div class="value">BERT</div>
+                <div class="detail">12 layers, 384 hidden</div>
+            </div>
+            <div class="info-card">
+                <div class="label">License</div>
+                <div class="value">MIT</div>
+                <div class="detail">Open source</div>
+            </div>
+            <div class="info-card">
+                <div class="label">Pooling</div>
+                <div class="value">[CLS]</div>
+                <div class="detail">CLS token output</div>
+            </div>
+            <div class="info-card">
+                <div class="label">Version</div>
+                <div class="value">v1.5</div>
+                <div class="detail">Improved training data</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ARCHITECTURE -->
+    <div class="section">
+        <h2>🏗️ Model Architecture — BERT Encoder Pipeline</h2>
+        <p style="color:#aaa;margin-bottom:14px;">BGE-small-en-v1.5 is built on the BERT architecture. Text flows through a tokenizer, embedding layers, 12 transformer encoder blocks, and [CLS] pooling to produce the final 384-dim vector.</p>
+
+        <div class="arch-flow">
+            <div class="arch-block">📝 Input Text</div>
+            <div class="arch-arrow">→</div>
+            <div class="arch-block active">🔤 WordPiece<br>Tokenizer<br><span style="font-size:0.7rem;color:#888;">vocab: 30,522</span></div>
+            <div class="arch-arrow">→</div>
+            <div class="arch-block active">📐 Token +<br>Position +<br>Segment Embed</div>
+            <div class="arch-arrow">→</div>
+            <div class="arch-block active">⚙️ 12× Transformer<br>Encoder Layers<br><span style="font-size:0.7rem;color:#888;">12 attn heads</span></div>
+            <div class="arch-arrow">→</div>
+            <div class="arch-block active">🎯 [CLS] Token<br>Pooling</div>
+            <div class="arch-arrow">→</div>
+            <div class="arch-block active">📏 L2 Normalize</div>
+            <div class="arch-arrow">→</div>
+            <div class="arch-block" style="border-color:#4eca8b;color:#4eca8b;">✅ 384-dim<br>Embedding</div>
+        </div>
+
+        <p style="color:#555;font-size:0.8rem;margin-top:12px;">Each of the 12 transformer layers has multi-head self-attention (12 heads) + feed-forward network + layer norm + residual connections.</p>
+    </div>
+
+    <!-- KEY FEATURE: QUERY PREFIX -->
+    <div class="section">
+        <h2>🔑 Key Feature: Instruction-Based Query Prefix</h2>
+        <p style="color:#aaa;margin-bottom:14px;">Unlike most embedding models, BGE uses a <strong style="color:#fcd34d;">query instruction prefix</strong> for retrieval tasks. You prepend a special instruction to <em>queries</em> (not documents) to boost retrieval accuracy.</p>
+
+        <div style="margin-bottom:16px;">
+            <p style="color:#fcd34d;font-size:0.9rem;font-weight:bold;margin-bottom:8px;">For queries (questions / search input):</p>
+            <div class="prefix-box">
+                <span class="prefix-highlight">Represent this sentence for searching relevant passages:</span> How do I return an item?
+            </div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <p style="color:#aaa;font-size:0.9rem;font-weight:bold;margin-bottom:8px;">For documents (passages / knowledge base):</p>
+            <div class="prefix-box" style="border-color:#4eca8b;background:#1e3a2f;">
+                <span style="color:#4eca8b;">No prefix needed</span> — You can return items within 30 days of purchase by visiting any store location...
+            </div>
+        </div>
+
+        <div style="background:#252840;border-radius:10px;padding:14px;margin-top:10px;">
+            <p style="color:#fcd34d;font-size:0.85rem;font-weight:bold;margin-bottom:6px;">⚠️ Why does this matter?</p>
+            <p style="color:#aaa;font-size:0.85rem;line-height:1.6;">The instruction prefix was learned during training via <strong style="color:#fcd34d;">contrastive learning with hard negatives</strong>. It tells the model "I'm searching for something" vs "I'm providing information" — enabling asymmetric retrieval that outperforms symmetric models on search benchmarks.</p>
+        </div>
+    </div>
+
+    <!-- TRAINING METHODOLOGY -->
+    <div class="section">
+        <h2>🎓 Training Methodology</h2>
+        <p style="color:#aaa;margin-bottom:16px;">BGE v1.5 uses a sophisticated 3-stage training pipeline that progressively refines the model's understanding.</p>
+
+        <div class="rag-step">
+            <div class="step-num">1</div>
+            <div class="step-content"><strong>Pre-training with RetroMAE</strong>
+                <p>The BERT backbone is pre-trained using RetroMAE (Retrieval-oriented Masked Auto-Encoder). This teaches the model to reconstruct masked text, building deep language understanding optimized for retrieval rather than generation.</p>
+            </div>
+        </div>
+        <div class="rag-step">
+            <div class="step-num">2</div>
+            <div class="step-content"><strong>Large-Scale Contrastive Learning</strong>
+                <p>Trained on ~230M text pairs using contrastive loss. The model learns to pull similar pairs close and push dissimilar pairs apart in vector space. Uses in-batch negatives for efficiency.</p>
+            </div>
+        </div>
+        <div class="rag-step">
+            <div class="step-num">3</div>
+            <div class="step-content"><strong>Fine-tuning with Hard Negatives + Instructions</strong>
+                <p>Final stage uses mined hard negatives (near-miss wrong answers) and task-specific instructions. This is where the model learns the query prefix behavior and achieves SOTA performance for its size class.</p>
+            </div>
+        </div>
+
+        <div style="background:#252840;border-radius:10px;padding:14px;margin-top:8px;">
+            <p style="color:#fcd34d;font-size:0.85rem;font-weight:bold;margin-bottom:6px;">v1.0 → v1.5 Improvements</p>
+            <p style="color:#aaa;font-size:0.85rem;line-height:1.6;">v1.5 added more diverse training data, improved hard negative mining, and better instruction tuning — resulting in higher scores across MTEB benchmarks without changing model architecture or size.</p>
+        </div>
+    </div>
+
+    <!-- STEP 1: EMBEDDING FLOW -->
+    <div class="section">
+        <h2>📝 Step 1: Text → Numbers (Embedding)</h2>
+        <p style="color:#aaa;margin-bottom:14px;">Any text goes in → 384 numbers come out. BGE adds the instruction prefix for queries to improve retrieval quality.</p>
+
+        <div class="flow-row">
+            <div class="text-box">🛒 "Represent this sentence...: How do I return an item?"</div>
+            <span class="arrow">→</span>
+            <div class="model-box">🔶 BGE-small-en-v1.5</div>
+            <span class="arrow">→</span>
+            <div class="vector-box">[0.312, -0.489, 0.756, 0.201,<br>-0.523, 0.634, 0.087, -0.415,<br>0.592, -0.178, 0.843, 0.367,<br><span style="color:#888">... 372 more numbers ...</span>]</div>
+        </div>
+
+        <div class="flow-row" style="margin-top:12px;">
+            <div class="text-box">🛍️ "Can I send back my purchase?"</div>
+            <span class="arrow">→</span>
+            <div class="model-box">🔶 BGE-small-en-v1.5</div>
+            <span class="arrow">→</span>
+            <div class="vector-box">[0.298, -0.501, 0.741, 0.189,<br>-0.509, 0.648, 0.093, -0.402,<br>0.578, -0.163, 0.829, 0.381,<br><span style="color:#888">... 372 more numbers ...</span>]</div>
+        </div>
+
+        <p style="color:#4eca8b;margin-top:12px;font-size:0.88rem;">✅ Different words, similar numbers — the instruction prefix helps the model focus on retrieval intent!</p>
+    </div>
+
+    <!-- STEP 2: DIMENSION VISUALIZATION -->
+    <div class="section">
+        <h2>📊 Step 2: Visualizing 384 Dimensions</h2>
+        <p style="color:#aaa;margin-bottom:12px;">Each bar = one dimension of the embedding vector. Click a phrase to see its unique fingerprint. Notice how similar phrases have similar patterns.</p>
+        <div>
+            <button onclick="showPhrase('return')">🛒 "Return an item"</button>
+            <button onclick="showPhrase('send')">🛍️ "Send back purchase"</button>
+            <button onclick="showPhrase('weather')">🌤️ "What's the weather?"</button>
+            <button onclick="showPhrase('policy')">📜 "Return policy details"</button>
+        </div>
+        <div id="phraseLabel" style="font-size:0.88rem;color:#fcd34d;margin-top:12px;margin-bottom:4px;"></div>
+        <div class="dims-container" id="dimBars"></div>
+        <div style="font-size:0.75rem;color:#555;margin-top:8px;">Showing 80 of 384 dimensions &nbsp;|&nbsp; 🟠 Positive value &nbsp; 🔴 Negative value</div>
+    </div>
+
+    <!-- STEP 3: COSINE SIMILARITY -->
+    <div class="section">
+        <h2>🎯 Step 3: Cosine Similarity — Measuring Meaning Distance</h2>
+        <p style="color:#aaa;margin-bottom:16px;">Score near <strong style="color:#4eca8b">1</strong> = same meaning
+            &nbsp;|&nbsp; Near <strong style="color:#888">0</strong> = unrelated &nbsp;|&nbsp; Near <strong style="color:#f66">-1</strong> = opposite</p>
+
+        <div class="sim-container">
+            <div class="phrase-card">
+                <h3>Phrase A (Query with prefix)</h3>
+                <div class="phrase-text" id="phraseA">🛒 "Return an item"</div>
+                <div class="mini-vector">[0.312, -0.489, 0.756, 0.201, -0.523...]</div>
+            </div>
+            <div class="phrase-card">
+                <h3>Phrase B (Document, no prefix)</h3>
+                <div class="phrase-text" id="phraseB">🛍️ "Send back my purchase"</div>
+                <div class="mini-vector">[0.298, -0.501, 0.741, 0.189, -0.509...]</div>
+            </div>
+        </div>
+
+        <div class="sim-result">
+            <div style="color:#aaa;font-size:0.85rem;margin-bottom:8px;">Cosine Similarity Score</div>
+            <div class="sim-score" id="simScore" style="color:#4eca8b;">0.94</div>
+            <div id="simLabel" style="color:#aaa;margin-top:4px;">🔥 Very High — Same Meaning!</div>
+            <div class="score-bar-bg" style="margin-top:14px;">
+                <div class="score-bar-fill" id="simBar" style="width:94%"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:#555;margin-top:4px;">
+                <span>-1 Opposite</span><span>0 Unrelated</span><span>1 Identical</span>
+            </div>
+        </div>
+
+        <div style="margin-top:16px;">
+            <p style="color:#aaa;font-size:0.85rem;margin-bottom:6px;">Try different pairs:</p>
+            <button onclick="showSim(0.94,'🛒 Return an item','🛍️ Send back my purchase','🔥 Very High — Same meaning')">Return vs Send Back</button>
+            <button onclick="showSim(0.82,'🛒 Return an item','❌ Cancel my order','✅ High — Related topic')">Return vs Cancel</button>
+            <button onclick="showSim(0.18,'🛒 Return an item','🌤️ What is the weather?','❌ Low — Unrelated topics')">Return vs Weather</button>
+            <button onclick="showSim(0.03,'🛒 Return an item','🔵 The sky is blue','❌ Very Low — Completely different')">Return vs Sky</button>
+            <button onclick="showSim(0.88,'🛒 Return an item','📜 Refund policy information','🔥 High — Closely related')">Return vs Refund Policy</button>
+        </div>
+    </div>
+
+    <!-- STEP 4: RAG PIPELINE -->
+    <div class="section">
+        <h2>🔄 Step 4: Full RAG Pipeline with BGE</h2>
+        <p style="color:#aaa;margin-bottom:16px;">BGE-small-en-v1.5 slots into the RAG pipeline with one important twist — asymmetric encoding with query prefixes.</p>
+
+        <div class="rag-step">
+            <div class="step-num">1</div>
+            <div class="step-content"><strong>Load your documents</strong>
+                <p>FAQ pages, help articles, product guides — any text content. Documents are embedded <em>without</em> the instruction prefix.</p>
+            </div>
+        </div>
+        <div class="rag-step">
+            <div class="step-num">2</div>
+            <div class="step-content"><strong>Embed documents → store in vector DB</strong>
+                <p>Each document chunk → 384-dim vector (no prefix) → stored in ChromaDB, Qdrant, etc. Done once during ingestion.</p>
+            </div>
+        </div>
+        <div class="rag-step">
+            <div class="step-num">3</div>
+            <div class="step-content"><strong>User asks a question</strong>
+                <p>The query is <strong style="color:#fcd34d;">prepended with the instruction prefix</strong> then converted to a 384-dim vector. This asymmetric encoding is key to BGE's retrieval power.</p>
+            </div>
+        </div>
+        <div class="rag-step">
+            <div class="step-num">4</div>
+            <div class="step-content"><strong>Find top matching documents</strong>
+                <p>Cosine similarity: query vector vs all stored document vectors. Top 3-5 highest scores = most relevant docs. BGE's instruction tuning improves precision here.</p>
+            </div>
+        </div>
+        <div class="rag-step">
+            <div class="step-num">5</div>
+            <div class="step-content"><strong>LLM generates the answer</strong>
+                <p>Top matched docs + original question → sent to LLM (Claude, Gemini, etc.) → generates a grounded answer with citations.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- CODE EXAMPLES -->
+    <div class="section">
+        <h2>💻 Code Examples</h2>
+        <p style="color:#aaa;margin-bottom:14px;">How to use BGE-small-en-v1.5 in practice with popular frameworks.</p>
+
+        <div class="toggle-row">
+            <button class="toggle-btn active" id="tab-st" onclick="showCode('st')">Sentence Transformers</button>
+            <button class="toggle-btn" id="tab-hf" onclick="showCode('hf')">HuggingFace</button>
+            <button class="toggle-btn" id="tab-lc" onclick="showCode('lc')">LangChain</button>
+        </div>
+
+        <div id="code-st" class="vector-box" style="border-color:#f59e0b;color:#e0e0e0;font-size:0.82rem;line-height:1.7;">
+<span style="color:#888;"># pip install sentence-transformers</span>
+<span style="color:#f59e0b;">from</span> sentence_transformers <span style="color:#f59e0b;">import</span> SentenceTransformer
+
+model = SentenceTransformer(<span style="color:#4eca8b;">'BAAI/bge-small-en-v1.5'</span>)
+
+<span style="color:#888;"># For documents (no prefix needed)</span>
+docs = [<span style="color:#4eca8b;">"Returns accepted within 30 days"</span>,
+        <span style="color:#4eca8b;">"Free shipping on orders over $50"</span>]
+doc_embeddings = model.encode(docs, normalize_embeddings=<span style="color:#f59e0b;">True</span>)
+
+<span style="color:#888;"># For queries (add instruction prefix!)</span>
+query = <span style="color:#4eca8b;">"Represent this sentence for searching relevant passages: How do I return?"</span>
+query_embedding = model.encode(query, normalize_embeddings=<span style="color:#f59e0b;">True</span>)
+        </div>
+
+        <div id="code-hf" class="vector-box" style="border-color:#f59e0b;color:#e0e0e0;font-size:0.82rem;line-height:1.7;display:none;">
+<span style="color:#888;"># pip install transformers torch</span>
+<span style="color:#f59e0b;">from</span> transformers <span style="color:#f59e0b;">import</span> AutoTokenizer, AutoModel
+<span style="color:#f59e0b;">import</span> torch
+
+tokenizer = AutoTokenizer.from_pretrained(<span style="color:#4eca8b;">'BAAI/bge-small-en-v1.5'</span>)
+model = AutoModel.from_pretrained(<span style="color:#4eca8b;">'BAAI/bge-small-en-v1.5'</span>)
+
+<span style="color:#888;"># Tokenize with query prefix</span>
+query = <span style="color:#4eca8b;">"Represent this sentence for searching relevant passages: How do I return?"</span>
+inputs = tokenizer(query, return_tensors=<span style="color:#4eca8b;">'pt'</span>, padding=<span style="color:#f59e0b;">True</span>, truncation=<span style="color:#f59e0b;">True</span>, max_length=<span style="color:#f59e0b;">512</span>)
+
+<span style="color:#888;"># Extract [CLS] token embedding</span>
+<span style="color:#f59e0b;">with</span> torch.no_grad():
+    outputs = model(**inputs)
+    embedding = outputs.last_hidden_state[:, 0]  <span style="color:#888;"># [CLS] token</span>
+    embedding = torch.nn.functional.normalize(embedding, p=2, dim=1)
+        </div>
+
+        <div id="code-lc" class="vector-box" style="border-color:#f59e0b;color:#e0e0e0;font-size:0.82rem;line-height:1.7;display:none;">
+<span style="color:#888;"># pip install langchain-huggingface</span>
+<span style="color:#f59e0b;">from</span> langchain_huggingface <span style="color:#f59e0b;">import</span> HuggingFaceBgeEmbeddings
+
+model = HuggingFaceBgeEmbeddings(
+    model_name=<span style="color:#4eca8b;">"BAAI/bge-small-en-v1.5"</span>,
+    model_kwargs={<span style="color:#4eca8b;">'device'</span>: <span style="color:#4eca8b;">'cpu'</span>},
+    encode_kwargs={<span style="color:#4eca8b;">'normalize_embeddings'</span>: <span style="color:#f59e0b;">True</span>},
+    query_instruction=<span style="color:#4eca8b;">"Represent this sentence for searching relevant passages: "</span>
+)
+
+<span style="color:#888;"># LangChain handles prefix automatically!</span>
+query_vec = model.embed_query(<span style="color:#4eca8b;">"How do I return an item?"</span>)
+doc_vecs = model.embed_documents([<span style="color:#4eca8b;">"Returns within 30 days..."</span>])
+        </div>
+    </div>
+
+    <!-- SPECS TABLE -->
+    <div class="section">
+        <h2>⚖️ BGE-small-en-v1.5 Specs</h2>
+        <p style="color:#aaa;margin-bottom:14px;">Key metrics and features for BGE-small-en-v1.5.</p>
+
+        <table class="compare-table">
+            <tr>
+                <th>Feature</th>
+                <th><span class="badge badge-bge">BGE-small-en-v1.5</span></th>
+            </tr>
+            <tr>
+                <td>Developer</td>
+                <td style="color:#f59e0b;">BAAI</td>
+            </tr>
+            <tr>
+                <td>Dimensions</td>
+                <td>384</td>
+            </tr>
+            <tr>
+                <td>Parameters</td>
+                <td>~33.4M</td>
+            </tr>
+            <tr>
+                <td>Max Sequence</td>
+                <td>512 tokens</td>
+            </tr>
+            <tr>
+                <td>Architecture</td>
+                <td>BERT (12 layers)</td>
+            </tr>
+            <tr>
+                <td>Pooling</td>
+                <td>[CLS] token</td>
+            </tr>
+            <tr>
+                <td>Query Prefix</td>
+                <td style="color:#f59e0b;">✅ Required for retrieval</td>
+            </tr>
+            <tr>
+                <td>MTEB Avg Score</td>
+                <td style="color:#f59e0b;">~62.x</td>
+            </tr>
+            <tr>
+                <td>Retrieval (NDCG@10)</td>
+                <td style="color:#4eca8b;">~51.x</td>
+            </tr>
+            <tr>
+                <td>Speed</td>
+                <td>~0.8x relative</td>
+            </tr>
+            <tr>
+                <td>Best For</td>
+                <td style="color:#f59e0b;">Search & RAG retrieval</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- WHEN TO USE -->
+    <div class="section">
+        <h2>🎯 When to Choose BGE-small-en-v1.5</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">
+            <div style="background:#1e3a2f;border:1px solid #4eca8b;border-radius:10px;padding:16px;">
+                <p style="color:#4eca8b;font-weight:bold;margin-bottom:8px;">✅ Great For</p>
+                <ul style="color:#aaa;font-size:0.88rem;line-height:1.8;padding-left:18px;">
+                    <li>RAG retrieval pipelines</li>
+                    <li>Semantic search over documents</li>
+                    <li>Question-answering with context</li>
+                    <li>When you need better retrieval accuracy</li>
+                    <li>512-token context windows needed</li>
+                    <li>Asymmetric search (short query → long doc)</li>
+                </ul>
+            </div>
+            <div style="background:#3a1e1e;border:1px solid #f66;border-radius:10px;padding:16px;">
+                <p style="color:#f66;font-weight:bold;margin-bottom:8px;">❌ Consider Alternatives</p>
+                <ul style="color:#aaa;font-size:0.88rem;line-height:1.8;padding-left:18px;">
+                    <li>Real-time latency-critical apps</li>
+                    <li>Symmetric similarity (sentence↔sentence)</li>
+                    <li>Multilingual text (use bge-m3 instead)</li>
+                    <li>Need > 512 tokens (use larger models)</li>
+                    <li>Clustering tasks</li>
+                    <li>Edge devices with strict memory limits</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- SIMILARITY SIMULATOR -->
+    <div class="section">
+        <h2>🧪 Try It: Similarity Simulator</h2>
+        <p style="color:#aaa;margin-bottom:14px;">Type two phrases and see a simulated BGE similarity score:</p>
+        <div class="demo-area">
+            <input id="p1" value="How do I return an item?" />
+            <input id="p2" value="Send back my purchase" />
+            <button onclick="simulate()">Compare →</button>
+        </div>
+        <div class="result-panel" id="demoResult">
+            <p style="color:#555;">Hit Compare to see the score!</p>
+        </div>
+    </div>
+
+    <!-- BENCHMARKS -->
+    <div class="section">
+        <h2>📈 MTEB Benchmark Performance</h2>
+        <p style="color:#aaa;margin-bottom:14px;">Approximate scores across MTEB task categories. BGE-small-en-v1.5 excels at retrieval tasks for its size.</p>
+
+        <div id="benchChart" style="display:flex;flex-direction:column;gap:10px;margin-top:16px;"></div>
+    </div>
+
+    <p style="text-align:center;color:#555;font-size:0.75rem;margin-top:10px;padding-bottom:20px;">
+        Interactive guide for BGE-small-en-v1.5 &nbsp;|&nbsp; BAAI General Embedding &nbsp;|&nbsp; Created for learning purposes
+    </p>
+
+    <script>
+        /* ---- Seeded random for consistent bar charts ---- */
+        function seededRand(seed) {
+            let s = seed;
+            return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+        }
+
+        const phrases = {
+            return: { label: '"Return an item"', seed: 57 },
+            send:   { label: '"Send back my purchase"', seed: 60 },
+            weather:{ label: '"What\'s the weather?"', seed: 113 },
+            policy: { label: '"Return policy details"', seed: 59 }
+        };
+
+        /* ---- Dimension bar chart ---- */
+        function showPhrase(key) {
+            const p = phrases[key];
+            document.getElementById('phraseLabel').textContent = 'BGE embedding for: ' + p.label;
+            const container = document.getElementById('dimBars');
+            container.innerHTML = '';
+            const rand = seededRand(p.seed);
+            for (let i = 0; i < 80; i++) {
+                const val = (rand() - 0.5) * 2;
+                const bar = document.createElement('div');
+                bar.className = 'dim-bar';
+                bar.style.height = (Math.abs(val) * 60 + 5) + 'px';
+                bar.style.background = val > 0 ? '#f59e0b' : '#f66';
+                bar.style.alignSelf = 'flex-end';
+                bar.dataset.val = val.toFixed(3);
+                container.appendChild(bar);
+            }
+        }
+
+        /* ---- Cosine similarity display ---- */
+        function showSim(score, a, b, label) {
+            document.getElementById('simScore').textContent = score.toFixed(2);
+            document.getElementById('simScore').style.color = score > 0.7 ? '#4eca8b' : score > 0.4 ? '#fa0' : '#f66';
+            document.getElementById('simLabel').textContent = label;
+            document.getElementById('phraseA').textContent = a;
+            document.getElementById('phraseB').textContent = b;
+            document.getElementById('simBar').style.width = ((score + 1) / 2 * 100) + '%';
+        }
+
+        /* ---- Code tab switching ---- */
+        function showCode(tab) {
+            ['st', 'hf', 'lc'].forEach(t => {
+                document.getElementById('code-' + t).style.display = t === tab ? 'block' : 'none';
+                document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+            });
+        }
+
+        /* ---- Similarity simulator ---- */
+        function simulate() {
+            const p1 = document.getElementById('p1').value.toLowerCase().trim();
+            const p2 = document.getElementById('p2').value.toLowerCase().trim();
+            if (!p1 || !p2) return;
+            const w1 = new Set(p1.split(/\s+/));
+            const w2 = new Set(p2.split(/\s+/));
+            const syns = [
+                ['return', 'send back', 'refund', 'give back', 'exchange'],
+                ['buy', 'purchase', 'order', 'get', 'acquire'],
+                ['ship', 'deliver', 'send', 'mail', 'dispatch'],
+                ['cancel', 'stop', 'end', 'terminate'],
+                ['help', 'support', 'assist', 'aid'],
+                ['policy', 'rule', 'guideline', 'terms'],
+                ['price', 'cost', 'fee', 'charge']
+            ];
+            let overlap = 0;
+            w1.forEach(w => { if (w2.has(w)) overlap++; });
+            syns.forEach(g => { if (g.some(s => p1.includes(s)) && g.some(s => p2.includes(s))) overlap += 1.5; });
+            let score = p1 === p2 ? 1.0 : Math.min(0.98, (overlap / Math.max(w1.size, w2.size)) * 1.4 + 0.05);
+            const cls = score > 0.7 ? 'high' : score > 0.4 ? 'med' : 'low';
+            const lbl = score > 0.7 ? '🔥 High similarity — related meaning' : score > 0.4 ? '⚠️ Medium — somewhat related' : '❌ Low — different topics';
+            document.getElementById('demoResult').innerHTML = `
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+      <div class="${cls}" style="font-size:2.5rem;font-weight:bold;">${score.toFixed(2)}</div>
+      <div>
+        <div class="${cls}" style="margin-bottom:6px;">${lbl}</div>
+        <div class="score-bar-bg" style="width:260px;"><div class="score-bar-fill" style="width:${score * 100}%"></div></div>
+        <div style="color:#555;font-size:0.75rem;margin-top:4px;">Simplified simulation — real BGE model uses deep transformer networks with instruction tuning</div>
+      </div>
+    </div>`;
+        }
+
+        /* ---- Benchmark chart ---- */
+        function renderBench() {
+            const benchmarks = [
+                { name: 'Retrieval (NDCG@10)', bge: 51.7 },
+                { name: 'STS (Spearman)',       bge: 80.4 },
+                { name: 'Classification',       bge: 74.5 },
+                { name: 'Clustering',           bge: 39.0 },
+                { name: 'Pair Classification',  bge: 85.5 },
+                { name: 'Reranking',            bge: 58.4 },
+                { name: 'Summarization',        bge: 31.1 }
+            ];
+            const container = document.getElementById('benchChart');
+            benchmarks.forEach(b => {
+                const maxVal = 100;
+                const bgeW = (b.bge / maxVal * 100).toFixed(1);
+                container.innerHTML += `
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div style="width:150px;font-size:0.8rem;color:#aaa;text-align:right;flex-shrink:0;">${b.name}</div>
+                    <div style="flex:1;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div style="background:linear-gradient(90deg,#f59e0b,#d97706);height:16px;border-radius:4px;width:${bgeW}%;min-width:2px;transition:width 0.5s;"></div>
+                            <span style="font-size:0.75rem;color:#f59e0b;font-weight:bold;">${b.bge}</span>
+                            <span style="font-size:0.65rem;color:#888;">BGE</span>
+                        </div>
+                    </div>
+                </div>`;
+            });
+        }
+
+        /* ---- Initialize ---- */
+        showPhrase('return');
+        renderBench();
+    </script>
+</body>
+
+</html>
