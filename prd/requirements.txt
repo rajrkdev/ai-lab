@@ -41,8 +41,8 @@ slowapi>=0.1.9            # Rate-limiting middleware for FastAPI (per-IP limits)
 reportlab>=4.1.0          # PDF generation — daily, weekly, and security reports
 openpyxl>=3.1.2           # Excel generation — full analytics export (4-sheet workbook)
 
-# ── Embeddings (Local) ──────────────────────────────────────────────────────
-sentence-transformers>=2.6.0  # all-MiniLM-L6-v2 — local 384-dim embeddings (no API key)
+# ── Embeddings & Re-ranking (Local) ─────────────────────────────────────────
+sentence-transformers>=2.6.0  # bge-small-en-v1.5 embeddings + CrossEncoder re-ranking (no API key)
 
 # ── Analytics / Math ────────────────────────────────────────────────────────
 scipy>=1.13.0             # Scientific computing — Z-score anomaly detection via numpy/scipy

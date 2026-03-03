@@ -1,4 +1,4 @@
-"""Post-retrieval re-ranking — LlamaIndex cross-encoder re-ranker.
+"""Post-retrieval re-ranking — sentence-transformers CrossEncoder.
 
 After ChromaDB returns top-k chunks by cosine similarity, this module
 re-scores them using a cross-encoder model that reads (query, chunk) pairs
@@ -16,32 +16,31 @@ When disabled, the retrieval results pass through unchanged.
 import logging
 from typing import Optional
 
-from llama_index.core.postprocessor import SentenceTransformerRerank
-from llama_index.core.schema import NodeWithScore, QueryBundle, TextNode
+from sentence_transformers import CrossEncoder
 
 from mcp_server.tools.config_manager import get_reranking_config
 
 logger = logging.getLogger(__name__)
 
-# Singleton re-ranker — lazy-initialised on first call
-_reranker: Optional[SentenceTransformerRerank] = None  # pylint: disable=invalid-name
+# Singleton cross-encoder — lazy-initialised on first call
+_cross_encoder: Optional[CrossEncoder] = None  # pylint: disable=invalid-name
+_cross_encoder_model_name: Optional[str] = None
 
 
-def _get_reranker() -> SentenceTransformerRerank:
-    """Lazy-init the cross-encoder re-ranker singleton."""
-    global _reranker  # pylint: disable=global-statement
-    if _reranker is None:
+def _get_cross_encoder() -> CrossEncoder:
+    """Lazy-init the cross-encoder singleton."""
+    global _cross_encoder, _cross_encoder_model_name  # pylint: disable=global-statement
+    if _cross_encoder is None:
         cfg = get_reranking_config()
-        _reranker = SentenceTransformerRerank(
-            model=cfg.get("model", "cross-encoder/ms-marco-MiniLM-L-2-v2"),
-            top_n=cfg.get("top_n", 3),
-        )
-        logger.info("Re-ranker initialised: %s (top_n=%d)",
-                     cfg.get("model"), cfg.get("top_n", 3))
-    return _reranker
+        _cross_encoder_model_name = cfg.get(
+            "model", "cross-encoder/ms-marco-MiniLM-L-6-v2")
+        _cross_encoder = CrossEncoder(_cross_encoder_model_name)
+        logger.info("Cross-encoder re-ranker initialised: %s",
+                     _cross_encoder_model_name)
+    return _cross_encoder
 
 
-def rerank_chunks(  # pylint: disable=too-many-locals
+def rerank_chunks(
     query: str,
     chunks: list[str],
     sources: list[str],
@@ -63,27 +62,23 @@ def rerank_chunks(  # pylint: disable=too-many-locals
     if not cfg.get("enabled", True) or not chunks:
         return {"chunks": chunks, "sources": sources, "scores": scores}
 
-    # Wrap chunks as LlamaIndex NodeWithScore objects for the re-ranker
-    nodes_with_scores = []
-    for i, (chunk, source, score) in enumerate(
-            zip(chunks, sources, scores)):
-        node = TextNode(
-            text=chunk,
-            metadata={"source": source, "original_index": i},
-        )
-        nodes_with_scores.append(NodeWithScore(node=node, score=score))
+    top_n = cfg.get("top_n", 3)
 
-    # Run the cross-encoder re-ranker
-    reranker = _get_reranker()
-    query_bundle = QueryBundle(query_str=query)
-    reranked = reranker.postprocess_nodes(
-        nodes_with_scores, query_bundle=query_bundle)
+    # Score each (query, chunk) pair with the cross-encoder
+    cross_encoder = _get_cross_encoder()
+    pairs = [[query, chunk] for chunk in chunks]
+    ce_scores = cross_encoder.predict(pairs).tolist()
 
-    # Extract results back into the standard dict format
-    reranked_chunks = [n.node.get_content() for n in reranked]
-    reranked_sources = [n.node.metadata.get("source", "unknown")
-                        for n in reranked]
-    reranked_scores = [n.score for n in reranked]
+    # Sort by cross-encoder score descending, keep top_n
+    ranked = sorted(
+        zip(ce_scores, chunks, sources, scores),
+        key=lambda x: x[0],
+        reverse=True,
+    )[:top_n]
+
+    reranked_chunks = [r[1] for r in ranked]
+    reranked_sources = [r[2] for r in ranked]
+    reranked_scores = [r[0] for r in ranked]
 
     logger.debug("Re-ranked %d → %d chunks for query: %.50s...",
                  len(chunks), len(reranked_chunks), query)

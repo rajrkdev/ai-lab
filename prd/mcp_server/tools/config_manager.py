@@ -75,6 +75,15 @@ def get_conversation_config() -> dict:
     })
 
 
+def get_reranking_config() -> dict:
+    """Return the 'reranking' section (enabled, model, top_n)."""
+    return _load_yaml().get("reranking", {
+        "enabled": True,
+        "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+        "top_n": 3,
+    })
+
+
 def update_config(mode: str = None, llm: str = None, fallback: str = None) -> dict:
     """Update LLM routing config and persist to disk.
 
