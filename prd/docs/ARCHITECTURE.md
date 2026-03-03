@@ -29,8 +29,9 @@ graph TB
     end
 
     subgraph Frontends["🖥️ Streamlit Frontends"]
-        SM["Microsite Chatbot<br/>(Port 8501)<br/>streamlit_microsite.py"]
-        SS["Support Chatbot<br/>(Port 8502)<br/>streamlit_support.py"]
+        SA["Admin Dashboard<br/>(Port 8500)<br/>admin.py"]
+        SM["Microsite Chatbot<br/>(Port 8501)<br/>microsite.py"]
+        SS["Support Chatbot<br/>(Port 8502)<br/>support.py"]
     end
 
     subgraph Backend["⚙️ FastAPI Backend (Port 8000)"]
@@ -77,6 +78,7 @@ graph TB
 
     IC --> SM
     DEV --> SS
+    SA -->|"HTTP /ingest, /management/*"| API
     SM -->|"HTTP POST /chat/microsite"| API
     SS -->|"HTTP POST /chat/support"| API
     API --> RL
@@ -123,7 +125,8 @@ Python packages, modules, and their import dependencies.
 graph LR
     subgraph web["web/ — HTTP Layer"]
         direction TB
-        FSP["fastapi_server.py<br/>REST API (11 endpoints)<br/>Rate limiting, CORS"]
+        FSP["fastapi_server.py<br/>REST API (16 endpoints)<br/>Rate limiting, CORS"]
+        STA["admin.py<br/>Admin Dashboard UI<br/>Port 8500"]
         STM["streamlit_microsite.py<br/>Insurance Chatbot UI<br/>Port 8501"]
         STS["streamlit_support.py<br/>Support Chatbot UI<br/>Port 8502"]
     end
@@ -169,6 +172,7 @@ graph LR
     FSP --> SS2
     STM -->|"HTTP"| FSP
     STS -->|"HTTP"| FSP
+    STA -->|"HTTP"| FSP
     SRV --> IV2
     SRV --> EMB2
     SRV --> VDB2
@@ -537,7 +541,7 @@ graph TB
 
 ## 9. API Endpoints
 
-All 11 FastAPI REST endpoints.
+All 16 FastAPI REST endpoints.
 
 | Method | Endpoint | Rate Limit | Request Body | Response | Description |
 |--------|----------|------------|-------------|----------|-------------|
@@ -551,6 +555,11 @@ All 11 FastAPI REST endpoints.
 | `GET` | `/analytics/anomalies` | 30/min | — | JSON | Z-score anomaly detection |
 | `POST` | `/feedback` | 30/min | `FeedbackRequest` | JSON | Thumbs up/down rating |
 | `GET` | `/reports/{type}` | 10/min | — | File | PDF or Excel report download |
+| `GET` | `/management/collections` | 30/min | — | JSON | All collections with stats |
+| `GET` | `/management/collections/{name}/documents` | 30/min | — | JSON | List documents in collection |
+| `GET` | `/management/collections/{name}/documents/{source}/chunks` | 30/min | — | JSON | Preview chunks for a document |
+| `DELETE` | `/management/collections/{name}/documents/{source}` | 10/min | — | JSON | Delete a document |
+| `DELETE` | `/management/collections/{name}` | 10/min | — | JSON | Purge entire collection |
 
 **Pydantic Models:**
 
@@ -585,6 +594,7 @@ graph TB
     subgraph Server["🖥️ Local Machine"]
         subgraph Processes["Running Processes (via run.ps1)"]
             P1["⚙️ uvicorn<br/>FastAPI :8000"]
+            PA["🖥️ Streamlit<br/>Admin :8500"]
             P2["🖥️ Streamlit<br/>Microsite :8501"]
             P3["🖥️ Streamlit<br/>Support :8502"]
             P4["🔧 FastMCP<br/>(optional)"]
@@ -605,6 +615,7 @@ graph TB
         G["Google AI<br/>Gemini Flash (LLM fallback)"]
     end
 
+    PA -->|HTTP| P1
     P2 -->|HTTP| P1
     P3 -->|HTTP| P1
     P1 --> S1
@@ -757,7 +768,7 @@ All settings from `config.yaml`:
 | Layer | Technology | Version/Model |
 |-------|-----------|---------------|
 | **Backend** | FastAPI + uvicorn | Python |
-| **Frontend** | Streamlit | 2 instances |
+| **Frontend** | Streamlit | 3 instances (Admin, Microsite, Support) |
 | **Primary LLM** | Anthropic Claude | claude-sonnet-4-6 |
 | **Fallback LLM** | Google Gemini | 2.0 Flash |
 | **Classifier** | Anthropic Claude | Haiku |

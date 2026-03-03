@@ -1,5 +1,5 @@
 %% InsureChat v3.0 — API Endpoints Diagram
-%% All FastAPI REST endpoints with methods, rate limits, and descriptions
+%% All 16 FastAPI REST endpoints with methods, rate limits, and descriptions
 
 graph LR
     subgraph FastAPI["⚙️ FastAPI Server — Port 8000"]
@@ -32,6 +32,14 @@ graph LR
         subgraph Reports["📑 Reports"]
             E10["GET /reports/:type<br/>━━━━━━━━━━━━━━<br/>Rate: 10/min per IP<br/>Types: daily_pdf,<br/>weekly_pdf, security_pdf,<br/>full_excel<br/>Returns: FileResponse<br/>━━━━━━━━━━━━━━<br/>Download PDF/Excel"]
         end
+        
+        subgraph Management["🔧 Collection Management"]
+            E11["GET /management/collections<br/>━━━━━━━━━━━━━━<br/>Rate: 30/min per IP<br/>Returns: list of collections<br/>with stats<br/>━━━━━━━━━━━━━━<br/>List all collections"]
+            E12["GET /management/collections/:name/documents<br/>━━━━━━━━━━━━━━<br/>Rate: 30/min per IP<br/>Params: collection name<br/>Returns: document list<br/>━━━━━━━━━━━━━━<br/>List documents in collection"]
+            E13["GET /management/collections/:name/documents/:source/chunks<br/>━━━━━━━━━━━━━━<br/>Rate: 30/min per IP<br/>Params: collection, source<br/>Returns: chunk list<br/>━━━━━━━━━━━━━━<br/>Preview document chunks"]
+            E14["DELETE /management/collections/:name/documents/:source<br/>━━━━━━━━━━━━━━<br/>Rate: 10/min per IP<br/>Params: collection, source<br/>Returns: deleted count<br/>━━━━━━━━━━━━━━<br/>Delete a document"]
+            E15["DELETE /management/collections/:name<br/>━━━━━━━━━━━━━━<br/>Rate: 10/min per IP<br/>Params: collection name<br/>Returns: status<br/>━━━━━━━━━━━━━━<br/>Purge entire collection"]
+        end
     end
 
     subgraph Models["📦 Pydantic Models"]
@@ -48,8 +56,10 @@ graph LR
 
     classDef post fill:#4CAF50,stroke:#2E7D32,color:#fff
     classDef get fill:#2196F3,stroke:#1565C0,color:#fff
+    classDef delete fill:#F44336,stroke:#B71C1C,color:#fff
     classDef model fill:#FF9800,stroke:#E65100,color:#fff
 
     class E1,E2,E3,E9 post
-    class E4,E5,E6,E7,E8,E10 get
+    class E4,E5,E6,E7,E8,E10,E11,E12,E13 get
+    class E14,E15 delete
     class M1,M2,M3 model

@@ -4,6 +4,7 @@ Dual-chatbot RAG (Retrieval-Augmented Generation) system with multi-turn convers
 
 ## Chatbots
 
+- **Admin Dashboard** (Port 8500) — Centralized document ingestion, analytics, and collection management
 - **Microsite Chatbot** (Port 8501) — Insurance customers ask about policies, coverage, claims, FAQs
 - **Support Chatbot** (Port 8502) — API developers paste errors and describe integration issues
 
@@ -14,7 +15,7 @@ Both chatbots support multi-turn conversations — follow-up questions within a 
 | Component | Technology |
 |---|---|
 | Backend | FastAPI (Port 8000) |
-| Frontend | Streamlit (Ports 8501, 8502) |
+| Frontend | Streamlit (Ports 8500, 8501, 8502) |
 | Vector DB | ChromaDB (local, persistent) |
 | Embeddings | all-MiniLM-L6-v2 via sentence-transformers (384-dim, local, open source) |
 | LLM Primary | Claude claude-sonnet-4-6 (Anthropic) |
@@ -47,11 +48,14 @@ copy .env.example .env
 # Terminal 1 — FastAPI backend
 uvicorn web.fastapi_server:app --host 0.0.0.0 --port 8000 --reload
 
-# Terminal 2 — Microsite chatbot
-streamlit run web/streamlit_microsite.py --server.port 8501
+# Terminal 2 — Admin dashboard
+streamlit run web/admin.py --server.port 8500
 
-# Terminal 3 — Support chatbot
-streamlit run web/streamlit_support.py --server.port 8502
+# Terminal 3 — Microsite chatbot
+streamlit run web/microsite.py --server.port 8501
+
+# Terminal 4 — Support chatbot
+streamlit run web/support.py --server.port 8502
 ```
 
 ### 3. Access
@@ -60,6 +64,7 @@ streamlit run web/streamlit_support.py --server.port 8502
 |---|---|
 | FastAPI Docs | http://localhost:8000/docs |
 | Health Check | http://localhost:8000/health |
+| Admin Dashboard | http://localhost:8500 |
 | Microsite Chatbot | http://localhost:8501 |
 | Support Chatbot | http://localhost:8502 |
 
@@ -76,6 +81,11 @@ streamlit run web/streamlit_support.py --server.port 8502
 | POST | `/feedback` | Submit feedback (thumbs up/down) |
 | GET | `/reports/{type}` | Generate PDF/Excel reports |
 | GET | `/analytics/anomalies` | Anomaly detection results |
+| GET | `/management/collections` | All collections with stats |
+| GET | `/management/collections/{name}/documents` | List documents in collection |
+| GET | `/management/collections/{name}/documents/{source}/chunks` | Preview chunks |
+| DELETE | `/management/collections/{name}/documents/{source}` | Delete a document |
+| DELETE | `/management/collections/{name}` | Purge entire collection |
 
 ## Project Structure
 
@@ -84,9 +94,11 @@ streamlit run web/streamlit_support.py --server.port 8502
 │   ├── server.py         # FastMCP server with all tools
 │   └── tools/            # Individual tool modules (incl. session_store.py for multi-turn)
 ├── web/                  # Web layer
-│   ├── fastapi_server.py # REST API
-│   ├── streamlit_microsite.py
-│   └── streamlit_support.py
+│   ├── fastapi_server.py # REST API (16 endpoints)
+│   ├── admin.py          # Admin dashboard (ingestion, analytics, collections)
+│   ├── chatbot_ui.py     # Shared chatbot UI components
+│   ├── microsite.py      # Insurance chatbot UI (Port 8501)
+│   └── support.py        # API support chatbot UI (Port 8502)
 ├── analytics/            # Analytics & reporting
 │   ├── dashboard.py
 │   ├── reports.py
@@ -105,6 +117,7 @@ streamlit run web/streamlit_support.py --server.port 8502
 ## Key Features
 
 - **Multi-turn conversations** — Server-side session history with token-budget trimming (5 turns / 4,000 tokens), TTL eviction (30 min), and max session cap (1,000)
+- **Admin dashboard** — Centralized document ingestion (bulk upload), analytics, and collection management (browse, preview, delete, purge)
 - **Dual LLM routing** — Claude Sonnet primary with Gemini Flash fallback; both support conversation history
 - **RAG pipeline** — ChromaDB vector retrieval with local sentence-transformers embeddings (all-MiniLM-L6-v2, 384-dim); retrieved context always takes priority over history
 

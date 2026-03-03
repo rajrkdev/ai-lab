@@ -33,7 +33,7 @@ API developers and integration partners paste error messages, HTTP payloads, or 
 - LLM Fallback: Gemini `gemini-2.0-flash` via Google GenAI API
 - LLM Classifier: Claude `claude-haiku-4-5-20251001` (intent classification)
 - Vector DB: ChromaDB (fully local, persistent)
-- Frontend: Streamlit (two separate apps on different ports) with shared UI module
+- Frontend: Streamlit — two chatbot UIs + one admin dashboard, all on different ports, with shared UI module
 - Backend: FastAPI (Python)
 - Orchestration: MCP (Model Context Protocol) via `fastmcp`
 - Multi-turn conversation: server-side in-memory session store with TTL eviction
@@ -79,19 +79,20 @@ API developers integrating with InsureChat APIs face cryptic error messages with
 
 ### 3.1 High-Level Architecture
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        USER LAYER                               │
-│   Microsite Chatbot (Port 8501)    Support Chatbot (Port 8502)  │
-│   streamlit_microsite.py           streamlit_support.py         │
-└───────────────────┬─────────────────────────┬───────────────────┘
-                    │ HTTP REST                │ HTTP REST
-┌───────────────────▼─────────────────────────▼───────────────────┐
-│                    APPLICATION LAYER                            │
-│              FastAPI Server (Port 8000)                         │
-│   POST /chat/microsite    POST /chat/support                    │
-│   POST /ingest            GET /analytics                        │
-│   GET /health             GET /reports/{type}                   │
-└───────────────────────────┬─────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              USER LAYER                                     │
+│  Admin Dashboard (Port 8500)  Microsite Chat (Port 8501)  Support (Port 8502)│
+│  admin.py                     microsite.py                support.py        │
+│  [Ingest │ Analytics │ Coll]  [Insurance Q&A]             [API Dev Q&A]     │
+└────────┬──────────────────────────┬──────────────────────┬──────────────────┘
+         │ HTTP REST                │ HTTP REST             │ HTTP REST
+┌────────▼──────────────────────────▼──────────────────────▼──────────────────┐
+│                         APPLICATION LAYER                                   │
+│                   FastAPI Server (Port 8000)                                │
+│   POST /chat/microsite    POST /chat/support    POST /ingest               │
+│   GET  /analytics         GET  /reports/{type}  GET  /health               │
+│   GET  /management/collections    DELETE /management/collections/{name}     │
+└───────────────────────────┬─────────────────────────────────────────────────┘
                             │ MCP Tool Calls
 ┌───────────────────────────▼─────────────────────────────────────┐
 │                      MCP SERVER LAYER                           │
@@ -184,6 +185,7 @@ User types query
 
 | Layer | Technology | Version | Purpose |
 |---|---|---|---|
+| Frontend (Admin) | Streamlit | 1.33.0 | Admin dashboard — ingestion, analytics, collection management (Port 8500) |
 | Frontend (Microsite) | Streamlit | 1.33.0 | Insurance customer chat UI (Port 8501) |
 | Frontend (Support) | Streamlit | 1.33.0 | Developer support chat UI (Port 8502) |
 | Backend API | FastAPI | 0.110.0 | REST API server (Port 8000) |
@@ -231,7 +233,9 @@ User types query
 | FR-12 | Display real-time analytics dashboard with KPI cards and charts | Both | Must Have |
 | FR-13 | Generate PDF report (daily summary) | Both | Must Have |
 | FR-14 | Generate Excel report (full export with 4 sheets) | Both | Should Have |
-| FR-15 | Document upload via Streamlit file uploader | Both | Must Have |
+| FR-15 | Document upload via Admin dashboard (bulk ingest) | Both | Must Have |
+| FR-24 | Admin dashboard with document ingestion, analytics, and collection browser | Both | Must Have |
+| FR-25 | Collection management: list, preview, delete documents, purge collections | Both | Must Have |
 | FR-16 | Configurable LLM routing via config.yaml (primary/fallback/local_only) | Both | Must Have |
 | FR-17 | Health check endpoint showing ChromaDB, SQLite, API status | Both | Must Have |
 | FR-18 | Rate limiting (10 requests/min per IP) | Both | Must Have |
@@ -364,6 +368,11 @@ User types query
 | POST | `/feedback` | Submit thumbs up/down for a message | API Key | 30 req/min |
 | GET | `/reports/{type}` | Generate report: daily_pdf, weekly_pdf, security_pdf, full_excel | Admin Key | 10 req/min |
 | GET | `/analytics/anomalies` | Z-score anomaly detection results (2σ, 7-day window) | Admin Key | 30 req/min |
+| GET | `/management/collections` | List all collections with stats (chunks, docs, avg) | None | 30 req/min |
+| GET | `/management/collections/{name}/documents` | List documents in a collection | None | 30 req/min |
+| GET | `/management/collections/{name}/documents/{source}/chunks` | Preview chunks for a document | None | 30 req/min |
+| DELETE | `/management/collections/{name}/documents/{source}` | Delete a document from a collection | None | 10 req/min |
+| DELETE | `/management/collections/{name}` | Purge entire collection | None | 10 req/min |
 
 ### 9.1 POST /chat/microsite — Request/Response
 
@@ -591,13 +600,14 @@ InsureChat-v3.0/
 │       ├── output_validator.py    # PII mask + hallucination + confidence
 │       ├── reranker.py            # Post-retrieval cross-encoder re-ranking (optional)
 │       ├── session_store.py       # In-memory conversation history (multi-turn, TTL eviction)
-│       └── vector_db.py           # ChromaDB operations (add / query / health)
+│       └── vector_db.py           # ChromaDB operations (add / query / list / delete / purge / health)
 ├── web/
 │   ├── __init__.py
-│   ├── fastapi_server.py          # All 11 API endpoints (chat, ingest, health, analytics, reports)
-│   ├── streamlit_common.py        # Shared Streamlit chatbot UI components
-│   ├── streamlit_microsite.py     # Insurance customer chat UI (Port 8501)
-│   └── streamlit_support.py       # Developer support chat UI (Port 8502)
+│   ├── fastapi_server.py          # All 16 API endpoints (chat, ingest, health, analytics, reports, management)
+│   ├── admin.py                   # Admin dashboard — ingestion, analytics, collection browser (Port 8500)
+│   ├── chatbot_ui.py              # Shared chatbot UI components (run_chatbot, sidebar, chat history)
+│   ├── microsite.py               # Insurance customer chat UI (Port 8501)
+│   └── support.py                 # Developer support chat UI (Port 8502)
 ├── analytics/
 │   ├── __init__.py
 │   ├── anomaly_detector.py        # Z-score anomaly detection on analytics metrics
@@ -638,7 +648,7 @@ InsureChat-v3.0/
 ├── .gitignore                     # Excludes .env, chroma_db, __pycache__, etc.
 ├── requirements.txt               # All Python dependencies (>= constraints)
 ├── setup.ps1                      # Windows setup: venv + deps + spaCy + folders
-├── run.ps1                        # Windows launcher: FastAPI + both Streamlit UIs
+├── run.ps1                        # Windows launcher: FastAPI + Admin + both Streamlit chatbot UIs
 ├── prd.md                         # This file — complete technical PRD
 ├── CLAUDE.md                      # Claude Code workflow rules and task management
 └── README.md                      # Quick start guide

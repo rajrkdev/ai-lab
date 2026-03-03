@@ -1,9 +1,8 @@
-"""Streamlit Microsite Chatbot — Insurance customer chat UI (Port 8501).
+"""Microsite Chatbot — Insurance customer chat UI (Port 8501).
 
 This is the frontend for insurance customers.  It provides:
   - A chat interface where users ask policy, claims, billing questions
   - Multi-turn conversation history within each session (server-side)
-  - A sidebar for uploading insurance documents (.pdf, .docx, .txt, .md)
   - Confidence scores, source citations, and LLM model labels per answer
   - Thumbs-up / thumbs-down feedback buttons on each response
   - Session management (new session button, auto-generated session IDs)
@@ -15,7 +14,7 @@ This app runs on port 8501 (started by run.ps1).
 
 import streamlit as st
 
-from web.streamlit_common import run_chatbot
+from web.chatbot_ui import run_chatbot
 
 # Page configuration — sets the browser tab title and icon
 st.set_page_config(

@@ -8,8 +8,9 @@ graph TB
     end
 
     subgraph Frontends["🖥️ Streamlit Frontends"]
-        SM["Microsite Chatbot<br/>(Port 8501)<br/>streamlit_microsite.py"]
-        SS["Support Chatbot<br/>(Port 8502)<br/>streamlit_support.py"]
+        SA["Admin Dashboard<br/>(Port 8500)<br/>admin.py"]
+        SM["Microsite Chatbot<br/>(Port 8501)<br/>microsite.py"]
+        SS["Support Chatbot<br/>(Port 8502)<br/>support.py"]
     end
 
     subgraph Backend["⚙️ FastAPI Backend (Port 8000)"]
@@ -56,6 +57,8 @@ graph TB
 
     IC --> SM
     DEV --> SS
+    DEV --> SA
+    SA -->|"HTTP POST /ingest, /management/*"| API
     SM -->|"HTTP POST /chat/microsite"| API
     SS -->|"HTTP POST /chat/support"| API
     API --> RL

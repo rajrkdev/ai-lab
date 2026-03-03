@@ -1,9 +1,8 @@
-"""Streamlit Support Chatbot — Developer support chat UI (Port 8502).
+"""Support Chatbot — Developer support chat UI (Port 8502).
 
 This is the frontend for API developers and integration partners.  It provides:
   - A chat interface for asking about API errors, payload structure, integration
   - Multi-turn conversation history within each session (server-side)
-  - A sidebar for uploading API docs (.md, .txt, .json, .yaml, .yml)
   - Confidence scores, source citations, and LLM model labels per answer
   - Thumbs-up / thumbs-down feedback buttons on each response
   - Session management with auto-generated session IDs
@@ -15,7 +14,7 @@ This app runs on port 8502 (started by run.ps1).
 
 import streamlit as st
 
-from web.streamlit_common import run_chatbot
+from web.chatbot_ui import run_chatbot
 
 # Page configuration — sets the browser tab title and icon
 st.set_page_config(

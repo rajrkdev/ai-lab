@@ -1,7 +1,7 @@
-"""Shared Streamlit chatbot UI components.
+"""Shared chatbot UI components.
 
-Contains the common logic used by both streamlit_microsite.py (Port 8501) and
-streamlit_support.py (Port 8502).  Each chatbot entry point configures the
+Contains the common logic used by both microsite.py (Port 8501) and
+support.py (Port 8502).  Each chatbot entry point configures the
 UI via a config dict and delegates rendering to run_chatbot().
 """
 
@@ -51,28 +51,6 @@ def send_chat(query, endpoint):
             "sources": [],
             "confidence_score": 0,
         }
-
-
-def upload_document(file, chatbot_type):
-    """Upload a document to the FastAPI /ingest endpoint for ingestion.
-
-    Sends the file as multipart form data with the given chatbot_type.
-    Returns the ingestion result: chunks_ingested, status, source.
-    """
-    try:
-        resp = requests.post(
-            f"{API_BASE}/ingest",
-            files={"file": (file.name, file.getvalue(),
-                            file.type or "application/octet-stream")},
-            data={"chatbot_type": chatbot_type, "category": "general"},
-            timeout=300,
-        )
-        resp.raise_for_status()
-        return resp.json()
-    except requests.exceptions.ConnectionError:
-        return {"status": "error", "error": "Cannot connect to backend server."}
-    except Exception as e:
-        return {"status": "error", "error": str(e)}
 
 
 def _render_metadata(meta):
@@ -165,31 +143,10 @@ def _handle_chat_input(config):
 
 
 def _render_sidebar(config):
-    """Render the sidebar with branding, upload, session controls, analytics link."""
+    """Render the sidebar with branding, session controls, and admin link."""
     with st.sidebar:
         st.title(config["sidebar_title"])
         st.caption(config["sidebar_caption"])
-        st.divider()
-
-        # Document upload
-        st.subheader(config["upload_subheader"])
-        uploaded_file = st.file_uploader(
-            config["upload_label"],
-            type=config["upload_types"],
-            help=config["upload_help"],
-        )
-        if uploaded_file and st.button("\U0001f4e4 Ingest Document"):
-            with st.spinner("Ingesting document..."):
-                result = upload_document(uploaded_file, config["chatbot_type"])
-            if result.get("status") == "success":
-                st.success(
-                    f"\u2705 {result['chunks_ingested']} chunks ingested "
-                    f"from {result['source']}")
-            else:
-                st.error(
-                    f"\u274c Ingestion failed: "
-                    f"{result.get('error', result.get('status'))}")
-
         st.divider()
 
         # Session info
