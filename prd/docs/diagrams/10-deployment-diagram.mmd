@@ -9,18 +9,22 @@ graph TB
             direction TB
             
             subgraph Process1["Process 1: FastAPI (uvicorn)"]
-                FA["⚙️ FastAPI Server<br/>uvicorn web.fastapi_server:app<br/>──────────────<br/>Host: 0.0.0.0<br/>Port: 8000<br/>──────────────<br/>11 REST endpoints<br/>Rate limiting (slowapi)<br/>CORS middleware"]
+                FA["⚙️ FastAPI Server<br/>uvicorn web.fastapi_server:app<br/>──────────────<br/>Host: 0.0.0.0<br/>Port: 8000<br/>──────────────<br/>16 REST endpoints<br/>Rate limiting (slowapi)<br/>CORS middleware"]
             end
             
-            subgraph Process2["Process 2: Streamlit Microsite"]
-                SM2["🖥️ Streamlit App<br/>streamlit run web/streamlit_microsite.py<br/>──────────────<br/>Host: localhost<br/>Port: 8501<br/>──────────────<br/>Insurance Customer Chatbot"]
+            subgraph Process2["Process 2: Streamlit Admin"]
+                SA2["🖥️ Streamlit App<br/>streamlit run web/admin.py<br/>──────────────<br/>Host: localhost<br/>Port: 8500<br/>──────────────<br/>Admin Dashboard"]
             end
             
-            subgraph Process3["Process 3: Streamlit Support"]
-                SS2["🖥️ Streamlit App<br/>streamlit run web/streamlit_support.py<br/>──────────────<br/>Host: localhost<br/>Port: 8502<br/>──────────────<br/>Developer Support Chatbot"]
+            subgraph Process3["Process 3: Streamlit Microsite"]
+                SM2["🖥️ Streamlit App<br/>streamlit run web/microsite.py<br/>──────────────<br/>Host: localhost<br/>Port: 8501<br/>──────────────<br/>Insurance Customer Chatbot"]
             end
             
-            subgraph Process4["Process 4: MCP Server (optional)"]
+            subgraph Process4["Process 4: Streamlit Support"]
+                SS2["🖥️ Streamlit App<br/>streamlit run web/support.py<br/>──────────────<br/>Host: localhost<br/>Port: 8502<br/>──────────────<br/>Developer Support Chatbot"]
+            end
+            
+            subgraph Process5["Process 5: MCP Server (optional)"]
                 MCP2["🔧 FastMCP Server<br/>python -m mcp_server.server<br/>──────────────<br/>MCP Protocol<br/>10 registered tools"]
             end
         end
@@ -53,17 +57,17 @@ graph TB
         
         subgraph Google["Google AI API"]
             G1["gemini-2.0-flash<br/>(LLM fallback)"]
-            G2["gemini-embedding-001<br/>(Text embeddings, 768-dim)"]
         end
     end
     
     subgraph LaunchScript["🚀 run.ps1 Launch Script"]
-        LS["Starts all 3 processes:<br/>1. uvicorn (port 8000)<br/>2. streamlit microsite (8501)<br/>3. streamlit support (8502)"]
+        LS["Starts all 4 processes:<br/>1. uvicorn (port 8000)<br/>2. streamlit admin (8500)<br/>3. streamlit microsite (8501)<br/>4. streamlit support (8502)"]
     end
     
     %% Connections
     SM2 -->|"HTTP :8000"| FA
     SS2 -->|"HTTP :8000"| FA
+    SA2 -->|"HTTP :8000"| FA
     
     FA --> CHROMA2
     FA --> SQLITE2
@@ -79,6 +83,7 @@ graph TB
     MCP2 --> FA
     
     LS --> FA
+    LS --> SA2
     LS --> SM2
     LS --> SS2
 
@@ -87,7 +92,7 @@ graph TB
     classDef cloud fill:#9C27B0,stroke:#6A1B9A,color:#fff
     classDef script fill:#4CAF50,stroke:#2E7D32,color:#fff
 
-    class FA,SM2,SS2,MCP2 process
+    class FA,SA2,SM2,SS2,MCP2 process
     class CHROMA2,SQLITE2,AUDIT,DOCS,CONFIGF,ENVF file
     class A1,A2,G1,G2 cloud
     class LS script

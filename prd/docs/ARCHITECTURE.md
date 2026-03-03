@@ -29,8 +29,9 @@ graph TB
     end
 
     subgraph Frontends["🖥️ Streamlit Frontends"]
-        SM["Microsite Chatbot<br/>(Port 8501)<br/>streamlit_microsite.py"]
-        SS["Support Chatbot<br/>(Port 8502)<br/>streamlit_support.py"]
+        SA["Admin Dashboard<br/>(Port 8500)<br/>admin.py"]
+        SM["Microsite Chatbot<br/>(Port 8501)<br/>microsite.py"]
+        SS["Support Chatbot<br/>(Port 8502)<br/>support.py"]
     end
 
     subgraph Backend["⚙️ FastAPI Backend (Port 8000)"]
@@ -45,7 +46,7 @@ graph TB
 
     subgraph ToolsPipeline["🛠️ Tools Pipeline"]
         IV["Input Validator<br/>• Length check<br/>• Injection detection<br/>• PII redaction (Presidio)"]
-        EMB["Embedder<br/>Gemini gemini-embedding-001<br/>(768-dim vectors)"]
+        EMB["Embedder<br/>sentence-transformers<br/>all-MiniLM-L6-v2 (384-dim, local)"]
         VDB["Vector DB<br/>ChromaDB (cosine)"]
         SESS["Session Store<br/>• In-memory history<br/>• TTL eviction<br/>• Token-budget trimming"]
         LLM["LLM Router<br/>Claude Sonnet → Gemini Flash<br/>(multi-turn messages)"]
@@ -58,7 +59,7 @@ graph TB
 
     subgraph ExternalAPIs["☁️ External APIs"]
         CLAUDE["Anthropic Claude<br/>claude-sonnet-4-6"]
-        GEMINI["Google Gemini<br/>2.0 Flash (LLM)<br/>gemini-embedding-001 (Embed)"]
+        GEMINI["Google Gemini<br/>2.0 Flash (LLM fallback)"]
         HAIKU["Anthropic Claude<br/>Haiku (Classifier)"]
     end
 
@@ -77,6 +78,7 @@ graph TB
 
     IC --> SM
     DEV --> SS
+    SA -->|"HTTP /ingest, /management/*"| API
     SM -->|"HTTP POST /chat/microsite"| API
     SS -->|"HTTP POST /chat/support"| API
     API --> RL
@@ -98,7 +100,7 @@ graph TB
     MCP --> LLM
     MCP --> OV
 
-    EMB -->|"embed_content()"| GEMINI
+    EMB -->|"local inference"| EMB
     LLM -->|"messages.create()"| CLAUDE
     LLM -.->|"fallback"| GEMINI
     IC2 -->|"messages.create()"| HAIKU
@@ -123,7 +125,8 @@ Python packages, modules, and their import dependencies.
 graph LR
     subgraph web["web/ — HTTP Layer"]
         direction TB
-        FSP["fastapi_server.py<br/>REST API (11 endpoints)<br/>Rate limiting, CORS"]
+        FSP["fastapi_server.py<br/>REST API (16 endpoints)<br/>Rate limiting, CORS"]
+        STA["admin.py<br/>Admin Dashboard UI<br/>Port 8500"]
         STM["streamlit_microsite.py<br/>Insurance Chatbot UI<br/>Port 8501"]
         STS["streamlit_support.py<br/>Support Chatbot UI<br/>Port 8502"]
     end
@@ -169,6 +172,7 @@ graph LR
     FSP --> SS2
     STM -->|"HTTP"| FSP
     STS -->|"HTTP"| FSP
+    STA -->|"HTTP"| FSP
     SRV --> IV2
     SRV --> EMB2
     SRV --> VDB2
@@ -198,8 +202,7 @@ sequenceDiagram
     participant API as ⚙️ FastAPI
     participant IV as 🔒 Input Validator
     participant PII as 🕵️ Presidio
-    participant EMB as 📐 Embedder
-    participant GEM as ☁️ Gemini Embed API
+    participant EMB as 📐 Embedder (Local)
     participant VDB as 🗄️ ChromaDB
     participant LLM as 🤖 LLM Router
     participant CLAUDE as ☁️ Claude Sonnet
@@ -219,11 +222,10 @@ sequenceDiagram
     PII-->>IV: sanitized_query
     IV-->>API: { valid, sanitized_query, pii_detected }
 
-    Note over EMB,GEM: Step 2: Query Embedding
+    Note over EMB: Step 2: Query Embedding (Local)
     API->>EMB: embed_query(sanitized_query)
-    EMB->>GEM: embed_content(RETRIEVAL_QUERY, 768-dim)
-    GEM-->>EMB: embedding vector
-    EMB-->>API: 768-dim float[]
+    EMB->>EMB: model.encode(sanitized_query, 384-dim)
+    EMB-->>API: 384-dim float[]
 
     Note over VDB: Step 3: Vector Retrieval
     API->>VDB: retrieve_chunks(embedding, collection, top_k=5)
@@ -275,8 +277,7 @@ sequenceDiagram
     participant ING as 📄 Ingest Module
     participant EXT as 📖 Extractors
     participant CHK as ✂️ Chunker
-    participant EMB as 📐 Embedder
-    participant GEM as ☁️ Gemini API
+    participant EMB as 📐 Embedder (Local)
     participant VDB as 🗄️ ChromaDB
 
     U->>API: POST /ingest (file, chatbot_type, category)
@@ -292,11 +293,10 @@ sequenceDiagram
     ING->>CHK: chunk_text(text)
     CHK-->>ING: chunks[]
 
-    Note over EMB,GEM: Step 3: Embed (batches of 100)
+    Note over EMB: Step 3: Embed (local, batches of 100)
     ING->>EMB: embed_documents(chunks)
     loop Each batch
-        EMB->>GEM: embed_content(RETRIEVAL_DOCUMENT, 768-dim)
-        GEM-->>EMB: embeddings[]
+        EMB->>EMB: model.encode(batch, 384-dim)
     end
     EMB-->>ING: all_embeddings[]
 
@@ -419,13 +419,13 @@ How data flows between processes, external services, and storage.
 ```mermaid
 graph TB
     USER["👤 User"] -->|"query"| P1["P1: Input Validation<br/>Length + Injection + PII"]
-    P1 -->|"sanitized query"| P2["P2: Embedding<br/>Gemini 768-dim"]
+    P1 -->|"sanitized query"| P2["P2: Embedding<br/>Local all-MiniLM-L6-v2 384-dim"]
     P2 -->|"vector"| P3["P3: Retrieval<br/>ChromaDB top-5"]
     P3 -->|"chunks + scores"| P4["P4: LLM Generation<br/>Claude → Gemini fallback"]
     P4 -->|"raw response"| P5["P5: Output Validation<br/>PII + Hallucination + Confidence"]
     P5 -->|"validated response"| USER
 
-    P2 <-->|"embed API"| GEMINI["☁️ Gemini API"]
+    P2 ---|"local inference"| P2
     P4 <-->|"messages API"| CLAUDE["☁️ Claude API"]
     P4 <-.->|"fallback"| GEMINI
 
@@ -435,7 +435,6 @@ graph TB
 
     ADMIN["👤 Admin"] -->|"file upload"| P7["P7: Ingestion<br/>Extract→Chunk→Embed→Store"]
     P7 --> CHROMA
-    P7 <-->|"embed API"| GEMINI
 ```
 
 ---
@@ -542,7 +541,7 @@ graph TB
 
 ## 9. API Endpoints
 
-All 11 FastAPI REST endpoints.
+All 16 FastAPI REST endpoints.
 
 | Method | Endpoint | Rate Limit | Request Body | Response | Description |
 |--------|----------|------------|-------------|----------|-------------|
@@ -556,6 +555,11 @@ All 11 FastAPI REST endpoints.
 | `GET` | `/analytics/anomalies` | 30/min | — | JSON | Z-score anomaly detection |
 | `POST` | `/feedback` | 30/min | `FeedbackRequest` | JSON | Thumbs up/down rating |
 | `GET` | `/reports/{type}` | 10/min | — | File | PDF or Excel report download |
+| `GET` | `/management/collections` | 30/min | — | JSON | All collections with stats |
+| `GET` | `/management/collections/{name}/documents` | 30/min | — | JSON | List documents in collection |
+| `GET` | `/management/collections/{name}/documents/{source}/chunks` | 30/min | — | JSON | Preview chunks for a document |
+| `DELETE` | `/management/collections/{name}/documents/{source}` | 10/min | — | JSON | Delete a document |
+| `DELETE` | `/management/collections/{name}` | 10/min | — | JSON | Purge entire collection |
 
 **Pydantic Models:**
 
@@ -590,6 +594,7 @@ graph TB
     subgraph Server["🖥️ Local Machine"]
         subgraph Processes["Running Processes (via run.ps1)"]
             P1["⚙️ uvicorn<br/>FastAPI :8000"]
+            PA["🖥️ Streamlit<br/>Admin :8500"]
             P2["🖥️ Streamlit<br/>Microsite :8501"]
             P3["🖥️ Streamlit<br/>Support :8502"]
             P4["🔧 FastMCP<br/>(optional)"]
@@ -607,9 +612,10 @@ graph TB
 
     subgraph Cloud["☁️ External APIs"]
         A["Anthropic<br/>Claude Sonnet + Haiku"]
-        G["Google AI<br/>Gemini Flash + Embeddings"]
+        G["Google AI<br/>Gemini Flash (LLM fallback)"]
     end
 
+    PA -->|HTTP| P1
     P2 -->|HTTP| P1
     P3 -->|HTTP| P1
     P1 --> S1
@@ -735,8 +741,9 @@ All settings from `config.yaml`:
 | | classifier | `claude-haiku-4-5-20251001` | Intent classification |
 | | max_tokens | 1024 | Max response length |
 | | temperature | 0.2 | Low = more deterministic |
-| **Embeddings** | model | `gemini-embedding-001` | Embedding model |
-| | dimensions | 768 | Vector size |
+| **Embeddings** | model | `all-MiniLM-L6-v2` | Embedding model |
+| | provider | `sentence-transformers` | Local (no API key needed) |
+| | dimensions | 384 | Vector size |
 | **Security Input** | max_length | 500 | Max query characters |
 | | injection_detection | true | 12 regex patterns |
 | | pii_detection | true | Presidio NER |
@@ -761,11 +768,11 @@ All settings from `config.yaml`:
 | Layer | Technology | Version/Model |
 |-------|-----------|---------------|
 | **Backend** | FastAPI + uvicorn | Python |
-| **Frontend** | Streamlit | 2 instances |
+| **Frontend** | Streamlit | 3 instances (Admin, Microsite, Support) |
 | **Primary LLM** | Anthropic Claude | claude-sonnet-4-6 |
 | **Fallback LLM** | Google Gemini | 2.0 Flash |
 | **Classifier** | Anthropic Claude | Haiku |
-| **Embeddings** | Google Gemini | gemini-embedding-001 (768-dim) |
+| **Embeddings** | sentence-transformers | all-MiniLM-L6-v2 (384-dim, local) |
 | **Vector DB** | ChromaDB | Persistent, cosine similarity |
 | **Analytics DB** | SQLite | Sessions, messages, feedback |
 | **Audit Log** | JSONL | Append-only |

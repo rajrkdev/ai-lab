@@ -37,7 +37,7 @@ erDiagram
 
     CHROMADB_COLLECTION {
         text id PK "SHA-256 hash: source_hash"
-        blob embedding "768-dim float vector"
+        blob embedding "384-dim float vector"
         text document "Chunk text content"
         json metadata "source, category, chunk_index, total_chunks"
     }

@@ -9,8 +9,7 @@ sequenceDiagram
     participant ING as 📄 Ingest Module
     participant EXT as 📖 Text Extractors
     participant CHK as ✂️ Chunker
-    participant EMB as 📐 Embedder
-    participant GEM as ☁️ Gemini<br/>Embedding API
+    participant EMB as 📐 Embedder (Local)
     participant VDB as 🗄️ ChromaDB
 
     U->>API: POST /ingest<br/>multipart: file, chatbot_type, category
@@ -53,12 +52,11 @@ sequenceDiagram
     CHK->>CHK: Sliding window:<br/>~384 words/chunk<br/>~48 words overlap
     CHK-->>ING: chunks[]
     
-    Note over EMB,GEM: Step 3: Embedding (Batched)
+    Note over EMB: Step 3: Embedding (Local, Batched)
     ING->>EMB: embed_documents(chunks,<br/>batch_size=100)
     
     loop Each batch of 100
-        EMB->>GEM: embed_content(<br/>texts=batch,<br/>task=RETRIEVAL_DOCUMENT,<br/>dim=768)
-        GEM-->>EMB: embeddings[]
+        EMB->>EMB: model.encode(<br/>texts=batch,<br/>384-dim)
     end
     
     EMB-->>ING: all_embeddings[]

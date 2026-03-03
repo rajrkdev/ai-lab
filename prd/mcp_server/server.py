@@ -8,7 +8,7 @@ clients (e.g. Claude Desktop) can discover and invoke these tools.
 Registered tools (in call order for a typical RAG query):
   1. validate_input    — sanitize user input (length, injection, PII)
   2. classify_intent   — categorize the query (e.g. policy_coverage, claims_process)
-  3. embed_query       — convert the query to a 768-dim vector
+  3. embed_query       — convert the query to a 384-dim vector (all-MiniLM-L6-v2)
   4. retrieve_chunks   — find top-k similar document chunks from ChromaDB
   5. call_llm          — send query + context to primary LLM; auto-fallback on failure
   6. validate_output   — mask PII, check hallucination, enforce confidence threshold
@@ -52,7 +52,7 @@ def validate_input(query: str, max_length: int = 500) -> Dict:
 
 @mcp.tool()
 def embed_query(text: str) -> List[float]:
-    """Embed a query using Gemini text-embedding-004. Returns 768-dim vector."""
+    """Embed a query using all-MiniLM-L6-v2 (sentence-transformers). Returns 384-dim vector."""
     return embedder.embed_query(text)
 
 

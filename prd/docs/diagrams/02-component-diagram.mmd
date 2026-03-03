@@ -4,9 +4,10 @@
 graph LR
     subgraph web["web/ — HTTP Layer"]
         direction TB
-        FSP["fastapi_server.py<br/>REST API (11 endpoints)<br/>Rate limiting, CORS"]
-        STM["streamlit_microsite.py<br/>Insurance Chatbot UI<br/>Port 8501"]
-        STS["streamlit_support.py<br/>Support Chatbot UI<br/>Port 8502"]
+        FSP["fastapi_server.py<br/>REST API (16 endpoints)<br/>Rate limiting, CORS"]
+        STA["admin.py<br/>Admin Dashboard UI<br/>Port 8500"]
+        STM["microsite.py<br/>Insurance Chatbot UI<br/>Port 8501"]
+        STS["support.py<br/>Support Chatbot UI<br/>Port 8502"]
     end
 
     subgraph mcp["mcp_server/ — MCP + Tool Layer"]
@@ -17,15 +18,15 @@ graph LR
             direction TB
             IV2["input_validator.py<br/>validate_input()"]
             IC3["intent_classifier.py<br/>classify_intent()"]
-            EMB2["embedder.py<br/>embed_query()<br/>embed_documents()"]
-            VDB2["vector_db.py<br/>retrieve_chunks()<br/>add_documents()"]
+            EMB2["embedder.py<br/>sentence-transformers<br/>all-MiniLM-L6-v2 (384-dim)"]
+            VDB2["vector_db.py<br/>retrieve_chunks()<br/>add_documents()<br/>list_documents() / delete_document()<br/>purge_collection() / get_collection_stats()"]
             LLM2["llm_router.py<br/>call_claude()<br/>_call_gemini_fallback()"]
             OV2["output_validator.py<br/>validate_output()"]
             ING2["ingest.py<br/>ingest_document()<br/>extract_text() / chunk_text()"]
             AL2["analytics_logger.py<br/>log_interaction()<br/>log_feedback()"]
             CM2["config_manager.py<br/>get_*_config()"]
             SS2["session_store.py<br/>add_turn() / get_history()<br/>TTL eviction"]
-            VE["voyage_embedder.py<br/>(Alternative embedder)"]
+            RR2["reranker.py<br/>(Optional cross-encoder re-ranking)"]
         end
     end
 
@@ -57,6 +58,7 @@ graph LR
 
     STM -->|"HTTP"| FSP
     STS -->|"HTTP"| FSP
+    STA -->|"HTTP"| FSP
 
     SRV --> IV2
     SRV --> EMB2
@@ -88,7 +90,7 @@ graph LR
     classDef analyticsPkg fill:#00BCD4,stroke:#006064,color:#fff
     classDef secPkg fill:#F44336,stroke:#B71C1C,color:#fff
 
-    class FSP,STM,STS webPkg
+    class FSP,STA,STM,STS webPkg
     class SRV,IV2,IC3,EMB2,VDB2,LLM2,OV2,ING2,AL2,CM2,SS2,VE toolPkg
     class DASH2,ANOM2,REP2 analyticsPkg
     class AUD secPkg

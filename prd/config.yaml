@@ -27,10 +27,11 @@ llm_routing:
 
 # ── Embeddings ──────────────────────────────────────────────────────────────
 # Defines which embedding model turns text into vectors for RAG retrieval.
+# Provider "sentence-transformers" runs locally (no API key needed).
 embeddings:
-  provider: gemini                      # Embedding provider ("gemini" is the default)
-  model: gemini-embedding-001           # Google Gemini embedding model name
-  dimensions: 768                       # Output vector dimensionality (must match ChromaDB)
+  provider: sentence-transformers       # "sentence-transformers" (local) or "gemini" / "voyage"
+  model: BAAI/bge-small-en-v1.5        # HuggingFace model name (downloaded on first use)
+  dimensions: 384                       # Output vector dimensionality (must match ChromaDB)
 
 # ── Security ────────────────────────────────────────────────────────────────
 # Two-layer security: INPUT validation runs *before* the LLM call;
@@ -69,6 +70,15 @@ conversation:
   storage: server                   # "server" = in-memory dict with TTL; "sqlite" reserved for future
   session_ttl_minutes: 30           # Evict sessions inactive longer than this
   max_sessions: 1000                # Cap on concurrent sessions in memory
+
+# ── Re-ranking ──────────────────────────────────────────────────────────────
+# Post-retrieval cross-encoder re-ranking.  After ChromaDB returns top-k
+# chunks, the cross-encoder re-scores (query, chunk) pairs jointly for
+# more accurate ranking.
+reranking:
+  enabled: true                          # true = re-rank after retrieval; false = pass through
+  model: cross-encoder/ms-marco-MiniLM-L-6-v2  # HuggingFace cross-encoder model name
+  top_n: 5                               # How many chunks to keep after re-ranking
 
 # ── Analytics & Anomaly Detection ───────────────────────────────────────────
 # Paths and thresholds for the analytics subsystem (SQLite DB, JSONL audit

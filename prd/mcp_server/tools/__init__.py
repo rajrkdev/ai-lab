@@ -4,7 +4,7 @@
 #
 #   analytics_logger.py  — SQLite + JSONL logging for every chat interaction
 #   config_manager.py    — Read / write config.yaml settings
-#   embedder.py          — Google Gemini embedding client (768-dim vectors)
+#   embedder.py          — sentence-transformers embedding client (all-MiniLM-L6-v2, 384-dim)
 #   ingest.py            — Document ingestion: extract → chunk → embed → store
 #   input_validator.py   — Length check, injection detection, PII redaction
 #   intent_classifier.py — Claude Haiku–based query intent classification
@@ -12,4 +12,3 @@
 #   output_validator.py  — PII masking, hallucination check, confidence gate
 #   session_store.py     — In-memory conversation history per session (multi-turn)
 #   vector_db.py         — ChromaDB operations (add / query / help)
-#   voyage_embedder.py   — Voyage AI embedding client with Gemini fallback

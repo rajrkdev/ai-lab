@@ -9,8 +9,7 @@ sequenceDiagram
     participant RL as 🛡️ Rate Limiter
     participant IV as 🔒 Input Validator
     participant PII1 as 🕵️ Presidio<br/>(Input PII)
-    participant EMB as 📐 Embedder
-    participant GEM_E as ☁️ Gemini<br/>Embedding API
+    participant EMB as 📐 Embedder (Local)
     participant VDB as 🗄️ ChromaDB
     participant LLM as 🤖 LLM Router
     participant CLAUDE as ☁️ Claude<br/>Sonnet
@@ -63,10 +62,10 @@ sequenceDiagram
     PII1-->>IV: sanitized_query
     IV-->>API: { valid: true, sanitized_query, pii_detected }
     
-    Note over EMB,GEM_E: Step 4: Query Embedding
+    Note over EMB: Step 4: Query Embedding (Local)
     API->>EMB: embed_query(sanitized_query)
-    EMB->>GEM_E: embed_content(text,<br/>task=RETRIEVAL_QUERY,<br/>dim=768)
-    GEM_E-->>EMB: 768-dim vector
+    EMB->>EMB: model.encode(text,<br/>384-dim)
+    EMB-->>API: 384-dim vector
     EMB-->>API: embedding[]
     
     Note over VDB: Step 5: Vector Retrieval

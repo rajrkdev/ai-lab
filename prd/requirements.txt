@@ -17,7 +17,7 @@ chromadb>=0.4.24          # ChromaDB — stores and queries document embeddings 
 
 # ── LLM Clients ─────────────────────────────────────────────────────────────
 anthropic>=0.25.0         # Anthropic SDK — calls Claude Sonnet (answers) and Haiku (classification)
-google-genai>=1.0.0       # Google GenAI SDK — Gemini LLM fallback + Gemini embedding model
+google-genai>=1.0.0       # Google GenAI SDK — Gemini LLM fallback only (embeddings are local)
 
 # ── Document Parsing ────────────────────────────────────────────────────────
 pymupdf>=1.24.0           # PyMuPDF (fitz) — extracts text from PDF files during ingestion
@@ -40,6 +40,9 @@ slowapi>=0.1.9            # Rate-limiting middleware for FastAPI (per-IP limits)
 # ── Reporting ───────────────────────────────────────────────────────────────
 reportlab>=4.1.0          # PDF generation — daily, weekly, and security reports
 openpyxl>=3.1.2           # Excel generation — full analytics export (4-sheet workbook)
+
+# ── Embeddings & Re-ranking (Local) ─────────────────────────────────────────
+sentence-transformers>=2.6.0  # bge-small-en-v1.5 embeddings + CrossEncoder re-ranking (no API key)
 
 # ── Analytics / Math ────────────────────────────────────────────────────────
 scipy>=1.13.0             # Scientific computing — Z-score anomaly detection via numpy/scipy

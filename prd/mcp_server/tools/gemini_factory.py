@@ -1,7 +1,7 @@
 """Shared factory for Google Gemini client initialization.
 
 Centralizes the API key resolution and client creation logic used by
-embedder.py, llm_router.py, and voyage_embedder.py.
+embedder.py and llm_router.py.
 """
 
 import os

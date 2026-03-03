@@ -11,7 +11,7 @@ graph TB
 
     subgraph Processes["Processes"]
         P1["P1: Input Validation<br/>──────────────<br/>• Check length ≤ 500<br/>• Scan 12 injection patterns<br/>• Redact PII via Presidio"]
-        P2["P2: Query Embedding<br/>──────────────<br/>• Gemini gemini-embedding-001<br/>• 768-dim vector<br/>• task: RETRIEVAL_QUERY"]
+        P2["P2: Query Embedding<br/>──────────────<br/>• sentence-transformers (local)<br/>• all-MiniLM-L6-v2<br/>• 384-dim vector"]
         P3["P3: Vector Retrieval<br/>──────────────<br/>• Cosine similarity search<br/>• Top-5 chunks<br/>• Score threshold: 0.60"]
         P4["P4: LLM Generation<br/>──────────────<br/>• Claude Sonnet primary<br/>• Gemini Flash fallback<br/>• RAG prompt construction<br/>• Multi-turn history prepend"]
         P5["P5: Output Validation<br/>──────────────<br/>• PII masking (Presidio)<br/>• Hallucination detection<br/>• Confidence gating"]
@@ -22,7 +22,7 @@ graph TB
     end
 
     subgraph DataStores["Data Stores"]
-        D1[("D1: ChromaDB<br/>──────────────<br/>insurance_docs collection<br/>support_docs collection<br/>768-dim cosine index")]
+        D1[("D1: ChromaDB<br/>──────────────<br/>insurance_docs collection<br/>support_docs collection<br/>384-dim cosine index")]
         D2[("D2: SQLite<br/>──────────────<br/>sessions table<br/>messages table<br/>feedback table")]
         D3[("D3: JSONL Audit Log<br/>──────────────<br/>Append-only security log<br/>All interactions")]
         D4[("D4: config.yaml<br/>──────────────<br/>LLM, security, RAG,<br/>embeddings, analytics")]
@@ -31,7 +31,7 @@ graph TB
     %% User chat flow
     USER -->|"query + session_id"| P1
     P1 -->|"sanitized_query + pii_list"| P2
-    P2 -->|"768-dim vector"| P3
+    P2 -->|"384-dim vector"| P3
     P3 -->|"chunks + sources + scores"| P6B
     P6B -->|"history turns"| P4
     P4 -->|"raw LLM response"| P5
@@ -45,8 +45,7 @@ graph TB
     CLAUDE_API -->|"response + tokens"| P4
     P4 -.->|"fallback prompt"| GEMINI_API
     GEMINI_API -.->|"fallback response"| P4
-    P2 -->|"embed_content()"| GEMINI_API
-    GEMINI_API -->|"768-dim embedding"| P2
+    P2 ---|"local inference"| P2
     P6 -->|"classify prompt"| CLAUDE_API
 
     %% Data store interactions

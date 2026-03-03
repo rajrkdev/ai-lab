@@ -200,7 +200,7 @@ def _run_chat_pipeline(query: str, session_id: str, chatbot_type: str) -> ChatRe
 
     Runs through 7 steps:
       1. Input validation   (length, injection, PII)
-      2. Embedding          (query → 768-dim vector)
+      2. Embedding          (query → 384-dim vector, local)
       3. Retrieval          (top-k chunks from ChromaDB)
       4. LLM call           (primary provider, auto-fallback)
       5. Output validation  (PII mask, hallucination, confidence gate)
@@ -231,7 +231,7 @@ def _run_chat_pipeline(query: str, session_id: str, chatbot_type: str) -> ChatRe
     sanitized_query = validation["sanitized_query"]
     pii_detected = validation["pii_detected"]
 
-    # Step 2: Embed the sanitised query into a 768-dim vector
+    # Step 2: Embed the sanitised query via sentence-transformers
     try:
         embedding = embedder.embed_query(sanitized_query)
     except Exception:
@@ -488,3 +488,70 @@ def get_anomalies(request: Request):
     _ensure_tools()
     from analytics.anomaly_detector import detect_anomalies
     return detect_anomalies()
+
+
+# ===========================================================================
+# Collection Management Endpoints (used by the Admin UI)
+# ===========================================================================
+
+@app.get("/management/collections")
+@limiter.limit("30/minute")
+def list_collections(request: Request):
+    """Return all configured collections with stats (chunks, docs, avg)."""
+    _ensure_tools()
+    from mcp_server.tools.config_manager import get_rag_config
+    from mcp_server.tools.vector_db import get_collection_stats
+
+    rag_cfg = get_rag_config()
+    collections_map = rag_cfg.get("collections", {})
+
+    results = []
+    for chatbot_type, collection_name in collections_map.items():
+        stats = get_collection_stats(collection_name)
+        stats["chatbot_type"] = chatbot_type
+        results.append(stats)
+
+    return results
+
+
+@app.get("/management/collections/{collection_name}/documents")
+@limiter.limit("30/minute")
+def list_collection_documents(request: Request, collection_name: str):
+    """List all documents in a collection with source, category, chunk_count."""
+    _ensure_tools()
+    from mcp_server.tools.vector_db import list_documents
+    return list_documents(collection_name)
+
+
+@app.get("/management/collections/{collection_name}/documents/{source_name}/chunks")
+@limiter.limit("30/minute")
+def get_document_chunks_endpoint(request: Request, collection_name: str, source_name: str):
+    """Preview all chunks for a specific document, sorted by chunk_index."""
+    _ensure_tools()
+    from mcp_server.tools.vector_db import get_document_chunks
+    chunks = get_document_chunks(collection_name, source_name)
+    if not chunks:
+        raise HTTPException(status_code=404, detail=f"No chunks found for '{source_name}' in '{collection_name}'")
+    return chunks
+
+
+@app.delete("/management/collections/{collection_name}/documents/{source_name}")
+@limiter.limit("10/minute")
+def delete_document_endpoint(request: Request, collection_name: str, source_name: str):
+    """Delete all chunks belonging to a specific source document."""
+    _ensure_tools()
+    from mcp_server.tools.vector_db import delete_document
+    count = delete_document(collection_name, source_name)
+    if count == 0:
+        raise HTTPException(status_code=404, detail=f"No document '{source_name}' found in '{collection_name}'")
+    return {"status": "deleted", "chunks_deleted": count, "source": source_name}
+
+
+@app.delete("/management/collections/{collection_name}")
+@limiter.limit("10/minute")
+def purge_collection_endpoint(request: Request, collection_name: str):
+    """Purge (delete and recreate) an entire collection."""
+    _ensure_tools()
+    from mcp_server.tools.vector_db import purge_collection
+    purge_collection(collection_name)
+    return {"status": "purged", "collection_name": collection_name}

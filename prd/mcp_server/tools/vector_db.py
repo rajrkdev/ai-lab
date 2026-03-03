@@ -121,6 +121,99 @@ def get_collection_count(collection_name: str) -> int:
     return collection.count()
 
 
+def list_documents(collection_name: str) -> List[Dict]:
+    """Return all unique documents in a collection with chunk counts.
+
+    Groups stored chunks by their 'source' metadata field and returns
+    a list of dicts: [{source, category, chunk_count}, ...].
+    """
+    collection = get_or_create_collection(collection_name)
+    if collection.count() == 0:
+        return []
+
+    results = collection.get(include=["metadatas"])
+    metadatas = results.get("metadatas", [])
+
+    docs: Dict[str, Dict] = {}
+    for meta in metadatas:
+        source = meta.get("source", "unknown")
+        if source not in docs:
+            docs[source] = {
+                "source": source,
+                "category": meta.get("category", "general"),
+                "chunk_count": 0,
+            }
+        docs[source]["chunk_count"] += 1
+
+    return sorted(docs.values(), key=lambda d: d["source"])
+
+
+def get_document_chunks(collection_name: str, source_name: str) -> List[Dict]:
+    """Retrieve all chunks for a specific document, sorted by chunk_index.
+
+    Returns a list of dicts: [{chunk_index, text, category, total_chunks}, ...].
+    """
+    collection = get_or_create_collection(collection_name)
+    results = collection.get(
+        where={"source": source_name},
+        include=["documents", "metadatas"],
+    )
+
+    chunks = []
+    documents = results.get("documents", [])
+    metadatas = results.get("metadatas", [])
+    for doc, meta in zip(documents, metadatas):
+        chunks.append({
+            "chunk_index": meta.get("chunk_index", 0),
+            "text": doc,
+            "category": meta.get("category", "general"),
+            "total_chunks": meta.get("total_chunks", 0),
+        })
+
+    return sorted(chunks, key=lambda c: c["chunk_index"])
+
+
+def delete_document(collection_name: str, source_name: str) -> int:
+    """Delete all chunks belonging to a specific source document.
+
+    Returns the number of chunks deleted.
+    """
+    collection = get_or_create_collection(collection_name)
+    # Count before delete
+    before = collection.get(where={"source": source_name}, include=[])
+    count = len(before.get("ids", []))
+    if count > 0:
+        collection.delete(where={"source": source_name})
+    return count
+
+
+def purge_collection(collection_name: str) -> bool:
+    """Delete and recreate an empty collection. Returns True on success."""
+    client = _get_client()
+    try:
+        client.delete_collection(name=collection_name)
+    except Exception:
+        pass  # Collection may not exist yet
+    # Recreate it empty with the same cosine config
+    get_or_create_collection(collection_name)
+    return True
+
+
+def get_collection_stats(collection_name: str) -> Dict:
+    """Return statistics for a collection: total_chunks, unique_documents, avg_chunks_per_doc."""
+    total_chunks = get_collection_count(collection_name)
+    documents = list_documents(collection_name)
+    unique_docs = len(documents)
+    avg_chunks = round(total_chunks / unique_docs, 1) if unique_docs > 0 else 0
+
+    return {
+        "collection_name": collection_name,
+        "total_chunks": total_chunks,
+        "unique_documents": unique_docs,
+        "avg_chunks_per_doc": avg_chunks,
+    }
+
+
 def health_check() -> Dict:
     """Check ChromaDB health."""
     try:
