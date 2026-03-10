@@ -14,6 +14,8 @@ exclude:
   - "*.docx"
   - "reference/*.docx"
   - "prompts/document.md"
+  - scripts/
+  - prd/
 
 # Default layout for all pages
 defaults:
