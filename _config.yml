@@ -1,6 +1,8 @@
 title: Claude Code Mastery
 description: Configuration, architecture, interactive diagrams & RAG guides for developers
 theme: jekyll-theme-slate
+url: "https://dearraj25rk-jpg.github.io"
+baseurl: "/ai-lab"
 
 # Build settings
 markdown: kramdown
