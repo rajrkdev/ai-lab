@@ -3,15 +3,7 @@ layout: default
 title: Home
 ---
 
-# Claude Code Mastery
-
-A comprehensive resource for Claude Code — configuration, architecture, interactive diagrams, RAG guides, and training materials.
-
----
-
-## Interactive Diagrams — Claude Code
-
-Visual tools for understanding how Claude Code loads, prioritizes, and processes its configuration files.
+## Interactive Diagrams
 
 ### [Architecture Diagram — Full Lifecycle](diagrams/architecture.html)
 Visual flow of how all 16 markdown file types load and connect across the session lifecycle. Includes token budget breakdown and decision guide.
@@ -32,8 +24,6 @@ Deep dive into context engineering principles and techniques — how to shape wh
 
 ## Reference Guides
 
-In-depth written documentation on Claude Code configuration, file types, and architecture decisions.
-
 ### [Complete Markdown Files Catalog](docs/claude-code-all-markdown-files-catalog)
 Every markdown file Claude Code recognizes — complete catalog with locations, priorities, token impact, and examples. Your definitive reference for the entire configuration surface.
 
@@ -51,9 +41,7 @@ Downloadable Word document version of the override test lab for offline referenc
 
 ---
 
-## RAG Interactive Guides
-
-Interactive visual explainers for Retrieval-Augmented Generation — covering architectures, embedding models, and retrieval strategies.
+## RAG Guides
 
 ### [RAG Academy](rag/rag-academy.html)
 End-to-end interactive course on RAG systems — from basic retrieval concepts to advanced pipeline design.
@@ -79,8 +67,6 @@ Detailed interactive guide to BAAI's BGE-small-en-v1.5 embedding model: architec
 ---
 
 ## Prompts & Templates
-
-Reusable prompt templates and research notes.
 
 ### [Learning Prompt Template](prompts/Learning-prompt-template)
 A reusable template for creating personalized learning plans for any skill or subject area.
