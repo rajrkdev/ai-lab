@@ -64,6 +64,9 @@ Visual, hands-on explainer for the all-MiniLM-L6-v2 embedding model: how text be
 ### [BGE-small-en-v1.5 — Deep Dive](rag/bge-small-en-v1.5.html)
 Detailed interactive guide to BAAI's BGE-small-en-v1.5 embedding model: architecture, instruction-based query prefix, training methodology, benchmarks, and code examples.
 
+### [Word vs Sentence Embeddings](rag/word-vs-sentence-embeddings.html)
+Visual comparison of word-level and sentence-level embedding strategies — how they differ in scope, use case, and representation quality.
+
 ---
 
 ## BERT Guides
@@ -110,6 +113,7 @@ Research and planning notes for building a small language model customer support
 | [RAG Speed vs Quality](rag/rag-speed-quality.html) | RAG | Retrieval strategy tradeoffs |
 | [all-MiniLM-L6-v2 Guide](rag/all-MiniLM-L6-v2.html) | RAG | Embedding model visual explainer |
 | [BGE-small-en-v1.5 Guide](rag/bge-small-en-v1.5.html) | RAG | BAAI embedding model deep dive |
+| [Word vs Sentence Embeddings](rag/word-vs-sentence-embeddings.html) | RAG | Word-level vs sentence-level embedding comparison |
 | [BERT Full Diagram](bert/bert-full-diagram.html) | BERT | End-to-end BERT architecture walkthrough |
 | [BERT Tokenizer](bert/bert-tokenizer-deep-dive.html) | BERT | WordPiece tokenization interactive guide |
 | [BERT Encoder Block](bert/bert-encoder-deep-dive.html) | BERT | Single encoder block visual breakdown |
