@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BERT Full Interactive Diagram</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --color-background-primary:#ffffff;
+  --color-background-secondary:#f5f4f0;
+  --color-background-tertiary:#eeece6;
+  --color-text-primary:#1a1a18;
+  --color-text-secondary:#5a5a56;
+  --color-text-tertiary:#9a9890;
+  --color-border-tertiary:rgba(0,0,0,0.12);
+  --color-border-secondary:rgba(0,0,0,0.22);
+  --color-border-primary:rgba(0,0,0,0.35);
+  --color-background-info:#e6f1fb;
+  --color-text-info:#0c447c;
+  --color-border-info:rgba(23,95,165,0.4);
+  --color-background-success:#eaf3de;
+  --color-text-success:#3b6d11;
+  --color-border-success:rgba(59,109,17,0.4);
+  --color-background-warning:#faeeda;
+  --color-text-warning:#633806;
+  --color-border-warning:rgba(99,56,6,0.4);
+  --color-background-danger:#fcebeb;
+  --color-text-danger:#791f1f;
+  --color-border-danger:rgba(121,31,31,0.4);
+  --font-sans:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --font-mono:'SF Mono','Fira Code',monospace;
+  --border-radius-md:8px;
+  --border-radius-lg:12px;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --color-background-primary:#1e1e1c;
+    --color-background-secondary:#2a2a28;
+    --color-background-tertiary:#242422;
+    --color-text-primary:#e8e6de;
+    --color-text-secondary:#a8a69e;
+    --color-text-tertiary:#6a6860;
+    --color-border-tertiary:rgba(255,255,255,0.10);
+    --color-border-secondary:rgba(255,255,255,0.20);
+    --color-border-primary:rgba(255,255,255,0.32);
+    --color-background-info:#042c53;
+    --color-text-info:#85b7eb;
+    --color-border-info:rgba(133,183,235,0.35);
+    --color-background-success:#173404;
+    --color-text-success:#97c459;
+    --color-border-success:rgba(151,196,89,0.35);
+    --color-background-warning:#412402;
+    --color-text-warning:#fac775;
+    --color-border-warning:rgba(250,199,117,0.35);
+    --color-background-danger:#501313;
+    --color-text-danger:#f09595;
+    --color-border-danger:rgba(240,149,149,0.35);
+  }
+}
+body{
+  font-family:var(--font-sans);
+  background:var(--color-background-tertiary);
+  color:var(--color-text-primary);
+  min-height:100vh;
+  padding:24px 16px;
+}
+.wrapper{max-width:760px;margin:0 auto}
+.header{margin-bottom:20px}
+.header h1{font-size:20px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px}
+.header p{font-size:13px;color:var(--color-text-secondary)}
+.root{padding:0 0 32px}
+.nav{display:flex;gap:3px;flex-wrap:wrap;padding:4px;background:var(--color-background-secondary);border-radius:12px;margin-bottom:20px}
+.nb{padding:6px 12px;border:none;background:transparent;color:var(--color-text-secondary);cursor:pointer;font-size:12px;font-weight:500;border-radius:8px;transition:all .15s;white-space:nowrap;font-family:var(--font-sans)}
+.nb.on{background:var(--color-background-primary);color:var(--color-text-primary);border:0.5px solid var(--color-border-tertiary)}
+.sc{display:none}.sc.on{display:block}
+.title{font-size:16px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px}
+.sub{font-size:12px;color:var(--color-text-secondary);margin-bottom:16px;line-height:1.6}
+.card{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:10px;padding:14px;margin-bottom:10px}
+.cw{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:10px;padding:14px;margin-bottom:10px}
+.lbl{font-size:10px;font-weight:500;color:var(--color-text-tertiary);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px}
+.btn{padding:6px 14px;border:0.5px solid var(--color-border-secondary);border-radius:8px;background:transparent;color:var(--color-text-secondary);cursor:pointer;font-size:12px;font-family:var(--font-sans);transition:all .15s}
+.btn:hover{background:var(--color-background-secondary);color:var(--color-text-primary)}
+.btn.p{border-color:var(--color-border-info);background:var(--color-background-info);color:var(--color-text-info)}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.col2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:8px;padding:10px 12px;flex:1;min-width:80px}
+.sv{font-size:18px;font-weight:500;color:var(--color-text-primary)}
+.sl{font-size:10px;color:var(--color-text-secondary);margin-top:1px}
+.tok{display:inline-block;padding:5px 10px;border-radius:7px;margin:2px;font-size:12px;font-weight:500;cursor:pointer;border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);transition:all .2s;font-family:var(--font-sans);user-select:none}
+.tok.sp{background:var(--color-background-info);color:var(--color-text-info);border-color:var(--color-border-info)}
+.tok.sel{background:var(--color-background-warning);color:var(--color-text-warning);border-color:var(--color-border-warning);transform:scale(1.08)}
+.tok.mk{background:var(--color-background-danger);color:var(--color-text-danger);border-color:var(--color-border-danger)}
+.tok.ok{background:var(--color-background-success);color:var(--color-text-success);border-color:var(--color-border-success)}
+.formula{font-family:var(--font-mono);font-size:11px;background:var(--color-background-secondary);padding:10px 12px;border-radius:7px;line-height:1.7;color:var(--color-text-secondary);margin-bottom:10px;overflow-x:auto;white-space:pre}
+.step-row{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--color-background-info);color:var(--color-text-info);font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-txt{font-size:12px;color:var(--color-text-secondary);line-height:1.5}
+.note{font-size:12px;color:var(--color-text-secondary);padding:10px 12px;background:var(--color-background-secondary);border-radius:8px;line-height:1.6;border-left:2.5px solid var(--color-border-info)}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>BERT — Full Interactive Diagram</h1>
+    <p>Bidirectional Encoder Representations from Transformers · Google, 2018 · 8 interactive sections</p>
+  </div>
+
+<div class="root">
+<div class="nav" id="nav"></div>
+
+<!-- S1: PIPELINE -->
+<div class="sc on" id="s-pipeline">
+  <div class="title">BERT end-to-end pipeline</div>
+  <div class="sub">Click any stage to see what happens inside. Use Step-through to animate the full flow.</div>
+  <div class="cw" style="padding:10px 14px 0">
+    <svg id="pipe-svg" width="100%" viewBox="0 0 660 380" style="display:block"></svg>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+    <button class="btn p" onclick="runPipeline()">▶ Step through</button>
+    <button class="btn" onclick="resetPipeline()">Reset</button>
+  </div>
+  <div id="pipe-info" class="note" style="min-height:52px">Click any stage above or press Step through to begin.</div>
+</div>
+
+<!-- S2: EMBEDDINGS -->
+<div class="sc" id="s-embeddings">
+  <div class="title">Three input embeddings</div>
+  <div class="sub">Before the first encoder block, BERT sums three learned 768-dim vectors for every token. Click each token to explore.</div>
+  <div class="cw">
+    <div class="lbl">Select a token position</div>
+    <div id="emb-toks" style="margin-bottom:14px"></div>
+    <svg id="emb-svg" width="100%" viewBox="0 0 660 290" style="display:block;margin-bottom:10px"></svg>
+    <div id="emb-note" class="note" style="min-height:44px">Click any token above to explore its embeddings.</div>
+  </div>
+  <div class="col2">
+    <div class="card"><div style="font-size:12px;font-weight:500;margin-bottom:4px">Why three embeddings?</div><div style="font-size:11px;color:var(--color-text-secondary);line-height:1.6">Token = what the word is. Position = where it sits. Segment = which sentence (A or B). All three are summed element-wise before the first encoder block.</div></div>
+    <div class="card"><div style="font-size:12px;font-weight:500;margin-bottom:4px">Position: learned vs sinusoidal</div><div style="font-size:11px;color:var(--color-text-secondary);line-height:1.6">Original Transformer used fixed sinusoidal patterns. BERT learns position embeddings from data — more flexible, adapts to the specific language seen during pre-training.</div></div>
+  </div>
+</div>
+
+<!-- S3: SELF-ATTENTION -->
+<div class="sc" id="s-attention">
+  <div class="title">Self-attention: Q · K · V step by step</div>
+  <div class="sub">Select a query token. Walk through all 4 computation stages to see how context is blended.</div>
+  <div class="cw">
+    <div class="lbl">Query token (click to select)</div>
+    <div id="attn-toks" style="margin-bottom:14px"></div>
+    <div id="step-viz"></div>
+    <div id="attn-note" class="note" style="min-height:44px;margin-top:10px"></div>
+  </div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+    <button class="btn" id="sbtn1" onclick="showAttnStep(1)">1 · Raw scores</button>
+    <button class="btn" id="sbtn2" onclick="showAttnStep(2)">2 · Scale by √64</button>
+    <button class="btn" id="sbtn3" onclick="showAttnStep(3)">3 · Softmax weights</button>
+    <button class="btn" id="sbtn4" onclick="showAttnStep(4)">4 · Output blend</button>
+  </div>
+  <div class="formula">score(i,j) = Q_i · K_j^T / √d_k     d_k = 64   √64 = 8
+weights    = softmax(scores)          → positive, sum to 1.0
+output_i   = Σ_j  weights[j] × V_j   → weighted blend of Values</div>
+</div>
+
+<!-- S4: ATTENTION MATRIX -->
+<div class="sc" id="s-matrix">
+  <div class="title">Full attention matrix</div>
+  <div class="sub">Every token attends to every other token. Hover any cell to read the exact weight.</div>
+  <div class="cw">
+    <div class="lbl">Sentence</div>
+    <div id="mat-sent" style="margin-bottom:12px"></div>
+    <svg id="mat-svg" width="100%" viewBox="0 0 660 370" style="display:block"></svg>
+    <div id="mat-tip" class="note" style="min-height:36px;margin-top:8px">Hover any cell in the matrix.</div>
+  </div>
+  <div class="note">BERT has NO causal mask — every cell is filled. GPT uses a lower-triangular mask zeroing the upper half. This single design choice gives BERT bidirectional context.</div>
+</div>
+
+<!-- S5: MULTI-HEAD -->
+<div class="sc" id="s-multihead">
+  <div class="title">Multi-head attention — 12 heads in parallel</div>
+  <div class="sub">Each head learns a different linguistic relationship. Click any head to see its specialisation.</div>
+  <div class="cw">
+    <svg id="mh-svg" width="100%" viewBox="0 0 660 320" style="display:block"></svg>
+    <div id="mh-info" class="note" style="margin-top:10px;min-height:52px">Click any head above.</div>
+  </div>
+  <div class="col2">
+    <div class="card">
+      <div style="font-size:12px;font-weight:500;margin-bottom:4px">Dimension split</div>
+      <div style="font-size:11px;color:var(--color-text-secondary);line-height:1.7">768-dim input → split into 12 × 64-dim subspaces<br>Each head projects to its own Q, K, V<br>All 12 outputs → concat → linear → 768-dim</div>
+    </div>
+    <div class="card">
+      <div style="font-size:12px;font-weight:500;margin-bottom:4px">Parameter count</div>
+      <div style="font-size:11px;color:var(--color-text-secondary);line-height:1.7">W_Q/K/V per head: 768×64 = 49,152<br>×3 ×12 heads = 1.77M<br>W_O (output): 768×768 = 590K<br>Total attention layer: ~2.36M</div>
+    </div>
+  </div>
+</div>
+
+<!-- S6: ENCODER BLOCK -->
+<div class="sc" id="s-encoder">
+  <div class="title">Inside one encoder block</div>
+  <div class="sub">Every transformer block has the same structure. Click each sub-layer to understand its role and parameters.</div>
+  <div class="cw" style="padding:10px 14px 0">
+    <svg id="enc-svg" width="100%" viewBox="0 0 660 440" style="display:block"></svg>
+  </div>
+  <div id="enc-info" class="note" style="min-height:52px;margin-bottom:10px">Click any component in the diagram.</div>
+  <div class="formula">Per block (BERT-Base):
+  Multi-Head Attention:  4 × (768²) + 768²  =  2,362,368 params
+  Feed-Forward Network:  2 × 768 × 3072      =  4,722,432 params
+  Layer Norms (×2):      4 × 768             =      3,072 params
+  ──────────────────────────────────────────────────────────
+  Total per block:                            ~7,087,872 params
+  ×12 blocks:                                ~85M (encoder only)</div>
+</div>
+
+<!-- S7: MLM -->
+<div class="sc" id="s-mlm">
+  <div class="title">Masked Language Modeling — pre-training task 1</div>
+  <div class="sub">15% of tokens are masked. BERT predicts the original using bidirectional context. Click tokens to mask them, then predict.</div>
+  <div class="cw">
+    <div class="lbl">Click tokens to mask (15% ≈ 1-2 per sentence)</div>
+    <div id="mlm-toks" style="margin-bottom:12px"></div>
+    <div style="margin-bottom:10px;font-size:11px;color:var(--color-text-tertiary)">Masked: <span id="mlm-count" style="font-weight:500;color:var(--color-text-primary)">0</span> / <span id="mlm-total">0</span> tokens</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn p" onclick="predictMLM()">Predict [MASK] tokens</button>
+      <button class="btn" onclick="resetMLM()">Reset</button>
+      <button class="btn" onclick="autoMask()">Auto mask 15%</button>
+    </div>
+    <div id="mlm-preds"></div>
+  </div>
+  <div class="col2">
+    <div class="card">
+      <div style="font-size:12px;font-weight:500;margin-bottom:6px">The 15% split</div>
+      <div id="split-bars"></div>
+    </div>
+    <div class="card">
+      <div style="font-size:12px;font-weight:500;margin-bottom:6px">Why random replacement?</div>
+      <div style="font-size:11px;color:var(--color-text-secondary);line-height:1.6">If only [MASK] was used, BERT would over-specialize. Random replacement (10%) forces BERT to check every token. Keeping original (10%) forces good representations everywhere — not just at mask positions.</div>
+    </div>
+  </div>
+</div>
+
+<!-- S8: CONTEXTUAL -->
+<div class="sc" id="s-contextual">
+  <div class="title">Contextual embeddings in action</div>
+  <div class="sub">The same word gets a different 768-dim vector based on surrounding context. This is what BERT's "understanding" looks like.</div>
+  <div class="cw">
+    <div class="lbl">Choose a polysemous word</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <button class="btn p" id="wb0" onclick="showWord(0)">bank</button>
+      <button class="btn" id="wb1" onclick="showWord(1)">claim</button>
+      <button class="btn" id="wb2" onclick="showWord(2)">cover</button>
+      <button class="btn" id="wb3" onclick="showWord(3)">discharge</button>
+    </div>
+    <div id="ctx-sentences" style="margin-bottom:14px"></div>
+    <svg id="ctx-svg" width="100%" viewBox="0 0 660 200" style="display:block;margin-bottom:10px"></svg>
+    <div id="ctx-note" class="note" style="min-height:44px"></div>
+  </div>
+  <div class="note" style="margin-top:0">Word2Vec assigns one fixed vector per word. BERT assigns a dynamic vector influenced by every other token in the sentence — this contextual shift is why BERT revolutionised NLP.</div>
+</div>
+
+</div>
+</div>
+
+<script>
+const SECS=[{id:'pipeline',l:'Pipeline'},{id:'embeddings',l:'Embeddings'},{id:'attention',l:'Self-Attention'},{id:'matrix',l:'Attn Matrix'},{id:'multihead',l:'Multi-Head'},{id:'encoder',l:'Encoder Block'},{id:'mlm',l:'MLM Training'},{id:'contextual',l:'Contextual'}];
+let pipeStep=0,pipeTimer=null,attnQ=2,attnStp=3,mlmMasked=new Set(),ctxWord=0;
+
+const SENT=['[CLS]','The','policy','covers','flood','damage','[SEP]'];
+const WEIGHTS=[[.80,.05,.04,.04,.04,.02,.01],[.04,.55,.20,.10,.06,.03,.02],[.06,.04,.42,.24,.12,.08,.04],[.04,.04,.28,.34,.16,.10,.04],[.03,.03,.10,.16,.44,.20,.04],[.03,.03,.10,.12,.20,.48,.04],[.04,.04,.04,.04,.04,.04,.80]];
+
+function initNav(){
+  const n=document.getElementById('nav');
+  SECS.forEach((s,i)=>{
+    const b=document.createElement('button');b.className='nb'+(i===0?' on':'');b.textContent=s.l;
+    b.onclick=()=>{document.querySelectorAll('.nb').forEach((x,j)=>x.classList.toggle('on',j===i));document.querySelectorAll('.sc').forEach(x=>x.classList.remove('on'));document.getElementById('s-'+s.id).classList.add('on');};
+    n.appendChild(b);
+  });
+}
+
+const STAGES=[
+  {x:30,y:30,w:130,h:44,lbl:'Raw text input',col:'gray',info:'Input: "The policy covers flood damage"\nRaw unicode string. No structure yet. BERT accepts any English text up to 512 tokens.'},
+  {x:30,y:120,w:130,h:44,lbl:'WordPiece tokenizer',col:'blue',info:'WordPiece splits text into ≤30,000 subword tokens.\n"uninsurable" → ["un","##insur","##able"]\nSpecial tokens [CLS] and [SEP] are added.'},
+  {x:30,y:210,w:130,h:44,lbl:'Token IDs + masks',col:'teal',info:'Each token maps to an integer ID (vocab lookup).\n[CLS]=101, The=1996, policy=3343, ...[SEP]=102\nAttention mask: 1 for real tokens, 0 for [PAD].'},
+  {x:30,y:300,w:130,h:44,lbl:'3 Embeddings summed',col:'purple',info:'Token embedding + Position embedding + Segment embedding\n→ 768-dim vector per token\n→ Full sequence becomes a (seq_len × 768) matrix.'},
+  {x:300,y:30,w:140,h:44,lbl:'Encoder block ×12',col:'coral',info:'12 identical transformer encoder blocks in sequence.\nEach block: Multi-Head Self-Attention → Residual+Norm → FFN → Residual+Norm.\nEach block has ~7.1M parameters.'},
+  {x:300,y:120,w:140,h:44,lbl:'Self-attention (per block)',col:'amber',info:'Every token attends to every other token.\nscore(i,j) = Q·K^T / √64\nSoftmax → weighted blend of Values.\n12 heads × 64-dim each.'},
+  {x:300,y:210,w:140,h:44,lbl:'Feed-forward layer',col:'green',info:'Position-wise FFN applied to each token independently.\n768 → 3072 (GELU activation) → 768\nExpands, applies non-linearity, projects back.\n4.7M params per block.'},
+  {x:300,y:300,w:140,h:44,lbl:'Contextual output',col:'teal',info:'After 12 encoder blocks: (seq_len × 768) matrix of contextual vectors.\nSame word in different sentences → different vector.\n[CLS] vector = aggregate sentence representation.'},
+  {x:530,y:30,w:110,h:44,lbl:'[CLS] → classify',col:'purple',info:'[CLS] final hidden state (768-dim) → Linear → softmax.\nUsed for: sentiment, intent, NLI, sentence-pair tasks.\nFine-tune with small labeled dataset in minutes.'},
+  {x:530,y:120,w:110,h:44,lbl:'All tokens → NER',col:'blue',info:'Every token\'s 768-dim vector → Linear → tag class.\nUsed for: Named Entity Recognition (PER, ORG, LOC, DATE)\nAnnotate entities in insurance documents automatically.'},
+  {x:530,y:210,w:110,h:44,lbl:'Span → QA answer',col:'amber',info:'Two linear layers predict start+end position in context.\nInput: [CLS] question [SEP] context [SEP]\nAnswer = context[start:end]. No generation needed.'},
+  {x:530,y:300,w:110,h:44,lbl:'Embeddings → RAG',col:'green',info:'Mean-pool token vectors → sentence embedding for retrieval.\nUsed in: Sentence-BERT → all-MiniLM-L6-v2 → Voyage AI\nThe foundation of your InsureChat retrieval pipeline.'},
+];
+
+const ARROWS=[[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,8],[7,9],[7,10],[7,11]];
+
+const COLMAP={gray:['#D3D1C7','#5F5E5A'],blue:['#B5D4F4','#0C447C'],teal:['#9FE1CB','#0F6E56'],purple:['#CECBF6','#3C3489'],coral:['#F5C4B3','#993C1D'],amber:['#FAC775','#633806'],green:['#C0DD97','#3B6D11']};
+function isDark(){return window.matchMedia('(prefers-color-scheme: dark)').matches;}
+function colFill(c){const d=isDark();const m=COLMAP[c]||COLMAP.gray;return d?m[1]:m[0];}
+function colTxt(c){const d=isDark();const m=COLMAP[c]||COLMAP.gray;return d?m[0]:m[1];}
+
+function drawPipeline(activeIdx=-1){
+  const svg=document.getElementById('pipe-svg');svg.innerHTML='';
+  function el(tag,attrs,text){const e=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));if(text!=null)e.textContent=text;return e;}
+  const defs=el('defs',{});
+  const mk=el('marker',{id:'pa',viewBox:'0 0 10 10',refX:8,refY:5,markerWidth:5,markerHeight:5,orient:'auto-start-reverse'});
+  mk.appendChild(el('path',{d:'M2 1L8 5L2 9',fill:'none',stroke:'var(--color-border-secondary)','stroke-width':1.5,'stroke-linecap':'round','stroke-linejoin':'round'}));
+  defs.appendChild(mk);svg.appendChild(defs);
+  ARROWS.forEach(([a,b])=>{
+    const sa=STAGES[a],sb=STAGES[b];
+    const x1=sa.x+sa.w/2,y1=sa.y+sa.h,x2=sb.x+sb.w/2,y2=sb.y;
+    if(Math.abs(x1-x2)<5){
+      svg.appendChild(el('line',{x1,y1:y1+2,x2,y2:y2-6,stroke:'var(--color-border-secondary)','stroke-width':1.5,'marker-end':'url(#pa)'}));
+    } else {
+      const ymid=(y1+y2)/2;
+      svg.appendChild(el('path',{d:`M${x1} ${y1+2} L${x1} ${ymid} L${x2} ${ymid} L${x2} ${y2-6}`,fill:'none',stroke:'var(--color-border-secondary)','stroke-width':1.5,'marker-end':'url(#pa)'}));
+    }
+  });
+  STAGES.forEach((s,i)=>{
+    const isAct=i===activeIdx;
+    const g=el('g',{cursor:'pointer',onclick:`clickStage(${i})`});
+    const fill=isAct?colFill(s.col):'var(--color-background-secondary)';
+    const stroke=isAct?colTxt(s.col):'var(--color-border-tertiary)';
+    g.appendChild(el('rect',{x:s.x,y:s.y,width:s.w,height:s.h,rx:8,fill,stroke,'stroke-width':isAct?1.5:.5}));
+    const t=el('text',{x:s.x+s.w/2,y:s.y+s.h/2,'text-anchor':'middle','dominant-baseline':'central','font-size':11,'font-weight':isAct?500:400,fill:isAct?colTxt(s.col):'var(--color-text-secondary)','font-family':'var(--font-sans)'});
+    t.textContent=s.lbl;g.appendChild(t);svg.appendChild(g);
+  });
+  [['Text → Tokens',95],['Encoding',370],['Task heads',585]].forEach(([txt,x])=>{
+    svg.appendChild(el('text',{x,y:360,'text-anchor':'middle','font-size':10,'font-weight':500,fill:'var(--color-text-tertiary)','font-family':'var(--font-sans)'},txt));
+  });
+}
+
+function clickStage(i){drawPipeline(i);document.getElementById('pipe-info').textContent=STAGES[i].info.replace(/\\n/g,'\n');}
+function runPipeline(){clearInterval(pipeTimer);pipeStep=0;drawPipeline(-1);pipeTimer=setInterval(()=>{if(pipeStep>=STAGES.length){clearInterval(pipeTimer);return;}clickStage(pipeStep);pipeStep++;},900);}
+function resetPipeline(){clearInterval(pipeTimer);pipeStep=0;drawPipeline(-1);document.getElementById('pipe-info').textContent='Click any stage above or press Step through to begin.';}
+
+const EMB_TOKS=['[CLS]','The','policy','covers','flood','damage','[SEP]'];
+const EMB_INFO=[
+  {token:'[CLS]',tid:'ID: 101',pos:'pos: 0',seg:'Seg A',note:'[CLS] is always at position 0. Its final hidden state aggregates the full sentence for classification tasks.'},
+  {token:'The',tid:'ID: 1996',pos:'pos: 1',seg:'Seg A',note:'Common function word. Token embedding captures basic article meaning. Position embedding places it as token #1.'},
+  {token:'policy',tid:'ID: 3343',pos:'pos: 2',seg:'Seg A',note:'Content word. Has a rich token embedding from pre-training on insurance/legal/general text.'},
+  {token:'covers',tid:'ID: 6515',pos:'pos: 3',seg:'Seg A',note:'Verb with multiple senses. Context (self-attention) will differentiate "covers" as verb here vs noun elsewhere.'},
+  {token:'flood',tid:'ID: 4177',pos:'pos: 4',seg:'Seg A',note:'Domain keyword. In insurance documents, "flood" co-occurs strongly with "damage", "claim", "deductible".'},
+  {token:'damage',tid:'ID: 4366',pos:'pos: 5',seg:'Seg A',note:'Object noun. Together with "flood" this forms a compound concept — attention will strongly link these two tokens.'},
+  {token:'[SEP]',tid:'ID: 102',pos:'pos: 6',seg:'Seg A',note:'[SEP] marks sentence boundary. For sentence-pair tasks, Segment B tokens after [SEP] get Embedding_B.'},
+];
+let embSel=2;
+function initEmb(){
+  const c=document.getElementById('emb-toks');c.innerHTML='';
+  EMB_TOKS.forEach((t,i)=>{
+    const s=document.createElement('span');s.className='tok'+(t.startsWith('[')?' sp':'')+(i===embSel?' sel':'');
+    s.textContent=t;s.onclick=()=>{embSel=i;initEmb();drawEmb(i);};c.appendChild(s);
+  });
+  drawEmb(embSel);
+}
+function drawEmb(idx){
+  const svg=document.getElementById('emb-svg');svg.innerHTML='';
+  const info=EMB_INFO[idx];
+  function el(tag,attrs,text){const e=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));if(text!=null)e.textContent=text;return e;}
+  const rows=[{lbl:'1. Token emb',val:info.tid,col:'blue',note:'30k vocab lookup'},{lbl:'2. Position emb',val:info.pos,col:'green',note:'learned, 0–511'},{lbl:'3. Segment emb',val:info.seg,col:'amber',note:'sentence A or B'},{lbl:'= Final input',val:info.token,col:'purple',note:'768-dim vector → Encoder'}];
+  rows.forEach((r,ri)=>{
+    const y=30+ri*62;const isSum=ri===3;
+    svg.appendChild(el('text',{x:120,y:y+22,'text-anchor':'end','font-size':11,'font-weight':isSum?500:400,fill:isSum?'var(--color-text-primary)':'var(--color-text-secondary)','font-family':'var(--font-sans)',opacity:.9},r.lbl));
+    svg.appendChild(el('rect',{x:130,y,width:380,height:40,rx:7,fill:colFill(r.col),stroke:colTxt(r.col),'stroke-width':isSum?1.5:.5}));
+    svg.appendChild(el('text',{x:320,y:y+18,'text-anchor':'middle','dominant-baseline':'central','font-size':12,'font-weight':500,fill:colTxt(r.col),'font-family':'var(--font-sans)'},r.val+(isSum?' (768-dim)':'')));
+    svg.appendChild(el('text',{x:320,y:y+33,'text-anchor':'middle','font-size':10,fill:colTxt(r.col),'font-family':'var(--font-sans)',opacity:.75},r.note));
+    if(ri<3)svg.appendChild(el('text',{x:320,y:y+50,'text-anchor':'middle','font-size':14,fill:'var(--color-text-tertiary)','font-family':'var(--font-sans)'},ri===2?'=':'+'));
+    if(isSum)svg.appendChild(el('text',{x:516,y:y+22,'text-anchor':'start','font-size':10,fill:'var(--color-text-tertiary)','font-family':'var(--font-sans)'},'→ Encoder Block 1'));
+  });
+  document.getElementById('emb-note').textContent=info.note;
+}
+
+const ATN_TOKS=['[CLS]','The','policy','covers','flood','damage'];
+const ATN_W=[[.80,.05,.04,.04,.04,.03],[.04,.55,.20,.10,.07,.04],[.06,.04,.42,.24,.12,.12],[.04,.04,.28,.34,.16,.14],[.03,.03,.10,.16,.44,.24],[.03,.03,.10,.12,.22,.50]];
+const ATN_NOTES=['Aggregate token. Attends mostly to itself (.80) — gathers full sentence meaning. Used by classification heads.','The attends to "policy" (.20) — tracking the noun it modifies. Self-attention (.55) preserves identity.','policy is the subject. Attends to "covers" (.24) and "damage" (.12) — grasping subject-verb-object structure.','covers bridges subject and object: policy (.28) and flood damage (.30). Its context is inherently relational.','flood strongly attends to "damage" (.24) — the model learns this compound. Self-attention (.44) stays high.','damage most attends to itself (.50) and "flood" (.22) — the head of the compound phrase locks its meaning.'];
+let attnStep=3;
+function initAttn(){
+  const c=document.getElementById('attn-toks');c.innerHTML='';
+  ATN_TOKS.forEach((t,i)=>{
+    const s=document.createElement('span');s.className='tok'+(t.startsWith('[')?' sp':'')+(i===attnQ?' sel':'');
+    s.textContent=t;s.onclick=()=>{attnQ=i;initAttn();showAttnStep(attnStep);};c.appendChild(s);
+  });
+  showAttnStep(attnStep);
+}
+function showAttnStep(step){
+  attnStep=step;
+  [1,2,3,4].forEach(i=>document.getElementById('sbtn'+i).className='btn'+(i===step?' p':''));
+  const w=ATN_W[attnQ];let html='';
+  if(step===1){
+    html=`<div class="lbl">Raw dot-product scores Q·K^T (unnormalized)</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">`;
+    ATN_TOKS.forEach((t,i)=>{const s=(w[i]*8).toFixed(1);html+=`<div style="text-align:center"><div style="padding:5px 10px;border-radius:6px;font-size:11px;font-weight:500;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);color:var(--color-text-primary)">${t}</div><div style="font-size:11px;color:var(--color-text-secondary);margin-top:3px">${s}</div></div>`;});
+    html+=`</div><p style="font-size:11px;color:var(--color-text-tertiary)">Raw scores before scaling. Large values cause extreme softmax outputs — must scale down.</p>`;
+  } else if(step===2){
+    html=`<div class="lbl">After dividing by √d_k = √64 = 8</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">`;
+    ATN_TOKS.forEach((t,i)=>{const s=(w[i]*8).toFixed(2);html+=`<div style="text-align:center"><div style="padding:5px 10px;border-radius:6px;font-size:11px;font-weight:500;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);color:var(--color-text-primary)">${t}</div><div style="font-size:11px;color:var(--color-text-secondary);margin-top:3px">${s}</div></div>`;});
+    html+=`</div><p style="font-size:11px;color:var(--color-text-tertiary)">Scaling keeps gradients stable. Without √d_k the softmax saturates — one token gets all attention.</p>`;
+  } else if(step===3){
+    html=`<div class="lbl">Softmax weights — sum to 1.0</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">`;
+    ATN_TOKS.forEach((t,i)=>{const alpha=0.1+w[i]*0.85;html+=`<div style="text-align:center"><div style="padding:5px 10px;border-radius:6px;font-size:11px;font-weight:500;background:rgba(55,138,221,${alpha});border:0.5px solid var(--color-border-tertiary);color:var(--color-text-primary)">${t}</div><div style="font-size:11px;color:var(--color-text-secondary);margin-top:3px">${(w[i]*100).toFixed(0)}%</div></div>`;});
+    html+=`</div><div>`;
+    ATN_TOKS.forEach((t,i)=>{const p=(w[i]*100).toFixed(0);html+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><div style="min-width:55px;font-size:11px;color:var(--color-text-secondary);text-align:right">${t}</div><div style="flex:1;height:14px;background:var(--color-background-secondary);border-radius:3px;overflow:hidden"><div style="height:100%;width:${p}%;background:var(--color-background-info);border-radius:3px"></div></div><div style="min-width:30px;font-size:11px;color:var(--color-text-secondary)">${p}%</div></div>`;});
+    html+=`</div>`;
+  } else if(step===4){
+    html=`<div class="lbl">Output = weighted blend of Value vectors</div><div style="font-size:12px;margin-bottom:10px;color:var(--color-text-secondary)">output[${ATN_TOKS[attnQ]}] = `;
+    ATN_TOKS.forEach((t,i)=>{const p=(w[i]*100).toFixed(0);html+=`<span style="color:var(--color-text-primary);font-weight:500">${p}%</span>×V(${t})`;if(i<ATN_TOKS.length-1)html+=' + ';});
+    html+=`</div><div class="formula" style="margin:0">This 768-dim output for "${ATN_TOKS[attnQ]}" contains information\nfrom ALL tokens, weighted by attention. That's bidirectionality.\n12 heads run this in parallel, each learning different patterns.\nAll 12 concatenated → linear projection → 768-dim.</div>`;
+  }
+  document.getElementById('step-viz').innerHTML=html;
+  document.getElementById('attn-note').textContent=ATN_NOTES[attnQ];
+}
+
+function initMatrix(){
+  const c=document.getElementById('mat-sent');c.innerHTML='';
+  SENT.forEach(t=>{const s=document.createElement('span');s.className='tok'+(t.startsWith('[')?' sp':'');s.style.cursor='default';s.textContent=t;c.appendChild(s);});
+  drawMatrix(-1,-1);
+}
+function drawMatrix(hr,hc){
+  const svg=document.getElementById('mat-svg');svg.innerHTML='';
+  function el(tag,attrs,text){const e=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));if(text!=null)e.textContent=text;return e;}
+  const N=SENT.length,cell=42,ox=120,oy=40;
+  SENT.forEach((t,i)=>{svg.appendChild(el('text',{x:ox+i*cell+cell/2,y:oy-8,'text-anchor':'middle','font-size':10,'font-weight':500,fill:'var(--color-text-secondary)','font-family':'var(--font-sans)'},t));});
+  SENT.forEach((t,i)=>{svg.appendChild(el('text',{x:ox-6,y:oy+i*cell+cell/2,'text-anchor':'end','dominant-baseline':'central','font-size':10,'font-weight':500,fill:'var(--color-text-secondary)','font-family':'var(--font-sans)'},t));});
+  SENT.forEach((_,ri)=>{SENT.forEach((_,ci)=>{
+    const w=WEIGHTS[ri][ci];const alpha=0.07+w*0.85;const isH=ri===hr&&ci===hc;
+    const g=el('g',{cursor:'pointer'});
+    g.appendChild(el('rect',{x:ox+ci*cell+1,y:oy+ri*cell+1,width:cell-2,height:cell-2,rx:isH?4:3,fill:`rgba(55,138,221,${alpha})`,stroke:isH?'rgba(55,138,221,.8)':'rgba(100,100,100,.15)','stroke-width':isH?1.5:.3}));
+    g.appendChild(el('text',{x:ox+ci*cell+cell/2,y:oy+ri*cell+cell/2,'text-anchor':'middle','dominant-baseline':'central','font-size':9,fill:w>.35?colTxt('blue'):'var(--color-text-secondary)','font-family':'var(--font-sans)',opacity:w>.05?1:.5},(w*100).toFixed(0)+'%'));
+    g.setAttribute('onmouseenter',`hoverCell(${ri},${ci})`);
+    svg.appendChild(g);
+  });});
+  svg.appendChild(el('text',{x:ox+N*cell/2,y:oy+N*cell+18,'text-anchor':'middle','font-size':10,fill:'var(--color-text-tertiary)','font-family':'var(--font-sans)'},'Key tokens (K) — what gets attended to'));
+  svg.appendChild(el('text',{x:14,y:oy+N*cell/2,'text-anchor':'middle','font-size':10,fill:'var(--color-text-tertiary)','font-family':'var(--font-sans)',transform:`rotate(-90,14,${oy+N*cell/2})`},'Query tokens (Q)'));
+}
+function hoverCell(r,c){drawMatrix(r,c);document.getElementById('mat-tip').textContent=`${SENT[r]} → ${SENT[c]}: attention weight = ${(WEIGHTS[r][c]*100).toFixed(0)}% (${WEIGHTS[r][c].toFixed(3)}). Query "${SENT[r]}" spends ${(WEIGHTS[r][c]*100).toFixed(0)}% of its attention budget on key "${SENT[c]}".`;}
+
+const MH_HEADS=[{n:'Head 1',spec:'Syntactic deps',ex:'subject → verb',c:'blue'},{n:'Head 2',spec:'Coreference',ex:'he → John',c:'teal'},{n:'Head 3',spec:'Positional',ex:'nearby tokens',c:'green'},{n:'Head 4',spec:'Semantic',ex:'synonyms',c:'purple'},{n:'Head 5',spec:'Long-range',ex:'clause links',c:'coral'},{n:'Head 6',spec:'Compounds',ex:'"flood damage"',c:'amber'},{n:'Head 7',spec:'Negation',ex:'"not covered"',c:'gray'},{n:'Head 8',spec:'Punctuation',ex:'clause ends',c:'gray'},{n:'Head 9',spec:'Domain terms',ex:'"deductible"',c:'blue'},{n:'Head 10',spec:'Aspect/tense',ex:'verb modifiers',c:'teal'},{n:'Head 11',spec:'Entity types',ex:'PER, ORG, LOC',c:'green'},{n:'Head 12',spec:'Aggregation',ex:'full context',c:'purple'}];
+function initMH(){
+  const svg=document.getElementById('mh-svg');svg.innerHTML='';
+  function el(tag,attrs,text){const e=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));if(text!=null)e.textContent=text;return e;}
+  svg.appendChild(el('rect',{x:20,y:20,width:100,height:44,rx:8,fill:'var(--color-background-secondary)',stroke:'var(--color-border-secondary)','stroke-width':.5}));
+  svg.appendChild(el('text',{x:70,y:38,'text-anchor':'middle','font-size':11,'font-weight':500,fill:'var(--color-text-primary)','font-family':'var(--font-sans)'},'Input'));
+  svg.appendChild(el('text',{x:70,y:54,'text-anchor':'middle','font-size':10,fill:'var(--color-text-secondary)','font-family':'var(--font-sans)'},'768-dim'));
+  MH_HEADS.forEach((h,i)=>{
+    const hy=90+i*19;
+    svg.appendChild(el('line',{x1:120,y1:42,x2:140,y2:hy,stroke:'var(--color-border-tertiary)','stroke-width':.7}));
+    const g=el('g',{cursor:'pointer',onclick:`clickHead(${i})`});
+    g.appendChild(el('rect',{x:140,y:hy-9,width:120,height:18,rx:5,fill:colFill(h.c),stroke:colTxt(h.c),'stroke-width':.5}));
+    g.appendChild(el('text',{x:200,y:hy+1,'text-anchor':'middle','dominant-baseline':'central','font-size':10,'font-weight':500,fill:colTxt(h.c),'font-family':'var(--font-sans)'},h.n+' · '+h.spec));
+    svg.appendChild(g);
+    svg.appendChild(el('line',{x1:260,y1:hy,x2:540,y2:230,stroke:'var(--color-border-tertiary)','stroke-width':.7}));
+  });
+  svg.appendChild(el('rect',{x:540,y:195,width:100,height:70,rx:8,fill:colFill('purple'),stroke:colTxt('purple'),'stroke-width':.5}));
+  svg.appendChild(el('text',{x:590,y:220,'text-anchor':'middle','font-size':11,'font-weight':500,fill:colTxt('purple'),'font-family':'var(--font-sans)'},'CONCAT'));
+  svg.appendChild(el('text',{x:590,y:236,'text-anchor':'middle','font-size':10,fill:colTxt('purple'),'font-family':'var(--font-sans)'},'12 × 64-dim'));
+  svg.appendChild(el('text',{x:590,y:252,'text-anchor':'middle','font-size':10,fill:colTxt('purple'),'font-family':'var(--font-sans)'},'= 768-dim'));
+}
+function clickHead(i){const h=MH_HEADS[i];document.getElementById('mh-info').innerHTML=`<strong style="color:var(--color-text-primary)">${h.n}</strong> · specialises in <strong style="color:var(--color-text-primary)">${h.spec}</strong>. Example pattern: "${h.ex}". Each head has its own W_Q, W_K, W_V matrices (768×64 = 49,152 params each). All 12 heads run in parallel — outputs concatenated to form the 768-dim multi-head result.`;}
+
+const ENC_COMPS=[
+  {x:20,y:20,w:620,h:44,lbl:'Input: token hidden states',sub:'seq_len × 768 matrix',c:'gray',info:'Each token arrives as a 768-dim vector. These are outputs from the previous encoder block (or the embedding layer for Block 1).'},
+  {x:20,y:100,w:620,h:60,lbl:'Multi-Head Self-Attention',sub:'12 heads × 64-dim → concat → linear → 768',c:'blue',info:'12 parallel attention heads. Per head: W_Q 768×64, W_K 768×64, W_V 768×64 = 147K params. Output W_O 768×768 = 590K params. Total: ~2.36M params.'},
+  {x:20,y:190,w:620,h:40,lbl:'Residual connection + Layer Normalization',sub:'output = LayerNorm(x + Attention(x))',c:'teal',info:'Residual: add the original input back to the attention output. LayerNorm stabilises training. Prevents vanishing gradients across 12 deep layers.'},
+  {x:20,y:260,w:620,h:60,lbl:'Feed-Forward Network (FFN)',sub:'768 → 3072 (GELU) → 768 — applied per token independently',c:'amber',info:'Two linear layers with GELU activation. 768→3072 expands 4× (3.1M params), GELU activates, 3072→768 projects back (2.4M params). Applied identically to every token. Total: ~4.72M params.'},
+  {x:20,y:350,w:620,h:40,lbl:'Residual connection + Layer Normalization',sub:'output = LayerNorm(x + FFN(x))',c:'teal',info:'Second residual+norm. Same pattern. Ensures clean gradient flow. The pair (attention+residual+norm) + (FFN+residual+norm) is the canonical Transformer encoder block.'},
+  {x:20,y:420,w:620,h:44,lbl:'Output: updated hidden states',sub:'seq_len × 768 — richer context than input',c:'gray',info:'Same shape as input but each vector now contains information from all other tokens via self-attention. Feeds into the next encoder block, or into the task head if this is Block 12.'},
+];
+function drawEncoder(){
+  const svg=document.getElementById('enc-svg');svg.innerHTML='';
+  function el(tag,attrs,text){const e=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));if(text!=null)e.textContent=text;return e;}
+  const defs=el('defs',{});const mk=el('marker',{id:'ea',viewBox:'0 0 10 10',refX:8,refY:5,markerWidth:5,markerHeight:5,orient:'auto-start-reverse'});
+  mk.appendChild(el('path',{d:'M2 1L8 5L2 9',fill:'none',stroke:'var(--color-border-secondary)','stroke-width':1.5,'stroke-linecap':'round','stroke-linejoin':'round'}));
+  defs.appendChild(mk);svg.appendChild(defs);
+  ENC_COMPS.forEach((comp,i)=>{
+    const g=el('g',{cursor:'pointer',onclick:`clickEnc(${i})`});
+    g.appendChild(el('rect',{x:comp.x,y:comp.y,width:comp.w,height:comp.h,rx:8,fill:colFill(comp.c),stroke:colTxt(comp.c),'stroke-width':.7}));
+    g.appendChild(el('text',{x:comp.x+comp.w/2,y:comp.y+comp.h/2-7,'text-anchor':'middle','dominant-baseline':'central','font-size':12,'font-weight':500,fill:colTxt(comp.c),'font-family':'var(--font-sans)'},comp.lbl));
+    g.appendChild(el('text',{x:comp.x+comp.w/2,y:comp.y+comp.h/2+9,'text-anchor':'middle','font-size':10,fill:colTxt(comp.c),'font-family':'var(--font-sans)',opacity:.8},comp.sub));
+    svg.appendChild(g);
+    if(i<ENC_COMPS.length-1){const ny=comp.y+comp.h;const nx=ENC_COMPS[i+1].y;svg.appendChild(el('line',{x1:330,y1:ny+2,x2:330,y2:nx-6,stroke:'var(--color-border-secondary)','stroke-width':1.5,'marker-end':'url(#ea)'}));}
+  });
+  [[100,230,190,'1st residual'],[260,390,350,'2nd residual']].forEach(([y1,y2,yt,lbl])=>{
+    svg.appendChild(el('path',{d:`M650 ${y1} L650 ${y2}`,fill:'none',stroke:'rgba(55,138,221,.4)','stroke-width':1.5,'stroke-dasharray':'4 3'}));
+    svg.appendChild(el('text',{x:645,y:yt,'text-anchor':'end','font-size':9,fill:'rgba(55,138,221,.7)','font-family':'var(--font-sans)'},lbl));
+  });
+}
+function clickEnc(i){document.getElementById('enc-info').textContent=ENC_COMPS[i].info;}
+
+const MLM_SENT=['The','policyholder','filed','a','claim','for','flood','damage','under','the','policy'];
+const MLM_PREDS={The:['A','An','This'],policyholder:['claimant','insured','customer'],filed:['submitted','lodged','reported'],a:['the','an','their'],claim:['request','application','report'],for:['relating to','covering','due to'],flood:['water','storm','fire'],damage:['loss','destruction','harm'],under:['per','within','according to'],the:['a','their','this'],policy:['contract','agreement','plan']};
+function initMLM(){
+  mlmMasked.clear();
+  const c=document.getElementById('mlm-toks');c.innerHTML='';
+  document.getElementById('mlm-total').textContent=MLM_SENT.length;
+  MLM_SENT.forEach((w,i)=>{const s=document.createElement('span');s.className='tok';s.id='mt'+i;s.textContent=w;s.onclick=()=>{mlmMasked.has(i)?mlmMasked.delete(i):mlmMasked.add(i);renderMLMToks();};c.appendChild(s);});
+  document.getElementById('mlm-preds').innerHTML='';
+  document.getElementById('split-bars').innerHTML=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:5px"><div style="width:52px;font-size:10px;color:var(--color-text-secondary)">80%</div><div style="flex:1;height:12px;background:var(--color-background-secondary);border-radius:2px;overflow:hidden"><div style="width:80%;height:100%;background:var(--color-background-danger);border-radius:2px"></div></div><div style="font-size:10px;color:var(--color-text-secondary);margin-left:6px">→ [MASK]</div></div><div style="display:flex;gap:6px;align-items:center;margin-bottom:5px"><div style="width:52px;font-size:10px;color:var(--color-text-secondary)">10%</div><div style="flex:1;height:12px;background:var(--color-background-secondary);border-radius:2px;overflow:hidden"><div style="width:10%;height:100%;background:var(--color-background-warning);border-radius:2px"></div></div><div style="font-size:10px;color:var(--color-text-secondary);margin-left:6px">→ random word</div></div><div style="display:flex;gap:6px;align-items:center"><div style="width:52px;font-size:10px;color:var(--color-text-secondary)">10%</div><div style="flex:1;height:12px;background:var(--color-background-secondary);border-radius:2px;overflow:hidden"><div style="width:10%;height:100%;background:var(--color-background-success);border-radius:2px"></div></div><div style="font-size:10px;color:var(--color-text-secondary);margin-left:6px">→ unchanged</div></div>`;
+}
+function renderMLMToks(){MLM_SENT.forEach((w,i)=>{const s=document.getElementById('mt'+i);s.className='tok'+(mlmMasked.has(i)?' mk':'');s.textContent=mlmMasked.has(i)?'[MASK]':w;});document.getElementById('mlm-count').textContent=mlmMasked.size;}
+function predictMLM(){
+  if(!mlmMasked.size){document.getElementById('mlm-preds').innerHTML='<div class="note">Click at least one token above to mask it first.</div>';return;}
+  let h='<div style="margin-bottom:8px"><div class="lbl">BERT predictions (bidirectional context)</div></div>';
+  mlmMasked.forEach(idx=>{const orig=MLM_SENT[idx];const preds=MLM_PREDS[orig]||['something','word','token'];const ctx=MLM_SENT.map((w,i)=>mlmMasked.has(i)?'[MASK]':w).join(' ');h+=`<div class="cw" style="margin-bottom:8px"><div style="font-size:11px;font-weight:500;margin-bottom:4px">Position ${idx+1}: "<span style="color:var(--color-text-danger)">[MASK]</span>" (original: "${orig}")</div><div style="font-size:10px;color:var(--color-text-tertiary);margin-bottom:8px">${ctx}</div><div style="display:flex;gap:6px;flex-wrap:wrap">${preds.map((p,i)=>`<span class="tok ${i===0?'ok':''}">${p}${i===0?' ✓':''}</span>`).join('')}</div></div>`;});
+  document.getElementById('mlm-preds').innerHTML=h;
+}
+function resetMLM(){mlmMasked.clear();renderMLMToks();document.getElementById('mlm-preds').innerHTML='';document.getElementById('mlm-count').textContent=0;}
+function autoMask(){mlmMasked.clear();const n=Math.max(1,Math.round(MLM_SENT.length*0.15));[...Array(MLM_SENT.length).keys()].sort(()=>Math.random()-.5).slice(0,n).forEach(i=>mlmMasked.add(i));renderMLMToks();document.getElementById('mlm-preds').innerHTML='';document.getElementById('mlm-count').textContent=mlmMasked.size;}
+
+const CTX=[
+  {word:'bank',sents:[{s:['I','went','to','the','bank','to','deposit','money'],target:4,meaning:'Financial institution',clues:['deposit','money'],vec:[.85,-.1,.3,.05,-.2,.7,.1,.4]},{s:['They','sat','on','the','grassy','bank','of','the','river'],target:5,meaning:'Riverbank / terrain',clues:['grassy','river'],vec:[-.3,.9,.1,.6,-.5,-.1,.8,.2]}]},
+  {word:'claim',sents:[{s:['She','filed','a','claim','for','flood','damage'],target:3,meaning:'Insurance claim',clues:['filed','flood','damage'],vec:[.7,.2,-.3,.85,.1,-.4,.6,.3]},{s:['He','made','a','claim','to','the','throne'],target:3,meaning:'Legal succession claim',clues:['throne'],vec:[.1,.6,.8,.3,-.7,.5,-.2,.9]}]},
+  {word:'cover',sents:[{s:['The','policy','does','not','cover','pre-existing','conditions'],target:4,meaning:'Insurance coverage',clues:['policy','conditions'],vec:[.9,.1,-.2,.7,.4,-.3,.5,.2]},{s:['She','used','a','blanket','to','cover','herself'],target:5,meaning:'Physical covering',clues:['blanket'],vec:[-.4,.7,.3,.1,.8,-.5,.2,.6]}]},
+  {word:'discharge',sents:[{s:['The','patient','received','a','discharge','from','hospital'],target:4,meaning:'Medical discharge',clues:['patient','hospital'],vec:[.2,.8,.5,-.3,.7,.1,-.4,.6]},{s:['The','policy','covers','accidental','discharge','of','firearms'],target:4,meaning:'Accidental discharge',clues:['policy','firearms'],vec:[.8,-.2,.4,.9,-.1,.6,.3,-.5]}]},
+];
+function drawCtx(){
+  const data=CTX[ctxWord];
+  const svg=document.getElementById('ctx-svg');svg.innerHTML='';
+  function el(tag,attrs,text){const e=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));if(text!=null)e.textContent=text;return e;}
+  const colors=['blue','amber'];
+  let sentHTML='';
+  data.sents.forEach((sent,si)=>{
+    sentHTML+=`<div style="margin-bottom:8px;padding:8px 10px;background:var(--color-background-secondary);border-radius:7px;font-size:12px"><span style="font-size:10px;font-weight:500;color:${si===0?'var(--color-text-info)':'var(--color-text-warning)'};margin-right:8px">Meaning ${si+1}: ${sent.meaning}</span><br>`;
+    sent.s.forEach((w,wi)=>{const isT=wi===sent.target;const isC=sent.clues.includes(w);const style=isT?`background:${si===0?'var(--color-background-info)':'var(--color-background-warning)'};color:${si===0?'var(--color-text-info)':'var(--color-text-warning)'};padding:1px 5px;border-radius:4px;font-weight:500`:isC?'color:var(--color-text-success);font-weight:500':'color:var(--color-text-secondary)';sentHTML+=`<span style="${style}">${w}</span> `;});
+    sentHTML+='</div>';
+  });
+  document.getElementById('ctx-sentences').innerHTML=sentHTML;
+  const barH=60,topY=30,lw=180;
+  data.sents.forEach((sent,si)=>{
+    const ox=si===0?30:340,oy=topY;const fill=colFill(colors[si]),stroke=colTxt(colors[si]);
+    svg.appendChild(el('text',{x:ox+lw/2,y:oy-8,'text-anchor':'middle','font-size':10,'font-weight':500,fill:stroke,'font-family':'var(--font-sans)'},sent.meaning));
+    svg.appendChild(el('rect',{x:ox,y:oy,width:lw,height:barH,rx:7,fill:'var(--color-background-secondary)',stroke:'var(--color-border-tertiary)','stroke-width':.5}));
+    sent.vec.forEach((v,vi)=>{const bx=ox+vi*(lw/8);const bh=Math.abs(v)*barH/2;const by=v>=0?oy+barH/2-bh:oy+barH/2;svg.appendChild(el('rect',{x:bx+1,y:by,width:lw/8-2,height:bh,rx:1,fill:v>=0?fill:'var(--color-background-secondary)',stroke,opacity:.85,'stroke-width':.3}));});
+    svg.appendChild(el('text',{x:ox+lw/2,y:oy+barH+14,'text-anchor':'middle','font-size':10,fill:'var(--color-text-tertiary)','font-family':'var(--font-sans)'},'768-dim vector (simplified)'));
+  });
+  svg.appendChild(el('text',{x:330,y:topY+barH/2,'text-anchor':'middle','dominant-baseline':'central','font-size':22,fill:'var(--color-text-danger)','font-family':'var(--font-sans)'},'≠'));
+  document.getElementById('ctx-note').textContent=`"${data.word}" meaning 1: ${data.sents[0].meaning} (clues: ${data.sents[0].clues.join(', ')}). "${data.word}" meaning 2: ${data.sents[1].meaning} (clues: ${data.sents[1].clues.join(', ')}). Same word, completely different 768-dim vectors — BERT's core superpower.`;
+}
+function showWord(i){ctxWord=i;[0,1,2,3].forEach(j=>{document.getElementById('wb'+j).className='btn'+(j===i?' p':'');});drawCtx();}
+
+window.addEventListener('load',()=>{
+  initNav();drawPipeline(-1);initEmb();initAttn();initMatrix();initMH();drawEncoder();initMLM();drawCtx();showWord(0);
+});
+</script>
+</body>
+</html>

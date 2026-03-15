@@ -66,6 +66,19 @@ Detailed interactive guide to BAAI's BGE-small-en-v1.5 embedding model: architec
 
 ---
 
+## BERT Guides
+
+### [BERT Full Interactive Diagram](bert/bert-full-diagram.html)
+End-to-end visual walkthrough of the BERT architecture — embeddings, encoder stack, attention heads, and how tokens flow through the model.
+
+### [BERT Tokenizer Deep Dive](bert/bert-tokenizer-deep-dive.html)
+Interactive exploration of WordPiece tokenization: how BERT splits text into subword tokens, handles unknown words, and builds vocabulary.
+
+### [BERT Encoder Block Deep Dive](bert/bert-encoder-deep-dive.html)
+Detailed visual breakdown of a single BERT encoder block — multi-head self-attention, feed-forward layers, residual connections, and layer normalization.
+
+---
+
 ## Prompts & Templates
 
 ### [Learning Prompt Template](prompts/Learning-prompt-template)
@@ -97,6 +110,9 @@ Research and planning notes for building a small language model customer support
 | [RAG Speed vs Quality](rag/rag-speed-quality.html) | RAG | Retrieval strategy tradeoffs |
 | [all-MiniLM-L6-v2 Guide](rag/all-MiniLM-L6-v2.html) | RAG | Embedding model visual explainer |
 | [BGE-small-en-v1.5 Guide](rag/bge-small-en-v1.5.html) | RAG | BAAI embedding model deep dive |
+| [BERT Full Diagram](bert/bert-full-diagram.html) | BERT | End-to-end BERT architecture walkthrough |
+| [BERT Tokenizer](bert/bert-tokenizer-deep-dive.html) | BERT | WordPiece tokenization interactive guide |
+| [BERT Encoder Block](bert/bert-encoder-deep-dive.html) | BERT | Single encoder block visual breakdown |
 | [Learning Prompt Template](prompts/Learning-prompt-template) | Prompt | Reusable learning plan template |
 
 ---
