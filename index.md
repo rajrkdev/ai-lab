@@ -82,6 +82,49 @@ Detailed visual breakdown of a single BERT encoder block — multi-head self-att
 
 ---
 
+## Cert Prep — Claude Certified Architect
+
+### [Domain Quiz — All Domains](cert/cert-quiz-all-domains.html)
+Interactive multiple-choice quiz covering all five exam domains: Agentic Architecture, Tool Design & MCP, Claude Code Config, Prompt Engineering, and Context Management.
+
+### [Visual Learning — All Domains](cert/cert-visual-learning.html)
+Comprehensive visual reference covering all five domains in a single tabbed interface — agentic loops, multi-agent patterns, hooks, tool design, config hierarchy, structured output, and context management.
+
+### [Domain 1: Agentic Architecture — Visual Guide](cert/d1-visual-agentic-architecture.html)
+Deep visual guide to Domain 1 (27% of exam): agentic loop, stop_reason handling, multi-agent patterns, context passing, hooks system, enforcement, decomposition, sessions, and anti-patterns.
+
+### [Domains 2–5: Visual Learning Guide](cert/d2-d5-visual-learning.html)
+Visual learning guide for Domains 2 through 5: Tool Design & MCP, Claude Code Config, Prompt & Output, and Context & Reliability.
+
+### [Complete Study Guide](cert/cert-complete-study-guide)
+Comprehensive study guide covering all 28 exam task statements with exact syntax, code examples, and the precise distinctions the exam tests. Covers all five domains with weighting.
+
+### [Gap-Fill Study Reference](cert/cert-gap-fill-reference)
+Targeted reference for 28 knowledge gaps across five domains — exact code definitions, JSON structures, API flows, and configuration syntax from official Anthropic documentation.
+
+### [Study Roadmap](cert/cert-study-roadmap)
+Detailed study roadmap with honest domain-by-domain assessment, priority weighting, and structured preparation plan for the Claude Certified Architect exam.
+
+### [Domain 1: Agentic Architecture — Study Guide](cert/domain-1-agentic-architecture)
+In-depth study guide for Domain 1 (27%): agentic loop internals, Claude Agent SDK specifics, multi-agent orchestration, hooks, and hub-and-spoke coordinator patterns.
+
+### [Domain 2: Tool Design & MCP — Study Guide](cert/domain-2-tool-design-mcp)
+Study guide for Domain 2 (18%): tool descriptions, isError flag, tool_choice, MCP configuration, built-in tools, and tool design best practices.
+
+### [Domain 3: Claude Code Config — Study Guide](cert/domain-3-claude-code-config)
+Study guide for Domain 3 (20%): CLAUDE.md hierarchy, Rules, Skills, settings.json, and the complete configuration precedence model.
+
+### [Domain 4: Prompt Engineering — Study Guide](cert/domain-4-prompt-engineering)
+Study guide for Domain 4 (20%): structured output, XML tags, chain-of-thought, few-shot examples, and prompt engineering patterns.
+
+### [Domain 5: Context Management & Reliability — Study Guide](cert/domain-5-context-reliability)
+Study guide for Domain 5 (15%): context window management, token budgets, reliability patterns, and long-horizon task handling.
+
+### [Master Study Guide](cert/master-study-guide)
+Concise master reference: exam format, passing score, domain weights, and quick-lookup summaries for all five domains.
+
+---
+
 ## Prompts & Templates
 
 ### [Learning Prompt Template](prompts/Learning-prompt-template)
@@ -117,6 +160,19 @@ Research and planning notes for building a small language model customer support
 | [BERT Full Diagram](bert/bert-full-diagram.html) | BERT | End-to-end BERT architecture walkthrough |
 | [BERT Tokenizer](bert/bert-tokenizer-deep-dive.html) | BERT | WordPiece tokenization interactive guide |
 | [BERT Encoder Block](bert/bert-encoder-deep-dive.html) | BERT | Single encoder block visual breakdown |
+| [Cert Quiz — All Domains](cert/cert-quiz-all-domains.html) | Cert | Interactive multiple-choice quiz for all 5 domains |
+| [Visual Learning — All Domains](cert/cert-visual-learning.html) | Cert | Tabbed visual reference for all 5 exam domains |
+| [D1 Visual — Agentic Architecture](cert/d1-visual-agentic-architecture.html) | Cert | Domain 1 deep visual guide (27% of exam) |
+| [D2–D5 Visual Learning](cert/d2-d5-visual-learning.html) | Cert | Visual guide for Domains 2–5 |
+| [Complete Study Guide](cert/cert-complete-study-guide) | Cert | All 28 task statements with code examples |
+| [Gap-Fill Reference](cert/cert-gap-fill-reference) | Cert | 28 knowledge gaps with exact syntax |
+| [Study Roadmap](cert/cert-study-roadmap) | Cert | Structured prep plan with domain assessment |
+| [Domain 1 Guide](cert/domain-1-agentic-architecture) | Cert | Agentic Architecture & Orchestration |
+| [Domain 2 Guide](cert/domain-2-tool-design-mcp) | Cert | Tool Design & MCP Integration |
+| [Domain 3 Guide](cert/domain-3-claude-code-config) | Cert | Claude Code Configuration |
+| [Domain 4 Guide](cert/domain-4-prompt-engineering) | Cert | Prompt Engineering & Structured Output |
+| [Domain 5 Guide](cert/domain-5-context-reliability) | Cert | Context Management & Reliability |
+| [Master Study Guide](cert/master-study-guide) | Cert | Exam format, weights, and quick summaries |
 | [Learning Prompt Template](prompts/Learning-prompt-template) | Prompt | Reusable learning plan template |
 
 ---
