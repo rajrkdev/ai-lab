@@ -20,7 +20,7 @@
       .then(src => {
         const code = src
           .replace(/^import\s+.*?from\s+['"]react['"];?\n?/gm, '')
-          .replace(/^export\s+default\s+function\s+App/, 'function App');
+          .replace(/^export\s+default\s+function\s+App/m, 'function App');
         const wrapped = `const {useState,useEffect,useRef,useMemo,useCallback}=React;\n${code}\nReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));`;
         const compiled = Babel.transform(wrapped, { presets: ['react'] }).code;
         const s = document.createElement('script');
