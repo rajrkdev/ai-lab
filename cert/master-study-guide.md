@@ -1,3 +1,8 @@
+---
+layout: default
+title: "Master Study Guide"
+---
+
 # Claude Certified Architect – Foundations: Master Study Guide
 
 ## Exam Quick Facts
@@ -7,6 +12,7 @@
 - **No penalty for guessing** — never leave a question blank
 
 ## Domain Weights
+
 | Domain | Weight | Your Focus Level |
 |---|---|---|
 | D1: Agentic Architecture & Orchestration | **27%** | ~16 questions — HIGHEST PRIORITY |

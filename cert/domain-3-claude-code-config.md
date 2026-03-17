@@ -1,3 +1,8 @@
+---
+layout: default
+title: "Domain 3: Claude Code Config"
+---
+
 # Domain 3: Claude Code Configuration & Workflows
 
 ## Weight: 20% of Exam

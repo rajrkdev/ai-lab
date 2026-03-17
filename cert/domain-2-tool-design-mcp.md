@@ -1,3 +1,8 @@
+---
+layout: default
+title: "Domain 2: Tool Design & MCP"
+---
+
 # Domain 2: Tool Design & MCP Integration
 
 ## Weight: 18% of Exam

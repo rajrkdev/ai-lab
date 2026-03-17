@@ -1,3 +1,8 @@
+---
+layout: default
+title: "Domain 5: Context & Reliability"
+---
+
 # Domain 5: Context Management & Reliability
 
 ## Weight: 15% of Exam

@@ -1,3 +1,8 @@
+---
+layout: default
+title: "Complete Study Guide"
+---
+
 # Claude Certified Architect – Foundations: Complete Study Guide
 
 The Claude Certified Architect exam tests deep, applied knowledge across five domains spanning agentic architecture, tool design, Claude Code configuration, prompt engineering, and context management. This guide covers **every task statement** with exact syntax, code examples, and the precise distinctions the exam tests. The five domains are weighted: Agentic Architecture (27%), Tool Design & MCP (18%), Claude Code Configuration (20%), Prompt Engineering & Structured Output (20%), and Context Management & Reliability (15%).

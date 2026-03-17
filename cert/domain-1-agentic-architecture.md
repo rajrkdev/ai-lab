@@ -1,3 +1,8 @@
+---
+layout: default
+title: "Domain 1: Agentic Architecture"
+---
+
 # Domain 1: Agentic Architecture & Orchestration
 
 ## Weight: 27% of Exam (Highest Priority Domain)

@@ -1,3 +1,8 @@
+---
+layout: default
+title: "Gap-Fill Study Reference"
+---
+
 # Claude Certified Architect — Complete Gap-Fill Study Reference
 
 **This reference covers all 28 knowledge gaps across the five exam domains**, providing exact code definitions, JSON structures, API flows, and configuration syntax sourced from official Anthropic documentation, the Agent SDK repos, and the MCP specification. Every section is organized by domain and gap number for fast lookup during study.

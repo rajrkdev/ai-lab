@@ -1,3 +1,8 @@
+---
+layout: default
+title: "Domain 4: Prompt Engineering"
+---
+
 # Domain 4: Prompt Engineering & Structured Output
 
 ## Weight: 20% of Exam

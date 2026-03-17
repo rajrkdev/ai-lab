@@ -1,3 +1,8 @@
+---
+layout: default
+title: "Study Roadmap"
+---
+
 # Claude Certified Architect – Foundations: Detailed Study Roadmap
 
 ## Your Starting Position
