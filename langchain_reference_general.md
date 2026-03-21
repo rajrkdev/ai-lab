@@ -1,5 +1,5 @@
 # LangChain: Deep Reference Guide
-### Architecture · Patterns · Production · v1.1
+### Architecture · Patterns · Production · v0.3
 
 > **Audience:** This guide assumes Python proficiency, familiarity with LLM APIs, and working knowledge of RAG systems. It does not hand-hold on Python syntax — it goes directly into LangChain mechanics, decision rationale, and production trade-offs. Every section connects back to real production use cases.
 
@@ -57,9 +57,9 @@ Most RAG applications primarily operate in the data and orchestration layers. Ag
 
 ## 2. Ecosystem & Package Architecture
 
-### The Package Split (v1.1 — Current as of March 2026)
+### The Package Split (v0.3 — Current as of 2024)
 
-LangChain v1.0, released October 2025 (v1.1 March 2026), completed a major restructuring that had been underway since v0.1. Understanding this split is mandatory before writing any code, because importing from the wrong package is a frequent source of `ImportError` and unexpected behaviour.
+LangChain v0.3, released in late 2024, completed a major restructuring that had been underway since v0.1. Understanding this split is mandatory before writing any code, because importing from the wrong package is a frequent source of `ImportError` and unexpected behaviour.
 
 ```
 langchain-core          # Base abstractions: Runnable, BaseMessage, BaseLanguageModel, BaseRetriever
@@ -93,21 +93,18 @@ For an MyApp-like stack, the minimal production install is:
 
 ```bash
 # Core + orchestration
-pip install langchain langchain-core langchain-text-splitters  # 1.0.3 / 1.2.20
+pip install langchain langchain-core langchain-text-splitters
 
 # Your specific providers
-pip install langchain-anthropic      # 1.4 — Claude claude-3-7-sonnet-latest, etc. (Sonnet for generation, Haiku for classification)
+pip install langchain-anthropic      # Claude (Sonnet for generation, Haiku for classification)
 pip install langchain-voyageai       # voyage-3.5 embeddings
-pip install langchain-chroma         # 1.1.0
+pip install langchain-chroma         # ChromaDB vectorstore
 
 # Advanced workflows
-pip install langgraph                # 1.1.0 — type-safe streaming v2, CRAG, multi-agent
+pip install langgraph                # Stateful agents, CRAG, multi-agent
 
 # Community integrations (loaders, BM25)
 pip install langchain-community      # PyPDFLoader, BM25Retriever, etc.
-# Legacy: all deprecated classes (LLMChain, AgentExecutor, old chains)
-# pip install langchain-classic  # preserves 0.x APIs unchanged
-
 
 # Cross-encoder for reranking (HuggingFace)
 pip install sentence-transformers    # cross-encoder/ms-marco-MiniLM-L-6-v2
@@ -115,14 +112,14 @@ pip install sentence-transformers    # cross-encoder/ms-marco-MiniLM-L-6-v2
 
 You can verify the installed versions with `pip show langchain langchain-core langgraph`. Version alignment matters — `langchain` and `langchain-core` should be from the same release cycle.
 
-### Version Compatibility Matrix (v1.1 — March 2026)
+### Version Compatibility Matrix (v0.3)
 
-| langchain | langchain-core | langgraph  | Python  |
+| langchain | langchain-core | langgraph | Python |
 |-----------|---------------|-----------|--------|
-| 1.0.x     | 1.2.x         | 1.1.x     | 3.10+  |
 | 0.3.x     | 0.3.x         | 0.2.x     | 3.9+   |
+| 0.2.x     | 0.2.x         | 0.1.x     | 3.8+   |
 
-The old `LLMChain`, `SequentialChain`, `ConversationalRetrievalChain`, and `RetrievalQA` classes have been **moved to `langchain-classic`** as of v1.0. They are no longer in the main `langchain` package. Every guide that uses these is outdated — LCEL and `create_agent` replace all of them.
+The old `LLMChain`, `SequentialChain`, `ConversationalRetrievalChain`, and `RetrievalQA` classes are all deprecated in v0.3. They still work but emit deprecation warnings. Every guide that uses these is outdated. LCEL replaces all of them.
 
 ---
 
@@ -300,27 +297,6 @@ print(response.content)          # text of the response
 print(response.response_metadata) # token counts, model name, stop reason
 print(response.usage_metadata)    # {"input_tokens": 42, "output_tokens": 156}
 ```
-
-
-### `init_chat_model` — Provider-Agnostic Factory (v1.0+)
-
-LangChain 1.0 introduced `init_chat_model` as the preferred provider-agnostic way
-to instantiate models — particularly useful in multi-provider or A/B-testing setups:
-
-```python
-from langchain.chat_models import init_chat_model
-
-# Infers provider from model string prefix
-model = init_chat_model("anthropic:claude-3-5-sonnet-20241022", temperature=0.0)
-model = init_chat_model("openai:gpt-4o", temperature=0.0)
-model = init_chat_model("google_genai:gemini-2.0-flash", temperature=0.0)
-
-# All produce a ChatModel implementing the same Runnable interface
-chain = prompt | model | StrOutputParser()
-```
-
-`ChatAnthropic(model=...)` remains fully valid and preferred when you need
-provider-specific parameters (e.g., `thinking`, `betas`).
 
 ### Model Selection Strategy for MyApp
 
@@ -1686,11 +1662,11 @@ retriever.docstore.mset(list(zip(doc_ids, chunks)))  # store original chunks by 
 
 ## 13. Memory & Conversation State
 
-### The Memory Landscape in LangChain v1.0+
+### The Memory Landscape in LangChain v0.3
 
-LangChain v1.0 moved the old `ConversationBufferMemory`, `ConversationSummaryMemory`, etc. classes to `langchain-classic`. The current approach is managing conversation history as message lists directly in chain inputs. The recommended pattern is to maintain `List[BaseMessage]` in your application state and pass it to `MessagesPlaceholder`.
+LangChain v0.3 effectively deprecated the old `ConversationBufferMemory`, `ConversationSummaryMemory`, etc. classes in favour of managing conversation history as message lists directly in chain inputs. The recommended pattern is to maintain `List[BaseMessage]` in your application state and pass it to `MessagesPlaceholder`.
 
-LangGraph's `InMemorySaver` and `SqliteSaver` are the production-grade memory solutions for agents.
+LangGraph's `MemorySaver` and `SqliteSaver` are the production-grade memory solutions for agents.
 
 ### Direct Message History Management (for LCEL chains)
 
@@ -1802,8 +1778,8 @@ The ReAct (Reason + Act) pattern works as follows. The conversation history accu
 ```python
 from langchain_anthropic import ChatAnthropic
 from langchain_core.tools import tool
-from langchain.agents import create_agent  # v1.0+
-from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.prebuilt import create_react_agent
+from langgraph.checkpoint.memory import MemorySaver
 
 # Define tools (see Section 15 for deep dive)
 @tool
@@ -1844,14 +1820,14 @@ def calculate_price_estimate(
     """
     ...
 
-# Create agent with InMemorySaver for conversation persistence
-agent = create_agent(
+# Create agent with MemorySaver for conversation persistence
+agent = create_react_agent(
     model=ChatAnthropic(
         model="claude-3-5-sonnet-20241022",
         max_tokens=4096,
     ),
     tools=[retrieve_record_info, get_record_by_number, calculate_price_estimate],
-    checkpointer=InMemorySaver(),
+    checkpointer=MemorySaver(),
     state_modifier="""You are MyApp, an expert your domain assistant.
 
 Guidelines:
@@ -2287,8 +2263,8 @@ graph.add_conditional_edges("grade", route_after_grading)
 graph.add_edge("rewrite", "retrieve")
 
 # ─── Compile ─────────────────────────────────────────────────────────────
-from langgraph.checkpoint.memory import InMemorySaver
-from langgraph.checkpoint.sqlite import SqliteSaver  # pip install langgraph-checkpoint-sqlite  # separate package since langgraph-checkpoint 4.x
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.sqlite import SqliteSaver
 
 # For production: SQLite or PostgreSQL checkpointer
 import sqlite3
@@ -2306,32 +2282,6 @@ app = graph.compile(
 # Requires: pip install pygraphviz
 print(app.get_graph().draw_mermaid())  # Mermaid.js diagram syntax
 app.get_graph().draw_png("graph.png")  # requires pygraphviz
-```
-
-### LangGraph 1.1 — Type-Safe Invocation (`version="v2"`)
-
-LangGraph 1.1 (March 2026) introduces opt-in type-safe streaming and invocation:
-
-```python
-from langgraph.types import GraphOutput, StreamPart
-
-# version="v2" → returns GraphOutput, not a plain dict
-result = app.invoke(input_state, config=config, version="v2")
-result.value       # the output state (dict, Pydantic model, or dataclass)
-result.interrupts  # tuple[Interrupt, ...], empty if none occurred
-
-# Streaming with version="v2" → yields typed StreamPart objects
-for part in app.stream(input_state, config=config, version="v2"):
-    print(part["type"])  # "values" | "updates" | "messages" | "checkpoint" | ...
-    print(part["data"])  # strongly-typed payload
-
-# version="v1" (default) — unchanged, all existing code works
-result = app.invoke(input_state, config=config)  # plain dict, backward-compatible
-```
-
-Old dict-style access on `GraphOutput` still works but emits a deprecation warning:
-```python
-result["messages"]  # works, delegates to result.value["messages"], but deprecated
 ```
 
 ### Inspecting and Resuming Graph State
@@ -2484,21 +2434,21 @@ from langgraph.graph import StateGraph, END, START
 from typing import Literal
 
 # ─── Worker agents (specialised sub-agents) ──────────────────────────────
-data_agent_runnable = create_agent(
+data_agent_runnable = create_react_agent(
     model=ChatAnthropic(model="claude-3-5-sonnet-20241022"),
     tools=[retrieve_record_info, search_spec_documents],
     state_modifier="You are the Data Specialist agent. Answer ONLY content coverage questions. Be precise and cite sources.",
     checkpointer=None,  # workers are stateless — supervisor maintains state
 )
 
-ops_agent_runnable = create_agent(
+ops_agent_runnable = create_react_agent(
     model=ChatAnthropic(model="claude-3-5-sonnet-20241022"),
     tools=[get_request_status, submit_request, get_required_documents],
     state_modifier="You are the Operations Specialist agent. Handle request submissions, status checks, and documentation requirements.",
     checkpointer=None,
 )
 
-pricing_agent_runnable = create_agent(
+pricing_agent_runnable = create_react_agent(
     model=ChatAnthropic(model="claude-3-5-sonnet-20241022"),
     tools=[calculate_price, get_product_pricing, apply_discount],
     state_modifier="You are the Pricing Specialist agent. Handle price calculations and pricing queries only.",
@@ -3003,6 +2953,6 @@ Your planned SQLite analytics layer (tracking queries, retrieval results, respon
 
 ---
 
-*End of LangChain Deep Reference Guide — v1.1 · General Edition · Updated March 2026*
+*End of LangChain Deep Reference Guide — v0.3 · General Edition*
 
 *Next recommended study: LangSmith evaluation cookbook, LangGraph Platform deployment, and the `MultiVectorRetriever` for Hierarchical RAG implementation.*
