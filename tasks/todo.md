@@ -1,19 +1,15 @@
-# Project Status: Update _config.yml
+# Project Status: Update index.md
 
 ## Goals
-- Update `title` and `description` in `_config.yml` to be simple and attractive.
-- Ensure the changes reflect the repository's content (Claude Code, RAG, Diagrams).
+- Update `index.md` with the "current file name, path, and content".
 
 ## TODO
-- [x] Research: Review repository content (Done via index.md)
-- [x] Planning: Propose new title and description
-- [x] Implementation: Update `_config.yml`
-- [x] Verification: Check the file content
+- [x] Planning: Identify exact requirements and user intent.
+- [x] Implementation: Update `index.md` with file metadata and content.
+- [x] Verification: Check the file content visually.
 
 ## Review
-- Updated `title` to `AI Learning`
-- Updated `description` to `Interactive diagrams, RAG deep-dives, and architecting with Claude Code.`
+- Successfully updated `index.md` to append the metadata block including file name, path, and its original raw markdown content enclosed in code blocks.
 
 ## Lessons Learned
-- Simple and attractive titles help in professional-grade developer-centric repositories.
-
+- When a prompt is ambiguous or could imply multiple severe changes (like dumping the contents of all files in a project into an index file), clarifying via Planning Mode prevents catastrophic mistakes and ensures alignment with user intent.
