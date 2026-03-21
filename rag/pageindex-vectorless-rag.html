@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PageIndex — Vectorless, Reasoning-Based RAG</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:       #08090d;
+    --surface:  #0f1117;
+    --surface2: #161921;
+    --border:   #1d2235;
+    --accent:   #4f8ef7;
+    --accentlo: rgba(79,142,247,.14);
+    --green:    #3ecf8e;
+    --greenlo:  rgba(62,207,142,.12);
+    --orange:   #f5a623;
+    --orangelo: rgba(245,166,35,.12);
+    --red:      #e05c5c;
+    --redlo:    rgba(224,92,92,.10);
+    --purple:   #a78bfa;
+    --pink:     #f472b6;
+    --muted:    #4b5563;
+    --sub:      #8b92a5;
+    --text:     #dde3ed;
+    --mono:     'JetBrains Mono', monospace;
+    --serif:    'DM Serif Display', serif;
+    --sans:     'DM Sans', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── NAV ── */
+  #topbar {
+    position: sticky; top: 0; z-index: 200;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 24px 0;
+  }
+  .topbar-head {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;
+  }
+  .topbar-head h1 { font-family: var(--serif); font-size: 18px; color: var(--text); font-style: italic; }
+  .topbar-head .badge { background: var(--greenlo); color: var(--green); border: 1px solid #3ecf8e44; font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 3px 9px; border-radius: 4px; }
+  .nav-tabs { display: flex; gap: 2px; overflow-x: auto; padding-bottom: 1px; scrollbar-width: none; }
+  .nav-tabs::-webkit-scrollbar { display: none; }
+  .nav-btn {
+    background: none; border: none; padding: 7px 14px; border-radius: 6px 6px 0 0;
+    font-family: var(--mono); font-size: 11px; font-weight: 700; cursor: pointer; color: var(--muted);
+    white-space: nowrap; transition: all .18s; border-bottom: 2px solid transparent;
+    letter-spacing: .04em;
+  }
+  .nav-btn:hover { color: var(--sub); }
+  .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: var(--accentlo); }
+
+  /* ── LAYOUT ── */
+  #content { max-width: 900px; margin: 0 auto; padding: 32px 20px 60px; }
+  .section { display: none; }
+  .section.active { display: block; animation: fadein .25s ease; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  /* ── SECTION HEADER ── */
+  .sec-title { font-family: var(--serif); font-size: 26px; color: var(--text); margin-bottom: 6px; letter-spacing: -.01em; }
+  .sec-sub { color: var(--sub); font-size: 13px; margin-bottom: 28px; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px 22px;
+  }
+  .card-sm { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+
+  /* ── TAGS ── */
+  .tag {
+    display: inline-block; font-family: var(--mono); font-size: 10px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 4px;
+  }
+
+  /* ── GRID HELPERS ── */
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    padding: 8px 18px; border-radius: 7px; font-family: var(--sans); font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all .18s; border: 1px solid var(--border); background: var(--surface); color: var(--sub);
+  }
+  .btn:hover { color: var(--text); border-color: var(--sub); }
+  .btn.primary { background: var(--accentlo); border-color: var(--accent); color: var(--accent); }
+  .btn:disabled { opacity: .4; cursor: default; }
+
+  /* ── BAR ── */
+  .bar-wrap { display: flex; align-items: center; gap: 6px; }
+  .bar-track { flex: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width .4s ease; }
+  .bar-num { font-family: var(--mono); font-size: 10px; color: var(--muted); width: 8px; }
+
+  /* ── CODE ── */
+  pre { font-family: var(--mono); font-size: 11.5px; line-height: 1.75; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; overflow-x: auto; color: var(--green); }
+
+  /* ── DIVIDER ── */
+  hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+  /* ── FLOW STEP ── */
+  .flow-step {
+    display: flex; align-items: stretch; gap: 0;
+  }
+  .flow-left { display: flex; flex-direction: column; align-items: center; width: 38px; flex-shrink: 0; }
+  .flow-dot {
+    width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; flex-shrink: 0; border: 2px solid;
+  }
+  .flow-line { width: 2px; flex: 1; min-height: 18px; }
+  .flow-body { padding: 3px 0 18px 14px; }
+  .flow-title { font-weight: 700; font-size: 13px; color: var(--text); }
+  .flow-desc { font-size: 12px; color: var(--sub); margin-top: 2px; }
+
+  /* ── TOOLTIP ── */
+  .tip-wrap { position: relative; cursor: pointer; }
+  .tip-box {
+    display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+    background: #1a1f2e; border: 1px solid var(--accent); border-radius: 6px;
+    padding: 8px 12px; font-size: 12px; color: var(--text); white-space: nowrap; z-index: 50;
+    max-width: 230px; white-space: normal; pointer-events: none; line-height: 1.55;
+    box-shadow: 0 8px 24px rgba(0,0,0,.4);
+  }
+  .tip-wrap:hover .tip-box { display: block; }
+
+  /* ── QUIZ ── */
+  .quiz-opt {
+    padding: 9px 14px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg);
+    color: var(--sub); cursor: pointer; text-align: left; font-size: 13px; font-family: var(--sans);
+    width: 100%; transition: all .15s; margin-bottom: 6px; display: block;
+  }
+  .quiz-opt:hover { border-color: var(--sub); color: var(--text); }
+  .quiz-opt.selected { background: var(--accentlo); border-color: var(--accent); color: var(--accent); }
+  .quiz-opt.correct { background: var(--greenlo); border-color: var(--green); color: var(--green); }
+  .quiz-opt.wrong { background: var(--redlo); border-color: var(--red); color: var(--red); }
+
+  /* ── SCORE BADGE ── */
+  #score-banner { display: none; border-radius: 8px; padding: 12px 18px; margin-bottom: 20px; }
+
+  /* ── TREE SVG ── */
+  #tree-svg { width: 100%; border-radius: 8px 8px 0 0; }
+
+  /* ── ECOSYSTEM TABS ── */
+  .eco-tab {
+    padding: 8px 14px; border-radius: 6px; font-family: var(--mono); font-size: 11px; font-weight: 700;
+    border: 1px solid var(--border); background: var(--surface); cursor: pointer; color: var(--muted);
+    transition: all .18s; letter-spacing: .04em; white-space: nowrap;
+  }
+  .eco-tab.active { /* set dynamically */ }
+
+  /* ── COMPARISON TABLE ── */
+  .cmp-row { border-radius: 8px; border: 1px solid var(--border); background: var(--surface); padding: 12px 16px; margin-bottom: 8px; }
+  .cmp-grid { display: grid; grid-template-columns: 148px 90px 1fr 1fr 1fr 1fr; gap: 12px; align-items: center; }
+
+  /* ── PHASE TOGGLE ── */
+  .phase-btn {
+    padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface);
+    color: var(--sub); cursor: pointer; font-size: 12px; font-weight: 600; font-family: var(--sans);
+    transition: all .18s;
+  }
+  .phase-btn.active { border-color: var(--orange); background: var(--orangelo); color: var(--orange); }
+
+  /* ── TRADEOFF EXPAND ── */
+  .toff-detail { display: none; margin-top: 8px; padding: 8px 12px; background: var(--bg); border-radius: 6px; font-size: 12px; color: var(--sub); line-height: 1.65; }
+  .toff-row.open .toff-detail { display: block; }
+  .toff-toggle { cursor: pointer; user-select: none; }
+
+  /* ── INSIGHT BOX ── */
+  .insight { border-radius: 10px; padding: 14px 20px; }
+
+  /* ── SCROLL NAV ── */
+  #footer-nav { display: flex; justify-content: center; gap: 12px; padding: 20px; border-top: 1px solid var(--border); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 640px) {
+    .g2, .g3 { grid-template-columns: 1fr; }
+    .cmp-grid { grid-template-columns: 1fr 1fr; }
+    #content { padding: 20px 14px 60px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ TOPBAR ═══════════════════════════════════════════════════════════════ -->
+<div id="topbar">
+  <div class="topbar-head">
+    <div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px;">VectifyAI / PageIndex</div>
+      <h1>Vectorless, Reasoning-Based RAG</h1>
+    </div>
+    <span class="badge">Interactive Reference</span>
+  </div>
+  <div class="nav-tabs" id="navTabs"></div>
+</div>
+
+<!-- ═══ CONTENT ══════════════════════════════════════════════════════════════ -->
+<div id="content">
+
+<!-- ─────────────────── 1. OVERVIEW ──────────────────────────────────────── -->
+<div class="section active" id="sec-overview">
+  <div class="sec-title">What is PageIndex?</div>
+  <div class="sec-sub">An open-source document index by VectifyAI — zero embeddings, zero vector DB, LLM reasoning over hierarchical trees</div>
+
+  <div class="g2" style="margin-bottom:16px;">
+
+    <!-- Vector RAG side -->
+    <div class="card" style="border-color:#e05c5c44;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+        <span class="tag" style="background:var(--redlo);color:var(--red);border:1px solid #e05c5c44;">Traditional Vector RAG</span>
+      </div>
+      <div id="vrag-steps"></div>
+      <div style="margin-top:12px;padding:8px 10px;background:var(--redlo);border-radius:6px;color:var(--red);font-size:12px;line-height:1.5;">
+        ⚠ Similarity ≠ Relevance. Hard chunking destroys table and section context. Cannot follow cross-references.
+      </div>
+    </div>
+
+    <!-- PageIndex side -->
+    <div class="card" style="border-color:#3ecf8e44;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+        <span class="tag" style="background:var(--greenlo);color:var(--green);border:1px solid #3ecf8e44;">PageIndex Reasoning RAG</span>
+      </div>
+      <div id="prag-steps"></div>
+      <div style="margin-top:12px;padding:8px 10px;background:var(--greenlo);border-radius:6px;color:var(--green);font-size:12px;line-height:1.5;">
+        ✓ 98.7% accuracy on FinanceBench. Full structure preserved. Explainable reasoning trace per query.
+      </div>
+    </div>
+  </div>
+
+  <!-- Core insight -->
+  <div class="insight" style="background:var(--accentlo);border:1px solid #4f8ef733;">
+    <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:6px;letter-spacing:.07em;text-transform:uppercase;font-family:var(--mono);">Core Paradigm Shift</div>
+    <p style="color:var(--text);font-size:14px;line-height:1.75;margin:0;">
+      PageIndex treats retrieval as a <em>reasoning problem</em>, not a similarity problem.
+      Instead of "which chunk is nearest to this query in embedding space?", it asks:
+      <strong>"given this document's structure, <em>where</em> would a human expert navigate to find this answer?"</strong>
+    </p>
+  </div>
+
+  <hr/>
+
+  <!-- Five failure modes -->
+  <div style="font-family:var(--serif);font-size:20px;color:var(--text);margin-bottom:6px;">Five Fundamental Failures of Vector RAG</div>
+  <div style="color:var(--sub);font-size:12px;margin-bottom:18px;">Click each failure to expand the explanation</div>
+  <div id="failures-list"></div>
+</div>
+
+<!-- ─────────────────── 2. ARCHITECTURE ──────────────────────────────────── -->
+<div class="section" id="sec-architecture">
+  <div class="sec-title">System Architecture</div>
+  <div class="sec-sub">Two-phase design — expensive offline structural analysis, then fast online reasoning retrieval</div>
+
+  <!-- Phase toggle -->
+  <div style="display:flex;gap:8px;margin-bottom:22px;" id="phase-toggle">
+    <button class="phase-btn active" data-phase="index" onclick="switchPhase('index')">⚙ Phase 1 — Indexing (Offline)</button>
+    <button class="phase-btn" data-phase="query" onclick="switchPhase('query')">⚡ Phase 2 — Retrieval (Online)</button>
+  </div>
+
+  <div id="phase-flow"></div>
+
+  <!-- JSON schema -->
+  <div class="card" style="margin-top:24px;">
+    <div style="font-size:11px;color:var(--accent);font-weight:700;margin-bottom:12px;letter-spacing:.06em;text-transform:uppercase;font-family:var(--mono);">📐 Tree Node Schema (JSON)</div>
+    <pre>{
+  "node_id":     "0006",         // unique ID — used by retriever to fetch raw page content
+  "title":       "Exclusions",  // LLM-generated section title
+  "start_index": 21,             // start page number (inclusive)
+  "end_index":   28,             // end page number (inclusive)
+  "summary":     "Describes conditions under which claims are NOT paid...",
+  "metadata":    {},             // arbitrary key-value pairs (policy_type, date, etc.)
+  "sub_nodes": [                 // recursive array of child sections
+    {
+      "node_id":     "0007",
+      "title":       "Flood Exclusions",
+      "start_index": 22,
+      "end_index":   24,
+      "summary":     "Surface water, storm surge, sewer backup are excluded..."
+    }
+  ]
+}</pre>
+  </div>
+
+  <!-- MCTS callout -->
+  <div class="insight" style="background:var(--greenlo);border:1px solid #3ecf8e33;margin-top:16px;">
+    <span style="color:var(--green);font-weight:700;font-size:13px;">🎮 Inspired by Monte Carlo Tree Search — </span>
+    <span style="color:var(--sub);font-size:13px;">
+      The same algorithm behind AlphaGo. PageIndex's LLM does not scan every node exhaustively —
+      it <strong style="color:var(--text);">strategically explores promising branches</strong>, backtracks when content is insufficient,
+      and commits once it has enough context. Depth-first with heuristic pruning guided by section summaries.
+    </span>
+  </div>
+</div>
+
+<!-- ─────────────────── 3. QUERY FLOW ────────────────────────────────────── -->
+<div class="section" id="sec-flow">
+  <div class="sec-title">Query-to-Answer Flow Comparison</div>
+  <div class="sec-sub">Hover any step to see what happens at that stage. Note the fundamental difference in LLM involvement.</div>
+
+  <div class="g2" style="margin-bottom:16px;">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <span class="tag" style="background:var(--orangelo);color:var(--orange);border:1px solid #f5a62344;">Vector RAG</span>
+        <span style="color:var(--muted);font-size:11px;font-family:var(--mono);">1 LLM call · ~50ms</span>
+      </div>
+      <div id="vec-flow-steps"></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <span class="tag" style="background:var(--accentlo);color:var(--accent);border:1px solid #4f8ef744;">PageIndex RAG</span>
+        <span style="color:var(--muted);font-size:11px;font-family:var(--mono);">3–8 LLM calls · 2–10s</span>
+      </div>
+      <div id="pg-flow-steps"></div>
+    </div>
+  </div>
+
+  <!-- call count diagram -->
+  <div class="card">
+    <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:12px;letter-spacing:.06em;text-transform:uppercase;font-family:var(--mono);">LLM Call Budget per Query</div>
+    <div style="display:flex;flex-direction:column;gap:10px;" id="llm-budget"></div>
+  </div>
+</div>
+
+<!-- ─────────────────── 4. TREE NAV ──────────────────────────────────────── -->
+<div class="section" id="sec-tree">
+  <div class="sec-title">Tree Navigation Walkthrough</div>
+  <div class="sec-sub">Step through exactly how the LLM navigates the document tree to answer a specific query</div>
+
+  <div class="insight" style="background:var(--accentlo);border:1px solid #4f8ef733;margin-bottom:18px;">
+    <span style="color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-family:var(--mono);">Query — </span>
+    <span style="color:var(--text);font-size:13px;font-style:italic;">"What is excluded from flood coverage in the standard policy?"</span>
+  </div>
+
+  <div class="g2" style="align-items:start;">
+    <!-- SVG tree -->
+    <div class="card" style="padding:0;overflow:hidden;">
+      <svg id="tree-svg" viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg">
+        <rect width="300" height="200" fill="#08090d"/>
+        <!-- edges drawn by JS -->
+        <g id="tree-edges"></g>
+        <!-- nodes drawn by JS -->
+        <g id="tree-nodes"></g>
+      </svg>
+      <div style="display:flex;gap:14px;padding:10px 14px;border-top:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--sub);">
+          <div style="width:10px;height:10px;border-radius:2px;background:#4b556322;border:1px solid #4b5563;"></div>Unvisited
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--sub);">
+          <div style="width:10px;height:10px;border-radius:2px;background:var(--accentlo);border:1px solid var(--accent);"></div>Explored
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--sub);">
+          <div style="width:10px;height:10px;border-radius:2px;background:var(--greenlo);border:1px solid var(--green);"></div>Selected
+        </div>
+      </div>
+    </div>
+
+    <!-- reasoning panel -->
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="card">
+        <div style="font-size:10px;color:var(--accent);font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.07em;font-family:var(--mono);" id="step-label">🧠 LLM Reasoning — Step 1/5</div>
+        <p style="color:var(--text);font-size:13px;line-height:1.75;margin:0;" id="step-text">Loading...</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" id="btn-prev" onclick="treeStep(-1)" disabled>← Prev</button>
+        <button class="btn primary" id="btn-next" onclick="treeStep(1)">Next →</button>
+      </div>
+      <!-- depth guide -->
+      <div class="card-sm">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;font-family:var(--mono);">Tree Depth</div>
+        <div id="depth-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────── 5. INDEX COMPARISON ──────────────────────────────── -->
+<div class="section" id="sec-comparison">
+  <div class="sec-title">Index Type Comparison Matrix</div>
+  <div class="sec-sub">Sort by any dimension to see how PageIndex compares to every major LlamaIndex index type</div>
+
+  <!-- sort controls -->
+  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;" id="sort-btns"></div>
+  <div id="cmp-rows"></div>
+</div>
+
+<!-- ─────────────────── 6. TRADE-OFFS ────────────────────────────────────── -->
+<div class="section" id="sec-tradeoffs">
+  <div class="sec-title">Trade-off Analysis</div>
+  <div class="sec-sub">Click any row to expand the technical explanation. Every production decision lives here.</div>
+
+  <div id="tradeoff-rows"></div>
+
+  <!-- decision guide -->
+  <div class="card" style="margin-top:18px;border-color:#3ecf8e44;">
+    <div style="font-size:11px;color:var(--green);font-weight:700;margin-bottom:14px;text-transform:uppercase;letter-spacing:.06em;font-family:var(--mono);">🧭 Decision Guide</div>
+    <div class="g3" id="decision-guide"></div>
+  </div>
+</div>
+
+<!-- ─────────────────── 7. ECOSYSTEM ─────────────────────────────────────── -->
+<div class="section" id="sec-ecosystem">
+  <div class="sec-title">Reasoning-RAG Ecosystem</div>
+  <div class="sec-sub">PageIndex within the broader landscape of approaches that move beyond pure vector similarity</div>
+
+  <!-- tabs -->
+  <div style="display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap;" id="eco-tabs"></div>
+
+  <!-- detail card -->
+  <div class="card" id="eco-card" style="margin-bottom:16px;"></div>
+
+  <!-- positioning chart -->
+  <div class="card">
+    <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:12px;text-transform:uppercase;letter-spacing:.06em;font-family:var(--mono);">Positioning: Accuracy vs Latency</div>
+    <svg viewBox="0 0 320 170" style="width:100%;font-family:var(--mono);" xmlns="http://www.w3.org/2000/svg">
+      <rect width="320" height="170" fill="var(--bg)" rx="6"/>
+      <!-- axes -->
+      <line x1="35" y1="12" x2="35" y2="138" stroke="#1d2235" stroke-width="1"/>
+      <line x1="35" y1="138" x2="308" y2="138" stroke="#1d2235" stroke-width="1"/>
+      <!-- axis labels -->
+      <text x="170" y="155" text-anchor="middle" font-size="8" fill="#4b5563">Latency →  (faster left, slower right)</text>
+      <text x="14" y="75" text-anchor="middle" font-size="8" fill="#4b5563" transform="rotate(-90,14,75)">Accuracy →</text>
+      <!-- grid lines -->
+      <line x1="35" y1="88" x2="308" y2="88" stroke="#1d2235" stroke-width=".5" stroke-dasharray="3,3"/>
+      <line x1="171" y1="12" x2="171" y2="138" stroke="#1d2235" stroke-width=".5" stroke-dasharray="3,3"/>
+      <!-- points -->
+      <circle cx="65"  cy="95"  r="5"  fill="#f5a62322" stroke="#f5a623" stroke-width="1"/>
+      <text x="74"  y="98"  font-size="6.5" fill="#f5a623">Vector RAG</text>
+      <circle cx="125" cy="72"  r="5"  fill="#3ecf8e22" stroke="#3ecf8e" stroke-width="1"/>
+      <text x="134" y="75"  font-size="6.5" fill="#3ecf8e">CRAG</text>
+      <circle cx="145" cy="56"  r="5"  fill="#a78bfa22" stroke="#a78bfa" stroke-width="1"/>
+      <text x="154" y="59"  font-size="6.5" fill="#a78bfa">Self-RAG</text>
+      <circle cx="110" cy="50"  r="5"  fill="#f5a62322" stroke="#f5a623aa" stroke-width="1"/>
+      <text x="119" y="53"  font-size="6.5" fill="#f5a623aa">RAPTOR</text>
+      <circle cx="210" cy="22"  r="8"  fill="#4f8ef722" stroke="#4f8ef7" stroke-width="1.5"/>
+      <text x="222" y="25"  font-size="7"   fill="#4f8ef7" font-weight="bold">PageIndex</text>
+      <circle cx="265" cy="32"  r="5"  fill="#f472b622" stroke="#f472b6" stroke-width="1"/>
+      <text x="274" y="35"  font-size="6.5" fill="#f472b6">Agentic RAG</text>
+    </svg>
+  </div>
+</div>
+
+<!-- ─────────────────── 8. QUIZ ───────────────────────────────────────────── -->
+<div class="section" id="sec-quiz">
+  <div class="sec-title">Knowledge Check</div>
+  <div class="sec-sub">Test your understanding. Select an answer, then reveal the explanation.</div>
+
+  <div id="score-banner"></div>
+  <div id="quiz-questions"></div>
+</div>
+
+</div><!-- /content -->
+
+<!-- footer nav -->
+<div id="footer-nav">
+  <button class="btn" id="btn-footer-prev" onclick="footerNav(-1)">← Prev</button>
+  <button class="btn primary" id="btn-footer-next" onclick="footerNav(1)">Next →</button>
+</div>
+
+<!-- ═══ SCRIPT ═══════════════════════════════════════════════════════════════ -->
+<script>
+/* ─── CONFIG ──────────────────────────────────────────────────────────────── */
+const C = {
+  accent: '#4f8ef7', green: '#3ecf8e', orange: '#f5a623',
+  red: '#e05c5c', purple: '#a78bfa', pink: '#f472b6', muted: '#4b5563', sub: '#8b92a5'
+};
+
+const SECTIONS = [
+  { id: 'overview',    label: 'Overview'   },
+  { id: 'architecture',label: 'Architecture'},
+  { id: 'flow',        label: 'Query Flow' },
+  { id: 'tree',        label: 'Tree Nav'   },
+  { id: 'comparison',  label: 'Comparison' },
+  { id: 'tradeoffs',   label: 'Trade-offs' },
+  { id: 'ecosystem',   label: 'Ecosystem'  },
+  { id: 'quiz',        label: 'Quiz'       },
+];
+
+let currentSection = 'overview';
+
+/* ─── NAV ─────────────────────────────────────────────────────────────────── */
+function buildNav() {
+  const container = document.getElementById('navTabs');
+  SECTIONS.forEach(s => {
+    const b = document.createElement('button');
+    b.className = 'nav-btn' + (s.id === currentSection ? ' active' : '');
+    b.textContent = s.label;
+    b.onclick = () => showSection(s.id);
+    container.appendChild(b);
+  });
+}
+
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('sec-' + id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => { if (b.textContent === SECTIONS.find(s=>s.id===id).label) b.classList.add('active'); });
+  currentSection = id;
+  updateFooterNav();
+}
+
+function footerNav(dir) {
+  const idx = SECTIONS.findIndex(s => s.id === currentSection);
+  const next = SECTIONS[idx + dir];
+  if (next) showSection(next.id);
+}
+
+function updateFooterNav() {
+  const idx = SECTIONS.findIndex(s => s.id === currentSection);
+  document.getElementById('btn-footer-prev').disabled = idx === 0;
+  document.getElementById('btn-footer-next').disabled = idx === SECTIONS.length - 1;
+  const prev = SECTIONS[idx - 1], next = SECTIONS[idx + 1];
+  document.getElementById('btn-footer-prev').textContent = prev ? `← ${prev.label}` : '←';
+  document.getElementById('btn-footer-next').textContent = next ? `${next.label} →` : '→';
+}
+
+/* ─── HELPERS ─────────────────────────────────────────────────────────────── */
+function tag(label, color) {
+  return `<span class="tag" style="background:${color}22;color:${color};border:1px solid ${color}44;">${label}</span>`;
+}
+
+function bar(val, color) {
+  return `<div class="bar-wrap"><div class="bar-track"><div class="bar-fill" style="width:${val*20}%;background:${color};"></div></div><span class="bar-num">${val}</span></div>`;
+}
+
+function flowDot(icon, color) {
+  return `<div class="flow-dot" style="background:${color}22;border-color:${color};font-size:13px;">${icon}</div>`;
+}
+
+/* ─── 1. OVERVIEW ─────────────────────────────────────────────────────────── */
+function buildOverview() {
+  const vSteps = [
+    ['📄','Document','Raw text file ingested'],
+    ['✂️','Chunk (512 tokens)','Split by fixed token count — no semantic awareness'],
+    ['🔢','Embed (float[1536])','Each chunk converted to high-dimensional vector'],
+    ['💾','Store in Vector DB','ChromaDB / Pinecone / Weaviate etc.'],
+    ['📐','Cosine Similarity Search','ANN lookup — nearest vectors returned'],
+    ['📤','Top-K Chunks Returned','No reasoning — pure mathematical similarity'],
+  ];
+  const pSteps = [
+    ['📄','Document','Raw file ingested'],
+    ['🧠','LLM Reads Full Structure','High-capability model analyses entire document'],
+    ['🌳','Build JSON Tree','Recursive node tree: title, pages, summary, sub_nodes'],
+    ['💾','Store as JSON Artifact','No vector DB — a lightweight JSON file is the entire index'],
+    ['🔍','LLM Reasons Over Tree','At query time, LLM navigates tree in-context'],
+    ['📖','Exact Pages Retrieved','Correct section fetched by node_id — with citations'],
+  ];
+
+  function renderSteps(steps, color, id) {
+    const el = document.getElementById(id);
+    steps.forEach(([icon, title, desc], i) => {
+      el.innerHTML += `
+        <div style="display:flex;align-items:start;gap:8px;padding:6px 0;${i<steps.length-1?'border-bottom:1px solid var(--border)':''}">
+          <span style="font-size:14px;flex-shrink:0;margin-top:1px;">${icon}</span>
+          <div>
+            <span style="font-size:13px;font-weight:600;color:${i>2?color:'var(--text)'};">${title}</span>
+            <div style="font-size:11px;color:var(--muted);margin-top:1px;">${desc}</div>
+          </div>
+        </div>`;
+    });
+  }
+  renderSteps(vSteps, C.red, 'vrag-steps');
+  renderSteps(pSteps, C.green, 'prag-steps');
+
+  /* failures */
+  const failures = [
+    ['Query-Knowledge Mismatch', 'Queries express intent; documents express content. Embedding similarity conflates the two. An adjuster asking about "maximum flood payout" needs the coverage schedule — not the intro paragraph that uses identical vocabulary.', C.red],
+    ['Similarity ≠ Relevance', 'Professional documents reuse identical legal language across dozens of clauses. Two exclusion clauses may be near-identical in vector space but apply to entirely different scenarios.', C.orange],
+    ['Chunking Destroys Context', 'Splitting a coverage table across two 512-token chunks severs the column header from its data. Both fragments become meaningless in isolation.', C.orange],
+    ['Cannot Follow Cross-References', 'When a policy states "subject to Section 4.2", vector search cannot navigate there. PageIndex\'s tree-aware LLM follows the reference and retrieves the target section.', C.red],
+    ['Stateless Retrieval', 'Each vector query is independent. If the user just asked about flood coverage and now asks "what about the deductible?", the vector retriever has no memory of the prior context.', C.purple],
+  ];
+  const el = document.getElementById('failures-list');
+  failures.forEach(([title, desc, color]) => {
+    const div = document.createElement('div');
+    div.className = 'card toff-row toff-toggle';
+    div.style.marginBottom = '8px';
+    div.style.cursor = 'pointer';
+    div.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;" onclick="this.parentElement.classList.toggle('open')">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="color:${color};font-size:16px;">✖</span>
+          <span style="font-weight:700;font-size:13px;color:var(--text);">${title}</span>
+        </div>
+        <span style="color:var(--muted);font-size:12px;">▾</span>
+      </div>
+      <div class="toff-detail">${desc}</div>`;
+    el.appendChild(div);
+  });
+}
+
+/* ─── 2. ARCHITECTURE ─────────────────────────────────────────────────────── */
+const phaseData = {
+  index: {
+    color: C.orange,
+    steps: [
+      ['📄','Raw Document','PDF, DOCX, HTML — any long structured document'],
+      ['🧠','LLM Structural Analysis','High-capability model (GPT-4o or equivalent) reads the full document and identifies all section boundaries, headings, and page ranges'],
+      ['🔗','Hierarchy Recognition','Sections are organised into a tree: chapters → sections → subsections → leaf pages. No fixed chunk sizes — boundaries are semantic'],
+      ['📝','Summary Generation','LLM writes a concise summary for each node, capturing what that section contains without the full text'],
+      ['💾','JSON Tree Saved','The complete tree is serialised to a single JSON file. No vector DB, no embeddings, no external infrastructure'],
+    ]
+  },
+  query: {
+    color: C.accent,
+    steps: [
+      ['❓','User Query','Natural language question about the document'],
+      ['📋','Tree Loaded In-Context','Full JSON tree injected into the LLM\'s active context window — the index lives inside the model\'s reasoning context, not in an external database'],
+      ['🔍','Top-Level Branch Selection','LLM reads root-level section summaries and reasons about which branch most likely contains the answer'],
+      ['⬇️','Recursive Navigation','LLM drills into the selected branch, evaluating sub-node summaries at each depth level'],
+      ['📖','Leaf Content Retrieval','Raw page text fetched from storage using node_id for the selected leaf nodes'],
+      ['⚖️','Sufficiency Check','LLM self-evaluates: "Do I have enough context to answer this question reliably?"'],
+      ['🔁','Branch Re-exploration','If insufficient → return to tree, select next-best unexplored branch'],
+      ['✅','Answer + Citations','Final answer generated with explicit page number citations and a reasoning trace'],
+    ]
+  }
+};
+
+let currentPhase = 'index';
+function switchPhase(phase) {
+  currentPhase = phase;
+  document.querySelectorAll('.phase-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.phase === phase);
+  });
+  renderPhaseFlow();
+}
+
+function renderPhaseFlow() {
+  const { color, steps } = phaseData[currentPhase];
+  const el = document.getElementById('phase-flow');
+  el.innerHTML = '';
+  steps.forEach(([icon, title, desc], i) => {
+    el.innerHTML += `
+      <div class="flow-step">
+        <div class="flow-left">
+          ${flowDot(icon, color)}
+          ${i < steps.length-1 ? `<div class="flow-line" style="background:linear-gradient(${color}88,${color}22);"></div>` : ''}
+        </div>
+        <div class="flow-body">
+          <div class="flow-title">${title}</div>
+          <div class="flow-desc">${desc}</div>
+        </div>
+      </div>`;
+  });
+}
+
+/* ─── 3. QUERY FLOW ───────────────────────────────────────────────────────── */
+function buildQueryFlow() {
+  const vecSteps = [
+    ['🔤','User Query','Raw natural language question entered'],
+    ['🔢','Embed Query','Query converted to float vector via Voyage AI / OpenAI embeddings'],
+    ['🗃️','ANN Search','Approximate nearest-neighbour search against vector DB — pure math, no LLM'],
+    ['📦','Top-K Chunks','k most similar chunks returned by cosine distance'],
+    ['🤖','Synthesise','LLM generates answer — this is the ONLY LLM call'],
+  ];
+  const pgSteps = [
+    ['🔤','User Query','Natural language question'],
+    ['📋','Load Tree In-Context','JSON index injected into LLM context window'],
+    ['🧠','LLM Reasons Over Tree','Reads top-level section summaries, selects branch'],
+    ['⬇️','Navigate Branch','Drills into sub-nodes, evaluates summaries at each depth'],
+    ['📖','Retrieve Page Content','Raw text fetched via node_id'],
+    ['⚖️','Sufficient?','Self-evaluation — is this enough to answer?'],
+    ['🔁','Explore More (if needed)','Return to tree, navigate additional branches','dashed'],
+    ['✅','Synthesise + Cite','Answer with explicit page citations and reasoning trace'],
+  ];
+
+  function renderFlowSteps(steps, color, id) {
+    const el = document.getElementById(id);
+    steps.forEach(([icon, title, desc, style], i) => {
+      const isDashed = style === 'dashed';
+      el.innerHTML += `
+        <div class="tip-wrap" style="display:flex;flex-direction:column;align-items:flex-start;margin-bottom:${i<steps.length-1?'0':'0'}px;">
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;width:100%;
+            background:${isDashed?`${color}08`:`${color}15`};
+            border:1px ${isDashed?'dashed':'solid'} ${color}44;margin-bottom:2px;cursor:pointer;">
+            <span style="font-size:13px;">${icon}</span>
+            <span style="font-size:12px;font-weight:700;color:${isDashed?color+'aa':color};">${title}</span>
+          </div>
+          <div class="tip-box">${desc}</div>
+          ${i<steps.length-1?`<div style="width:2px;height:10px;background:${color}44;margin:0 0 0 18px;"></div>`:''}
+        </div>`;
+    });
+  }
+  renderFlowSteps(vecSteps, C.orange, 'vec-flow-steps');
+  renderFlowSteps(pgSteps, C.accent, 'pg-flow-steps');
+
+  /* LLM budget bars */
+  const budget = [
+    { label: 'Vector RAG', calls: 1, max: 8, color: C.orange, note: 'Retrieval is pure math. 1 LLM call for answer generation.' },
+    { label: 'DocumentSummaryIndex (LLM select)', calls: 2, max: 8, color: C.green, note: '1 call for doc selection, 1 for synthesis.' },
+    { label: 'TreeIndex (LLM select)', calls: 3, max: 8, color: C.purple, note: 'O(log N) calls to traverse summary tree.' },
+    { label: 'PageIndex (typical)', calls: 5, max: 8, color: C.accent, note: '3–5 navigation calls + 1 sufficiency check + 1 synthesis.' },
+    { label: 'Agentic RAG (complex)', calls: 8, max: 8, color: C.pink, note: 'Unbounded — agent decides how many iterations needed.' },
+  ];
+  const el = document.getElementById('llm-budget');
+  budget.forEach(b => {
+    el.innerHTML += `
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:220px;font-size:11px;color:var(--sub);flex-shrink:0;">${b.label}</div>
+        <div style="flex:1;height:18px;background:var(--border);border-radius:4px;overflow:hidden;position:relative;">
+          <div style="width:${(b.calls/b.max)*100}%;height:100%;background:${b.color};border-radius:4px;transition:width .4s;"></div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;padding-left:6px;font-size:10px;font-family:var(--mono);color:white;font-weight:700;">${b.calls} call${b.calls>1?'s':''}</div>
+        </div>
+        <div style="width:200px;font-size:11px;color:var(--muted);">${b.note}</div>
+      </div>`;
+  });
+}
+
+/* ─── 4. TREE NAV ─────────────────────────────────────────────────────────── */
+const TREE_NODES = [
+  { id:'root', label:'Policy Document', pages:'1–120', depth:0, x:150, y:22,  children:['n1','n2','n3'] },
+  { id:'n1',   label:'Declarations',   pages:'1–10',   depth:1, x:60,  y:62,  children:[] },
+  { id:'n2',   label:'Coverage Terms', pages:'11–80',  depth:1, x:150, y:62,  children:['n21','n22','n23'] },
+  { id:'n3',   label:'Appendix',       pages:'81–120', depth:1, x:240, y:62,  children:[] },
+  { id:'n21',  label:'Coverage A',     pages:'11–30',  depth:2, x:100, y:105, children:[] },
+  { id:'n22',  label:'Exclusions',     pages:'31–55',  depth:2, x:150, y:105, children:['n221','n222'] },
+  { id:'n23',  label:'Conditions',     pages:'56–80',  depth:2, x:200, y:105, children:[] },
+  { id:'n221', label:'Flood Excl.',    pages:'38–43',  depth:3, x:126, y:155, children:[] },
+  { id:'n222', label:'Fire Excl.',     pages:'44–55',  depth:3, x:174, y:155, children:[] },
+];
+
+const TREE_STEPS = [
+  { visited:['root'],                              selected:[],       text:'LLM reads the document root. The tree has 3 top-level sections: Declarations, Coverage Terms, and Appendix. Begins evaluating each summary.' },
+  { visited:['root','n1','n2','n3'],               selected:['n2'],   text:'Declarations = personal policyholder info. Appendix = definitions glossary. <strong style="color:var(--green)">Coverage Terms (pages 11–80)</strong> contains the actual coverage rules — most likely to have exclusion clauses. Navigate into Coverage Terms.' },
+  { visited:['root','n1','n2','n3','n21','n22','n23'], selected:['n22'], text:'Coverage A = what IS covered. Conditions = policyholder obligations. <strong style="color:var(--green)">Exclusions (pages 31–55)</strong> — explicitly about what is NOT covered. This is the relevant branch. Navigate deeper.' },
+  { visited:['root','n1','n2','n3','n21','n22','n23','n221','n222'], selected:['n221'], text:'Fire Exclusions = fire and smoke only — not relevant. <strong style="color:var(--green)">Flood Exclusions (pages 38–43)</strong> — exactly what the query asks about. Retrieve full page content for pages 38–43.' },
+  { visited:['root','n1','n2','n3','n21','n22','n23','n221','n222'], selected:['n221'], text:'✅ Content retrieved and evaluated. Sufficient. Answer: <em>"Surface water, storm surge, sewer backup, and groundwater infiltration are excluded under Section 4.2(b)..."</em> — Cited: pages 38–43. Nodes explored: 7 of 9 total.' },
+];
+
+let treeCurrentStep = 0;
+const nodeMap = {};
+TREE_NODES.forEach(n => nodeMap[n.id] = n);
+
+function getNodeColor(id, stepIdx) {
+  const s = TREE_STEPS[stepIdx];
+  if (s.selected.includes(id)) return C.green;
+  if (s.visited.includes(id)) return C.accent;
+  return C.muted;
+}
+
+function renderTree(stepIdx) {
+  const edgesEl = document.getElementById('tree-edges');
+  const nodesEl = document.getElementById('tree-nodes');
+  edgesEl.innerHTML = '';
+  nodesEl.innerHTML = '';
+
+  // draw edges
+  TREE_NODES.forEach(n => {
+    n.children.forEach(cid => {
+      const c = nodeMap[cid];
+      const col = getNodeColor(cid, stepIdx);
+      edgesEl.innerHTML += `<line x1="${n.x}" y1="${n.y+6}" x2="${c.x}" y2="${c.y-6}" stroke="${col}55" stroke-width=".6"/>`;
+    });
+  });
+
+  // draw nodes
+  TREE_NODES.forEach(n => {
+    const col = getNodeColor(n.id, stepIdx);
+    const isSelected = TREE_STEPS[stepIdx].selected.includes(n.id);
+    const w = 52, h = 16;
+    nodesEl.innerHTML += `
+      <rect x="${n.x-w/2}" y="${n.y-h/2}" width="${w}" height="${h}" rx="3"
+        fill="${col}22" stroke="${col}" stroke-width="${isSelected?1.2:.5}"/>
+      <text x="${n.x}" y="${n.y+2}" text-anchor="middle" font-size="5" fill="${col}" font-weight="${isSelected?'bold':'normal'}" font-family="monospace">${n.label}</text>
+      <text x="${n.x}" y="${n.y+7}" text-anchor="middle" font-size="4" fill="${col}99" font-family="monospace">pp.${n.pages}</text>`;
+  });
+
+  // update text
+  document.getElementById('step-label').textContent = `🧠 LLM Reasoning — Step ${stepIdx+1}/${TREE_STEPS.length}`;
+  document.getElementById('step-text').innerHTML = TREE_STEPS[stepIdx].text;
+  document.getElementById('btn-prev').disabled = stepIdx === 0;
+  document.getElementById('btn-next').disabled = stepIdx === TREE_STEPS.length-1;
+}
+
+function treeStep(dir) {
+  treeCurrentStep = Math.max(0, Math.min(TREE_STEPS.length-1, treeCurrentStep + dir));
+  renderTree(treeCurrentStep);
+}
+
+function buildTreeSection() {
+  renderTree(0);
+  // depth guide
+  const el = document.getElementById('depth-list');
+  [['Depth 0','Document Root'],['Depth 1','Major Sections'],['Depth 2','Sub-sections'],['Depth 3','Leaf Pages']].forEach(([d,l],i,arr) => {
+    el.innerHTML += `<div style="display:flex;justify-content:space-between;padding:4px 0;${i<arr.length-1?'border-bottom:1px solid var(--border)':''};font-size:12px;">
+      <span style="font-family:var(--mono);color:var(--accent);">${d}</span>
+      <span style="color:var(--sub);">${l}</span></div>`;
+  });
+}
+
+/* ─── 5. COMPARISON ───────────────────────────────────────────────────────── */
+const CMP_DATA = [
+  { name:'PageIndex',           type:'Reasoning',  typeColor:C.accent,  retrieval:'LLM reasons over JSON tree in-context',     buildCost:'High (1 LLM pass)', accuracy:5, latency:1, scalability:2, explainability:5, bestFor:'Long structured professional docs' },
+  { name:'VectorStoreIndex',    type:'Similarity', typeColor:C.orange,  retrieval:'Embedding cosine similarity (ANN)',          buildCost:'Low (embed only)',   accuracy:3, latency:5, scalability:5, explainability:1, bestFor:'General semantic search' },
+  { name:'TreeIndex',           type:'Reasoning',  typeColor:C.accent,  retrieval:'LLM traverses summary tree top-down',       buildCost:'Medium (summaries)', accuracy:4, latency:2, scalability:3, explainability:4, bestFor:'Hierarchical docs' },
+  { name:'DocumentSummaryIndex',type:'Hybrid',     typeColor:C.green,   retrieval:'LLM picks docs from per-doc summaries',     buildCost:'Medium',            accuracy:3, latency:2, scalability:4, explainability:4, bestFor:'Multi-document routing' },
+  { name:'KeywordTableIndex',   type:'Keyword',    typeColor:C.purple,  retrieval:'Exact keyword lookup table',                buildCost:'Low',               accuracy:2, latency:5, scalability:4, explainability:3, bestFor:'Policy codes, IDs, terminology' },
+  { name:'KnowledgeGraphIndex', type:'Graph',      typeColor:C.pink,    retrieval:'Entity-relationship graph traversal',       buildCost:'High (triplets)',    accuracy:4, latency:2, scalability:2, explainability:5, bestFor:'Entity-relationship queries' },
+  { name:'SummaryIndex',        type:'Full-scan',  typeColor:C.red,     retrieval:'Returns ALL nodes — no filtering',          buildCost:'Zero',              accuracy:3, latency:1, scalability:1, explainability:2, bestFor:'Full document summarisation' },
+];
+
+let cmpSort = 'accuracy';
+
+function buildComparison() {
+  const sortKeys = ['accuracy','latency','scalability','explainability'];
+  const btnEl = document.getElementById('sort-btns');
+  sortKeys.forEach(k => {
+    const b = document.createElement('button');
+    b.className = 'btn' + (k===cmpSort?' primary':'');
+    b.textContent = 'Sort: ' + k.charAt(0).toUpperCase()+k.slice(1);
+    b.onclick = () => { cmpSort = k; renderCmpRows(); document.querySelectorAll('#sort-btns .btn').forEach(x=>x.classList.remove('primary')); b.classList.add('primary'); };
+    btnEl.appendChild(b);
+  });
+  renderCmpRows();
+}
+
+function renderCmpRows() {
+  const el = document.getElementById('cmp-rows');
+  el.innerHTML = '';
+  const sorted = [...CMP_DATA].sort((a,b) => b[cmpSort]-a[cmpSort]);
+  sorted.forEach(d => {
+    el.innerHTML += `
+      <div class="cmp-row">
+        <div class="cmp-grid">
+          <div>
+            <div style="font-weight:700;color:var(--text);font-size:13px;margin-bottom:4px;">${d.name}</div>
+            <span class="tag" style="background:${d.typeColor}22;color:${d.typeColor};border:1px solid ${d.typeColor}44;">${d.type}</span>
+          </div>
+          <div style="font-size:11px;color:var(--sub);">${d.buildCost}</div>
+          ${['accuracy','latency','scalability','explainability'].map(k=>`
+            <div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em;font-family:var(--mono);">${k}</div>
+              ${bar(d[k], cmpSort===k?C.accent:C.muted+'66')}
+            </div>`).join('')}
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:var(--muted);font-style:italic;">Best for: ${d.bestFor}</div>
+      </div>`;
+  });
+}
+
+/* ─── 6. TRADE-OFFS ───────────────────────────────────────────────────────── */
+function buildTradeoffs() {
+  const rows = [
+    { label:'Latency',           winner:'vector',    vec:'Single-digit ms (ANN)',       pg:'2–10 seconds (multi-step LLM)',     detail:'Vector ANN search is a mathematical operation — no LLM calls at retrieval time. PageIndex makes 3–8 LLM calls per query, each adding network and inference latency. For real-time chat, consider a hybrid that limits reasoning to a pre-filtered subset.' },
+    { label:'Cost / Query',      winner:'vector',    vec:'~$0.001 (embed only)',        pg:'$0.02–0.10 (GPT-4o-mini)',          detail:'Embedding costs are negligible. PageIndex must pass the full tree index (potentially thousands of tokens) plus multiple generation calls. For high-volume systems the 20–100× cost increase is significant; for high-value low-volume professional analysis, the accuracy gain justifies it.' },
+    { label:'Accuracy',          winner:'pageindex', vec:'~60–75% on FinanceBench',     pg:'98.7% on FinanceBench',             detail:'On structured professional documents (financial, legal, insurance), reasoning-driven navigation dramatically outperforms vector similarity. The gap is largest for queries that require cross-referencing, structural navigation, or distinguishing between similar-sounding but contextually different clauses.' },
+    { label:'Scalability',       winner:'vector',    vec:'Billions of docs (HNSW)',     pg:'Limited by LLM context window',    detail:'Vector databases scale horizontally to billions of vectors effortlessly. PageIndex trees must fit in context — for multi-document corpora, a two-stage architecture is required: vector search to select relevant documents, then PageIndex-style reasoning within those documents.' },
+    { label:'Explainability',    winner:'pageindex', vec:'Cosine scores only',          pg:'Full reasoning trace + page citations', detail:'PageIndex produces an audit trail: which sections were considered, why each was selected or rejected, and which exact pages support the answer. Critical for regulated industries where decision traceability is a compliance requirement.' },
+    { label:'Setup Complexity',  winner:'pageindex', vec:'Moderate (embedding pipeline)', pg:'Low (JSON file only)',           detail:'Ironically, PageIndex has simpler infrastructure — no vector DB, no embedding model, no HNSW index maintenance. Just an LLM API call and a JSON file. Vector RAG requires managing the full embedding + storage + indexing stack.' },
+    { label:'Doc Update Cost',   winner:'tie',       vec:'Re-embed all affected chunks', pg:'Re-run one LLM structural pass',  detail:'Both require re-processing on document update. Vector RAG must re-embed all affected chunks. PageIndex re-runs the structural analysis LLM pass to regenerate the entire tree — typically one API call regardless of change size.' },
+  ];
+
+  const el = document.getElementById('tradeoff-rows');
+  rows.forEach(r => {
+    const winnerTag = r.winner === 'vector'
+      ? `<span class="tag" style="background:var(--orangelo);color:var(--orange);border:1px solid #f5a62344;">Vector wins</span>`
+      : r.winner === 'pageindex'
+        ? `<span class="tag" style="background:var(--accentlo);color:var(--accent);border:1px solid #4f8ef744;">PageIndex wins</span>`
+        : `<span class="tag" style="background:#4b556322;color:var(--muted);border:1px solid #4b556344;">Tie</span>`;
+    const div = document.createElement('div');
+    div.className = 'card toff-row';
+    div.style.marginBottom = '8px';
+    div.innerHTML = `
+      <div class="toff-toggle" onclick="this.parentElement.classList.toggle('open')" style="display:grid;grid-template-columns:110px 1fr 1fr;gap:14px;align-items:start;cursor:pointer;">
+        <div>
+          <div style="font-weight:700;color:var(--text);font-size:13px;margin-bottom:5px;">${r.label}</div>
+          ${winnerTag}
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--orange);font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em;font-family:var(--mono);">Vector RAG</div>
+          <div style="font-size:12px;color:${r.winner==='vector'?C.orange:'var(--sub)'};">${r.vec}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--accent);font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em;font-family:var(--mono);">PageIndex</div>
+          <div style="font-size:12px;color:${r.winner==='pageindex'?C.accent:'var(--sub)'};">${r.pg}</div>
+        </div>
+      </div>
+      <div class="toff-detail">${r.detail}</div>`;
+    el.appendChild(div);
+  });
+
+  /* decision guide */
+  const guide = [
+    { title:'Use Vector RAG when', items:['High query volume (>1000/day)','Large corpus (>10,000 docs)','Sub-second latency required','General knowledge retrieval'], color: C.orange },
+    { title:'Use PageIndex when',  items:['Long structured documents','Cross-reference following needed','Explainability / audit trail required','Accuracy outweighs latency/cost'], color: C.accent },
+    { title:'Use Hybrid when',     items:['Multi-document + deep docs','Vector for breadth, reasoning for depth','Best overall accuracy + scalability','Production finance/legal/insurance'], color: C.green },
+  ];
+  const gel = document.getElementById('decision-guide');
+  guide.forEach(g => {
+    let html = `<div><div style="font-weight:700;color:var(--text);font-size:12px;margin-bottom:8px;">${g.title}</div>`;
+    g.items.forEach(item => { html += `<div style="font-size:12px;color:var(--sub);padding:3px 0;border-bottom:1px solid var(--border);">· ${item}</div>`; });
+    gel.innerHTML += html + '</div>';
+  });
+}
+
+/* ─── 7. ECOSYSTEM ────────────────────────────────────────────────────────── */
+const ECO = {
+  pageindex: { label:'PageIndex', color:C.accent, year:'2025',
+    mechanism:'LLM reasons over a hierarchical JSON document tree held in-context. No embeddings, no vector DB. The retrieval strategy is inspired by Monte Carlo Tree Search: explore promising branches, backtrack when content is insufficient, commit when confident.',
+    fields:[
+      ['Retrieval Method','Tree traversal via in-context LLM reasoning'],
+      ['Training Required?','None — pure prompt engineering'],
+      ['Accuracy Highlight','98.7% on FinanceBench'],
+      ['Typical Latency','2–10 seconds per query'],
+      ['Best For','Single long structured document (policy, contract, report)'],
+      ['Key Limitation','Context window constrains corpus size; multi-doc requires two-stage architecture'],
+    ],
+    link:'github.com/VectifyAI/PageIndex' },
+  selfrag: { label:'Self-RAG', color:C.purple, year:'2023 / ICLR 2024',
+    mechanism:'A single LM fine-tuned to emit special reflection tokens controlling when to retrieve (Retrieve token), whether retrieved passages are relevant (IsREL token), whether the generated output is grounded (IsSUP token), and whether the answer is useful (IsUSE token). The model manages the entire retrieval-generation loop internally.',
+    fields:[
+      ['Retrieval Method','Model-internal decision via learned reflection tokens'],
+      ['Training Required?','Yes — requires fine-tuned LM (7B or 13B available)'],
+      ['Accuracy Highlight','55.8% PopQA vs 14.7% baseline Llama2-13B'],
+      ['Typical Latency','Variable — can skip retrieval when model is already confident'],
+      ['Best For','Factual QA, knowledge-intensive tasks, open-domain questions'],
+      ['Key Limitation','Must fine-tune model; not plug-and-play on proprietary LLMs'],
+    ],
+    link:'arxiv.org/abs/2310.11511' },
+  crag: { label:'CRAG', color:C.green, year:'2024',
+    mechanism:'Corrective RAG — a lightweight plug-and-play correction wrapper. A fine-tuned T5-large evaluator grades each retrieved document as Correct, Incorrect, or Ambiguous. Each grade triggers a different strategy: refine the retrieved content, fall back to web search, or combine both sources.',
+    fields:[
+      ['Retrieval Method','Standard vector search + T5 evaluator + web search fallback'],
+      ['Training Required?','Fine-tunes a small T5-large evaluator only'],
+      ['Accuracy Highlight','~15–30% improvement over base RAG on multiple benchmarks'],
+      ['Typical Latency','Moderate — adds one evaluation call per retrieved document'],
+      ['Best For','Any existing RAG pipeline that needs immediate improvement (drop-in)'],
+      ['Key Limitation','Requires T5 fine-tuning; web search dependency for Incorrect grade'],
+    ],
+    link:'arxiv.org/abs/2401.15884' },
+  raptor: { label:'RAPTOR', color:C.orange, year:'2024 / ICLR 2024',
+    mechanism:'Recursive Abstractive Processing for Tree-Organised Retrieval. Chunks are embedded, clustered via Gaussian Mixture Models, and summarised recursively to build a multi-level summary tree. At query time, the query embedding is compared against nodes at ALL tree levels simultaneously, enabling retrieval from any abstraction level.',
+    fields:[
+      ['Retrieval Method','Vector search at all tree abstraction levels simultaneously'],
+      ['Training Required?','None — uses off-the-shelf embedding model'],
+      ['Accuracy Highlight','+20% absolute accuracy on QuALITY benchmark with GPT-4'],
+      ['Typical Latency','Similar to standard vector RAG at query time'],
+      ['Best For','Queries requiring both high-level synthesis and low-level detail'],
+      ['Key Limitation','High indexing cost; still fundamentally vector-based; no cross-references'],
+    ],
+    link:'arxiv.org/abs/2401.18059' },
+  agentic: { label:'Agentic RAG', color:C.pink, year:'2024–present',
+    mechanism:'An LLM agent orchestrates retrieval as one of multiple tools. The agent decides when to search, formulates sub-queries, evaluates results for sufficiency, rewrites queries if needed, and can call external APIs, databases, or specialised retrieval systems. Implemented via ReActAgent in LlamaIndex or state machines in LangGraph.',
+    fields:[
+      ['Retrieval Method','Agent-planned multi-hop retrieval across any tools'],
+      ['Training Required?','None — orchestration via prompting'],
+      ['Accuracy Highlight','Best on complex multi-hop queries requiring reasoning chains'],
+      ['Typical Latency','Highest — multiple agent loop iterations; unpredictable'],
+      ['Best For','Complex reasoning, cross-document synthesis, multi-step research'],
+      ['Key Limitation','Non-deterministic latency; hardest to debug and test; highest cost'],
+    ],
+    link:'llamaindex.ai/blog/agentic-rag' },
+};
+
+let currentEco = 'pageindex';
+
+function buildEcosystem() {
+  const tabEl = document.getElementById('eco-tabs');
+  Object.entries(ECO).forEach(([key, d]) => {
+    const b = document.createElement('button');
+    b.className = 'eco-tab' + (key===currentEco?' active':'');
+    b.setAttribute('data-eco', key);
+    b.innerHTML = `${d.label}<br><span style="font-size:9px;opacity:.7;">${d.year}</span>`;
+    b.onclick = () => { currentEco = key; renderEcoCard(); document.querySelectorAll('.eco-tab').forEach(x=>{x.classList.remove('active');x.style.borderColor='var(--border)';x.style.background='var(--surface)';x.style.color='var(--muted)';}); b.classList.add('active'); b.style.borderColor=ECO[key].color; b.style.background=ECO[key].color+'22'; b.style.color=ECO[key].color; };
+    if (key===currentEco) { b.style.borderColor=d.color; b.style.background=d.color+'22'; b.style.color=d.color; }
+    tabEl.appendChild(b);
+  });
+  renderEcoCard();
+}
+
+function renderEcoCard() {
+  const d = ECO[currentEco];
+  const el = document.getElementById('eco-card');
+  el.style.borderColor = d.color + '44';
+  let fieldsHtml = '<div class="g3">';
+  d.fields.forEach(([k,v]) => {
+    fieldsHtml += `<div class="card-sm">
+      <div style="font-size:10px;color:${d.color};font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;font-family:var(--mono);">${k}</div>
+      <div style="font-size:12px;color:var(--text);line-height:1.5;">${v}</div>
+    </div>`;
+  });
+  fieldsHtml += '</div>';
+
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:14px;">
+      <div>
+        <h3 style="color:${d.color};margin:0;font-size:22px;font-family:var(--serif);">${d.label}</h3>
+        <div style="color:var(--muted);font-size:11px;font-family:var(--mono);margin-top:2px;">${d.link}</div>
+      </div>
+      <span class="tag" style="background:${d.color}22;color:${d.color};border:1px solid ${d.color}44;">${d.year}</span>
+    </div>
+    <p style="color:var(--sub);font-size:13px;line-height:1.75;margin:0 0 16px;">${d.mechanism}</p>
+    ${fieldsHtml}`;
+}
+
+/* ─── 8. QUIZ ─────────────────────────────────────────────────────────────── */
+const QUIZ = [
+  { q:'What is the PRIMARY reason vector RAG struggles with insurance policy documents?',
+    opts:['Embeddings are too slow to compute','Similar language between clauses ≠ relevant for a specific query context','Vector DBs cannot store PDFs natively','Context windows are too small for policy documents'],
+    correct:1, exp:'Insurance policies reuse near-identical legal language across dozens of clauses. Two exclusion clauses may be virtually indistinguishable in embedding space yet apply to completely different scenarios. Reasoning-based retrieval can navigate to the structurally correct section rather than relying on lexical similarity.' },
+  { q:'Which data structure does PageIndex use as its document index?',
+    opts:['B-tree with embedding vectors','Flat chunk list with metadata filters','Recursive JSON tree with LLM-generated node summaries','Knowledge graph of entity triplets'],
+    correct:2, exp:'PageIndex builds a recursive JSON tree. Each node contains node_id, title, start_index (page), end_index (page), LLM-generated summary, metadata, and sub_nodes. No vectors anywhere — the index is a portable JSON file.' },
+  { q:'The tree navigation algorithm in PageIndex is inspired by which technique?',
+    opts:["Dijkstra's shortest path algorithm","Monte Carlo Tree Search (used in AlphaGo)",'BM25 sparse retrieval scoring','Recursive Fibonacci search'],
+    correct:1, exp:'MCTS explores a decision tree strategically — evaluating promising branches, backtracking when a path is unproductive, and committing once confidence is high. PageIndex applies the same principle: the LLM selects the most promising document section to explore at each depth level rather than scanning every node.' },
+  { q:'What accuracy did PageIndex achieve on the FinanceBench benchmark?',
+    opts:['72.3%','85.1%','91.4%','98.7%'],
+    correct:3, exp:'PageIndex achieves 98.7% on FinanceBench, a challenging benchmark of financial document QA. Standard vector RAG baselines score roughly 60–75% on the same benchmark, demonstrating the impact of reasoning-based navigation on structured professional documents.' },
+  { q:'Which reasoning-RAG approach requires fine-tuning a model and uses special reflection tokens?',
+    opts:['CRAG','RAPTOR','Self-RAG','PageIndex'],
+    correct:2, exp:'Self-RAG trains a single LM to emit special tokens (Retrieve, IsREL, IsSUP, IsUSE) that control the entire retrieval-generation loop. Unlike PageIndex, CRAG, or RAPTOR, Self-RAG requires a specially fine-tuned model and cannot be used as a drop-in wrapper around an existing LLM.' },
+];
+
+let quizState = {};
+
+function buildQuiz() {
+  const el = document.getElementById('quiz-questions');
+  QUIZ.forEach((q, qi) => {
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.style.marginBottom = '16px';
+    div.id = `q-${qi}`;
+    let optsHtml = '';
+    q.opts.forEach((opt, oi) => {
+      optsHtml += `<button class="quiz-opt" id="opt-${qi}-${oi}" onclick="selectOpt(${qi},${oi})"><span style="font-family:var(--mono);margin-right:8px;opacity:.6;">${String.fromCharCode(65+oi)}.</span>${opt}</button>`;
+    });
+    div.innerHTML = `
+      <div style="font-weight:700;color:var(--text);font-size:14px;margin-bottom:12px;">
+        <span style="font-family:var(--mono);color:var(--muted);margin-right:8px;">Q${qi+1}.</span>${q.q}
+      </div>
+      <div>${optsHtml}</div>
+      <div id="reveal-btn-${qi}" style="margin-top:8px;display:none;">
+        <button class="btn" onclick="revealQuiz(${qi})">Reveal Answer & Explanation</button>
+      </div>
+      <div id="exp-${qi}" style="display:none;margin-top:10px;padding:10px 14px;border-radius:6px;font-size:12px;line-height:1.65;border-left:3px solid;"></div>`;
+    el.appendChild(div);
+  });
+}
+
+function selectOpt(qi, oi) {
+  if (quizState[qi] && quizState[qi].revealed) return;
+  quizState[qi] = { ...quizState[qi], selected: oi };
+  QUIZ[qi].opts.forEach((_, i) => {
+    const el = document.getElementById(`opt-${qi}-${i}`);
+    el.className = 'quiz-opt' + (i === oi ? ' selected' : '');
+  });
+  document.getElementById(`reveal-btn-${qi}`).style.display = 'block';
+}
+
+function revealQuiz(qi) {
+  const q = QUIZ[qi];
+  const sel = quizState[qi]?.selected;
+  if (sel === undefined) return;
+  quizState[qi].revealed = true;
+  const correct = sel === q.correct;
+  q.opts.forEach((_, i) => {
+    const el = document.getElementById(`opt-${qi}-${i}`);
+    if (i === q.correct) el.className = 'quiz-opt correct';
+    else if (i === sel && !correct) el.className = 'quiz-opt wrong';
+    else el.className = 'quiz-opt';
+  });
+  const expEl = document.getElementById(`exp-${qi}`);
+  expEl.style.display = 'block';
+  expEl.style.background = correct ? 'var(--greenlo)' : 'var(--redlo)';
+  expEl.style.borderColor = correct ? C.green : C.red;
+  expEl.style.color = 'var(--sub)';
+  expEl.innerHTML = `<strong style="color:${correct?C.green:C.red}">${correct?'✓ Correct!':'✗ Incorrect'}</strong> — ${q.exp}`;
+  document.getElementById(`reveal-btn-${qi}`).style.display = 'none';
+
+  // check all answered
+  const answered = Object.keys(quizState).filter(k => quizState[k].revealed).length;
+  if (answered === QUIZ.length) {
+    const score = QUIZ.filter((q,i) => quizState[i]?.selected === q.correct).length;
+    const banner = document.getElementById('score-banner');
+    const great = score >= 4;
+    banner.style.display = 'flex';
+    banner.style.justifyContent = 'space-between';
+    banner.style.alignItems = 'center';
+    banner.style.background = great ? 'var(--greenlo)' : 'var(--orangelo)';
+    banner.style.border = `1px solid ${great?C.green+'44':C.orange+'44'}`;
+    banner.innerHTML = `<span style="color:${great?C.green:C.orange};font-weight:700;font-size:15px;">${great?'🎯 Excellent!':'📖 Keep reviewing'} — ${score}/${QUIZ.length} correct</span>
+      <button class="btn" onclick="resetQuiz()">Reset</button>`;
+    banner.scrollIntoView({ behavior:'smooth' });
+  }
+}
+
+function resetQuiz() {
+  quizState = {};
+  document.getElementById('score-banner').style.display = 'none';
+  document.getElementById('quiz-questions').innerHTML = '';
+  buildQuiz();
+}
+
+/* ─── INIT ────────────────────────────────────────────────────────────────── */
+buildNav();
+buildOverview();
+renderPhaseFlow();
+buildQueryFlow();
+buildTreeSection();
+buildComparison();
+buildTradeoffs();
+buildEcosystem();
+buildQuiz();
+updateFooterNav();
+</script>
+</body>
+</html>

@@ -67,6 +67,9 @@ Detailed interactive guide to BAAI's BGE-small-en-v1.5 embedding model: architec
 ### [Word vs Sentence Embeddings](rag/word-vs-sentence-embeddings.html)
 Visual comparison of word-level and sentence-level embedding strategies — how they differ in scope, use case, and representation quality.
 
+### [PageIndex — Vectorless, Reasoning-Based RAG](rag/pageindex-vectorless-rag.html)
+Interactive visual guide to PageIndex by Vectify AI: how LLM reasoning over hierarchical document trees replaces vector similarity search, achieving 98.7% accuracy on FinanceBench. Covers architecture, failure modes of vector RAG, and decision framework for insurance/financial documents.
+
 ---
 
 ## BERT Guides
@@ -79,6 +82,16 @@ Interactive exploration of WordPiece tokenization: how BERT splits text into sub
 
 ### [BERT Encoder Block Deep Dive](bert/bert-encoder-deep-dive.html)
 Detailed visual breakdown of a single BERT encoder block — multi-head self-attention, feed-forward layers, residual connections, and layer normalization.
+
+---
+
+## LangChain Guides
+
+### [LangChain Mastery — From Zero to Pro](langchain/langchain-mastery.html)
+Interactive end-to-end LangChain course: core primitives, chains, agents, memory, RAG pipelines, and production patterns. Built for developers who already know LLM APIs and want to move fast with LangChain.
+
+### [LangChain Deep Reference Guide](langchain/langchain-reference)
+Comprehensive reference covering LangChain architecture, LCEL, retrieval patterns, agents, tool use, and production trade-offs. Includes code examples, decision rationale, and comparisons for every major component.
 
 ---
 
@@ -157,6 +170,9 @@ Research and planning notes for building a small language model customer support
 | [all-MiniLM-L6-v2 Guide](rag/all-MiniLM-L6-v2.html) | RAG | Embedding model visual explainer |
 | [BGE-small-en-v1.5 Guide](rag/bge-small-en-v1.5.html) | RAG | BAAI embedding model deep dive |
 | [Word vs Sentence Embeddings](rag/word-vs-sentence-embeddings.html) | RAG | Word-level vs sentence-level embedding comparison |
+| [PageIndex — Vectorless RAG](rag/pageindex-vectorless-rag.html) | RAG | Reasoning-based RAG replacing vector similarity |
+| [LangChain Mastery](langchain/langchain-mastery.html) | LangChain | End-to-end interactive LangChain course |
+| [LangChain Reference Guide](langchain/langchain-reference) | LangChain | Architecture, LCEL, agents, production patterns |
 | [BERT Full Diagram](bert/bert-full-diagram.html) | BERT | End-to-end BERT architecture walkthrough |
 | [BERT Tokenizer](bert/bert-tokenizer-deep-dive.html) | BERT | WordPiece tokenization interactive guide |
 | [BERT Encoder Block](bert/bert-encoder-deep-dive.html) | BERT | Single encoder block visual breakdown |
