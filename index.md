@@ -87,7 +87,7 @@ Detailed visual breakdown of a single BERT encoder block — multi-head self-att
 
 ## LangChain Guides
 
-### [LangChain Mastery — From Zero to Pro](langchain/langchain-reference.html)
+### [LangChain Reference — From Zero to Pro](langchain/langchain.html)
 Interactive end-to-end LangChain course: core primitives, chains, agents, memory, RAG pipelines, and production patterns. Built for developers who already know LLM APIs and want to move fast with LangChain.
 
 ### [LangChain Deep Reference Guide](langchain/langchain-reference)
@@ -171,7 +171,7 @@ Research and planning notes for building a small language model customer support
 | [BGE-small-en-v1.5 Guide](rag/bge-small-en-v1.5.html) | RAG | BAAI embedding model deep dive |
 | [Word vs Sentence Embeddings](rag/word-vs-sentence-embeddings.html) | RAG | Word-level vs sentence-level embedding comparison |
 | [PageIndex — Vectorless RAG](rag/pageindex-vectorless-rag.html) | RAG | Reasoning-based RAG replacing vector similarity |
-| [LangChain Mastery](langchain/langchain-reference.html) | LangChain | End-to-end interactive LangChain course |
+| [LangChain Reference](langchain/langchain.html) | LangChain | End-to-end interactive LangChain course |
 | [LangChain Reference Guide](langchain/langchain-reference) | LangChain | Architecture, LCEL, agents, production patterns |
 | [BERT Full Diagram](bert/bert-full-diagram.html) | BERT | End-to-end BERT architecture walkthrough |
 | [BERT Tokenizer](bert/bert-tokenizer-deep-dive.html) | BERT | WordPiece tokenization interactive guide |
@@ -289,7 +289,7 @@ Detailed visual breakdown of a single BERT encoder block — multi-head self-att
 
 ## LangChain Guides
 
-### [LangChain Mastery — From Zero to Pro](langchain/langchain-reference.html)
+### [LangChain Reference — From Zero to Pro](langchain/langchain.html)
 Interactive end-to-end LangChain course: core primitives, chains, agents, memory, RAG pipelines, and production patterns. Built for developers who already know LLM APIs and want to move fast with LangChain.
 
 ### [LangChain Deep Reference Guide](langchain/langchain-reference)
@@ -373,7 +373,7 @@ Research and planning notes for building a small language model customer support
 | [BGE-small-en-v1.5 Guide](rag/bge-small-en-v1.5.html) | RAG | BAAI embedding model deep dive |
 | [Word vs Sentence Embeddings](rag/word-vs-sentence-embeddings.html) | RAG | Word-level vs sentence-level embedding comparison |
 | [PageIndex — Vectorless RAG](rag/pageindex-vectorless-rag.html) | RAG | Reasoning-based RAG replacing vector similarity |
-| [LangChain Mastery](langchain/langchain-reference.html) | LangChain | End-to-end interactive LangChain course |
+| [LangChain Reference](langchain/langchain.html) | LangChain | End-to-end interactive LangChain course |
 | [LangChain Reference Guide](langchain/langchain-reference) | LangChain | Architecture, LCEL, agents, production patterns |
 | [BERT Full Diagram](bert/bert-full-diagram.html) | BERT | End-to-end BERT architecture walkthrough |
 | [BERT Tokenizer](bert/bert-tokenizer-deep-dive.html) | BERT | WordPiece tokenization interactive guide |
