@@ -13,3 +13,4 @@ node_modules/
 # Local project — not part of the site
 prd/
 .claude/
+tasks/
