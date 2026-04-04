@@ -29,7 +29,7 @@ index = VectorStoreIndex.from_documents(docs)  # fixed chunk size
 # Query — one-shot, no tricks
 query_engine = index.as_query_engine(similarity_top_k=3)
 response = query_engine.query("What is the claim filing deadline?")`,
-    insureChat: "InsureChat v1.0 used this. Good starting point, ~60-70% retrieval accuracy."
+    general: "A starting point for most production RAG systems. Good baseline, ~60-70% retrieval accuracy."
   },
   {
     id: "advanced",
@@ -48,7 +48,7 @@ response = query_engine.query("What is the claim filing deadline?")`,
     pipeline: ["Query Rewriting / HyDE", "Hybrid Retrieval (BM25 + Dense)", "Re-ranking (Cross-Encoder)", "Contextual Compression", "LLM Answer"],
     pipelineColors: ["#0ea5e9", "#0ea5e9", "#0ea5e9", "#0ea5e9", "#0ea5e9"],
     description: "Adds optimizations BEFORE retrieval (query rewriting, HyDE, expansion) and AFTER retrieval (re-ranking, compression, filtering). This is what real production systems use.",
-    example: "InsureChat v3.0. Query rewriting → hybrid BM25+dense retrieval → Voyage AI rerank → contextual answer.",
+    example: "A production system. Query rewriting → hybrid BM25+dense retrieval → Voyage AI rerank → contextual answer.",
     code: `# Advanced RAG — production grade
 from llama_index.core.retrievers import QueryFusionRetriever
 from llama_index.retrievers.bm25 import BM25Retriever
@@ -69,7 +69,7 @@ reranker = SentenceTransformerRerank(
     model="cross-encoder/ms-marco-MiniLM-L-6-v2",
     top_n=3
 )`,
-    insureChat: "Your InsureChat v3.0 target stack. Achieves ~94% retrieval accuracy."
+    general: "A solid production target stack. Achieves ~94% retrieval accuracy."
   },
   {
     id: "modular",
@@ -110,7 +110,7 @@ router = RouterQueryEngine(
             description="Frequently asked questions"),
     ]
 )`,
-    insureChat: "Perfect for InsureChat's dual-chatbot: customer module vs developer/error module."
+    general: "Perfect for a dual-chatbot system: customer module vs developer/error module."
   },
   {
     id: "selfrag",
@@ -149,7 +149,7 @@ Question: {question}
 
 # The LLM self-regulates when to retrieve
 # reducing unnecessary vector DB calls by 40-60%`,
-    insureChat: "Useful for developer chatbot: coding questions don't need doc retrieval; error messages do."
+    general: "Useful for developer chatbots: some queries don't need doc retrieval; others do."
   },
   {
     id: "crag",
@@ -195,7 +195,7 @@ class CRAGWorkflow(Workflow):
     @step  
     async def generate(self, context, query):
         return await llm_generate(context, query)`,
-    insureChat: "Critical for InsureChat — insurance answers must be grounded. CRAG prevents hallucinations from irrelevant chunks."
+    general: "Critical for production — answers must be grounded. CRAG prevents hallucinations from irrelevant chunks."
   },
   {
     id: "ragfusion",
@@ -235,7 +235,7 @@ fusion_retriever = QueryFusionRetriever(
 nodes = await fusion_retriever.aretrieve(
     "What happens if I miss a payment?"
 )`,
-    insureChat: "Great for the customer chatbot — insurance customers ask vague questions. Fusion handles the ambiguity."
+    general: "Great for customer chatbots — users often ask vague questions. Fusion handles the ambiguity."
   },
   {
     id: "graphrag",
@@ -278,7 +278,7 @@ query_engine = kg_index.as_query_engine(
     similarity_top_k=3,
     graph_traversal_depth=2,  # 2-hop traversal
 )`,
-    insureChat: "Future upgrade: model policy entities (coverage, exclusions, limits) as a graph for complex multi-condition queries."
+    general: "Future upgrade: model domain entities as a graph for complex multi-condition queries."
   },
   {
     id: "multimodal",
@@ -325,7 +325,7 @@ mm_query_engine = mm_index.as_query_engine(
 response = mm_query_engine.query(
     "What damage is shown in the accident claim photos?"
 )`,
-    insureChat: "High-value upgrade for InsureChat: insurance PDFs are full of tables, form fields, and scanned images."
+    general: "High-value upgrade for systems with PDFs full of tables, form fields, and scanned images."
   },
   {
     id: "agentic",
@@ -367,7 +367,7 @@ response = agent.chat(
     "for a fleet of 10 vehicles in Singapore?"
 )
 # Makes: 2 policy lookups + 1 risk data search + 2 calc calls`,
-    insureChat: "The developer support chatbot in InsureChat v3.0 is essentially this — it reasons over errors, retrieves docs, suggests fixes."
+    general: "A developer support chatbot is essentially this — it reasons over errors, retrieves docs, suggests fixes."
   },
   {
     id: "speculative",
@@ -414,7 +414,7 @@ async def speculative_rag(question: str):
     # 4. Verify and correct
     final = await llm_verify(draft, evidence)
     return final`,
-    insureChat: "Good for the developer support chatbot — it can speculate on common .NET/Python errors and verify against your error docs."
+    general: "Good for developer support chatbots — can speculate on common errors and verify against your documentation."
   }
 ];
 
@@ -529,7 +529,7 @@ export default function RAGTypes() {
           {!active ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 12, padding: 40 }}>
               <div style={{ fontSize: 48 }}>👈</div>
-              <div style={{ color: "#334155", fontSize: 16, textAlign: "center" }}>Select a RAG type to see<br/>architecture, pipeline, code & InsureChat context</div>
+              <div style={{ color: "#334155", fontSize: 16, textAlign: "center" }}>Select a RAG type to see<br/>architecture, pipeline, code & general context</div>
               <div style={{ marginTop: 24, display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", maxWidth: 500 }}>
                 {ragTypes.map(r => (
                   <div key={r.id} onClick={() => setSelected(r.id)}
@@ -553,10 +553,10 @@ export default function RAGTypes() {
 
               {/* Tabs */}
               <div style={{ display: "flex", gap: 2, marginBottom: 24, background: "#0a0f1e", borderRadius: 8, padding: 4, border: "1px solid #0f172a", width: "fit-content" }}>
-                {["overview", "pipeline", "code", "insurechat"].map(t => (
+                {["overview", "pipeline", "code", "general"].map(t => (
                   <button key={t} onClick={() => setTab(t)}
                     style={{ background: tab === t ? `${active.color}22` : "none", border: tab === t ? `1px solid ${active.color}44` : "1px solid transparent", color: tab === t ? active.color : "#475569", padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontSize: 12, fontWeight: tab === t ? 700 : 400, textTransform: "capitalize" }}>
-                    {t === "insurechat" ? "🏗️ InsureChat" : t.charAt(0).toUpperCase() + t.slice(1)}
+                    {t === "general" ? "🏗️ General" : t.charAt(0).toUpperCase() + t.slice(1)}
                   </button>
                 ))}
               </div>
@@ -622,14 +622,14 @@ export default function RAGTypes() {
                 </div>
               )}
 
-              {tab === "insurechat" && (
+              {tab === "general" && (
                 <div>
                   <div style={{ background: `${active.color}10`, border: `1px solid ${active.color}44`, borderLeft: `4px solid ${active.color}`, borderRadius: 8, padding: 16 }}>
-                    <div style={{ color: active.color, fontWeight: 700, fontSize: 12, textTransform: "uppercase", letterSpacing: 2, marginBottom: 8 }}>🏗️ InsureChat v3.0 Relevance</div>
-                    <div style={{ color: "#cbd5e1", fontSize: 14, lineHeight: 1.8 }}>{active.insureChat}</div>
+                    <div style={{ color: active.color, fontWeight: 700, fontSize: 12, textTransform: "uppercase", letterSpacing: 2, marginBottom: 8 }}>🏗️ General Relevance</div>
+                    <div style={{ color: "#cbd5e1", fontSize: 14, lineHeight: 1.8 }}>{active.general}</div>
                   </div>
                   <div style={{ marginTop: 20, background: "#0a0f1e", border: "1px solid #0f172a", borderRadius: 10, padding: 16 }}>
-                    <div style={{ color: "#475569", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Which RAG types does InsureChat v3.0 use?</div>
+                    <div style={{ color: "#475569", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Which RAG types does a general production system use?</div>
                     {[
                       { type: "Advanced RAG", role: "Core pipeline — HyDE + Hybrid + Rerank", active: true },
                       { type: "Modular RAG", role: "Customer chatbot vs Developer chatbot = separate modules", active: true },

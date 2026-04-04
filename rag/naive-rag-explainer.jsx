@@ -109,7 +109,7 @@ function PageLoadDocs() {
         ))}
       </div>
       <Box color={C.amber} icon="⚠️" title="Real World Scale">
-        In production you would load hundreds or thousands of documents. For InsureChat v3.0, this would be all your insurance policy PDFs, claim procedure manuals, and FAQ documents.
+        In production you would load hundreds or thousands of documents. For a general production system, this would be all your domain-specific PDFs, procedure manuals, and FAQ documents.
       </Box>
     </div>
   );
@@ -506,7 +506,7 @@ function PageSummary() {
       ))}
 
       <Box color={C.blue} icon="🚀" title="What is next: Advanced RAG">
-        Naive RAG is the foundation. Advanced RAG (your InsureChat v3.0 stack) adds HyDE for better queries, Hybrid Search (BM25 + dense vectors), and Re-ranking. Each addition fixes one of the weaknesses above.
+        Naive RAG is the foundation. Advanced RAG (the production stack) adds HyDE for better queries, Hybrid Search (BM25 + dense vectors), and Re-ranking. Each addition fixes one of the weaknesses above.
       </Box>
     </div>
   );

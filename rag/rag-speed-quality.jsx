@@ -47,7 +47,7 @@ const ragData = [
     dbCalls: 2,
     why: "HyDE (1 LLM call) + hybrid search (2 retrievers) + cross-encoder rerank. Each step adds latency.",
     tradeoff: "The production sweet spot. ~94% retrieval accuracy. Latency is acceptable for most enterprise use cases.",
-    bestFor: "Production insurance/legal/medical RAG — your InsureChat v3.0",
+    bestFor: "Production insurance/legal/medical RAG — general production setup",
   },
   {
     id: "modular",

@@ -299,7 +299,7 @@ const RAGvsMemory = () => (
     ))}
     <div style={{ gridColumn: "1 / -1", background: "#0f2a1a", border: "1px solid #166534", borderRadius: 8, padding: 12 }}>
       <span style={{ color: "#4ade80", fontWeight: 700 }}>Production truth: </span>
-      <span style={{ color: "#94a3b8", fontSize: 13 }}>Most production AI systems need BOTH. RAG = knowledge. Memory = personalization. InsureChat v3.0 uses RAG for policy docs + needs Memory for customer context across claim conversations.</span>
+      <span style={{ color: "#94a3b8", fontSize: 13 }}>Most production AI systems need BOTH. RAG = knowledge. Memory = personalization. A general production system uses RAG for knowledge retrieval and Memory for user context across conversations.</span>
     </div>
   </div>
 );
@@ -425,11 +425,11 @@ class ObservationalMemory:
   </div>
 );
 
-// ─── InsureChat Integration ───────────────────────────────────────────────────
-const InsureChatMemory = () => (
+// ─── General Integration ─────────────────────────────────────────────────────
+const GeneralMemory = () => (
   <div style={{ marginTop: 16 }}>
     <div style={{ background: "#0c1a2e", border: "1px solid #1e40af44", borderRadius: 10, padding: 16, marginBottom: 12 }}>
-      <div style={{ color: "#60a5fa", fontWeight: 700, marginBottom: 12 }}>🏗️ Memory RAG Design for InsureChat v3.0</div>
+      <div style={{ color: "#60a5fa", fontWeight: 700, marginBottom: 12 }}>🏗️ Memory RAG Design — General Architecture</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {[
           { layer: "Sensory", tech: "LLM Context Window", what: "Current turn + system prompt", why: "Always present, no extra engineering" },
@@ -447,7 +447,7 @@ const InsureChatMemory = () => (
         ))}
       </div>
     </div>
-    <Code lang="python" code={`# InsureChat v3.0 — Memory-Augmented RAG
+    <Code lang="python" code={`# General Memory-Augmented RAG
 import redis
 import json
 from anthropic import Anthropic
@@ -496,7 +496,7 @@ def memory_rag_query(user_id: str, session_id: str, query: str) -> str:
     rag_docs    = get_rag_docs(query)
 
     # 2. Build enriched prompt
-    system = f"""You are InsureChat, an insurance assistant.
+    system = f"""You are a helpful assistant.
 
 USER PROFILE (Semantic Memory):
 {json.dumps(profile, indent=2)}
@@ -549,7 +549,7 @@ const TABS = [
   { id: "vs", label: "⚔️ RAG vs Memory" },
   { id: "memorag", label: "🔬 MemoRAG (2025)" },
   { id: "observational", label: "🆕 Observational (2026)" },
-  { id: "insurechat", label: "🏗️ InsureChat" },
+  { id: "general", label: "🏗️ General" },
 ];
 
 export default function MemoryRAG() {
@@ -688,11 +688,11 @@ export default function MemoryRAG() {
           </div>
         )}
 
-        {tab === "insurechat" && (
+        {tab === "general" && (
           <div>
-            <h2 style={{ color: "#60a5fa", fontSize: 20, fontWeight: 700, margin: "0 0 8px" }}>Memory RAG for InsureChat v3.0</h2>
-            <p style={{ color: "#64748b", margin: "0 0 4px", lineHeight: 1.7 }}>Full architecture design using your exact tech stack.</p>
-            <InsureChatMemory />
+            <h2 style={{ color: "#60a5fa", fontSize: 20, fontWeight: 700, margin: "0 0 8px" }}>Memory RAG — General Architecture</h2>
+            <p style={{ color: "#64748b", margin: "0 0 4px", lineHeight: 1.7 }}>Full architecture design for a general production system.</p>
+            <GeneralMemory />
           </div>
         )}
       </div>

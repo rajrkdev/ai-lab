@@ -446,7 +446,7 @@ semantic_parser = SemanticSplitterNodeParser(
 nodes = hierarchical_parser.get_nodes_from_documents(documents)`} />
 
     <Callout type="key">
-      <strong>For InsureChat v3.0:</strong> Insurance PDFs have natural structure (sections, clauses, definitions). Use <strong>Hierarchical</strong> chunking with sizes ~[1024, 256, 64]. Retrieve at 64-token child level, return 1024-token parent to LLM.
+      <strong>For a production system:</strong> Structured documents have natural hierarchy (sections, clauses, definitions). Use <strong>Hierarchical</strong> chunking with sizes ~[1024, 256, 64]. Retrieve at 64-token child level, return 1024-token parent to LLM.
     </Callout>
 
     <Quiz questions={[
@@ -519,7 +519,7 @@ const EmbeddingsContent = () => (
     <CodeBlock lang="python" code={`import chromadb
 from chromadb.utils import embedding_functions
 
-# Using Voyage AI (your InsureChat setup)
+# Using Voyage AI (general setup)
 voyageai_ef = embedding_functions.create_langchain_embedding(
     # or use voyageai directly
 )
@@ -855,7 +855,7 @@ print(result)
 #  'context_recall': 1.0, 'context_precision': 1.0}
 
 # Target for production: all metrics > 0.85
-# InsureChat v3.0 target: ~0.94 retrieval accuracy`} />
+# Production target: ~0.94 retrieval accuracy`} />
 
     <Callout type="key">
       <strong>Debugging low scores:</strong> Low faithfulness → LLM hallucinating, tighten system prompt. Low context recall → chunking too fine, or wrong embedding model. Low context precision → reranker threshold too low, or k too high.
