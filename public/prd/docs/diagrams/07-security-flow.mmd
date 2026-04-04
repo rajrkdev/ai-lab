@@ -1,0 +1,114 @@
+%% InsureChat v3.0 — Security Flow Diagram
+%% Two-layer security: Input validation + Output validation
+
+graph TB
+    subgraph InputLayer["🛡️ Layer 1: INPUT VALIDATION (Pre-LLM)"]
+        direction TB
+        
+        Q["📝 User Query"]
+        
+        subgraph LenCheck["Step 1: Length Check"]
+            LC{"len(query) > 500?"}
+            LCY["❌ BLOCKED<br/>reason: input_too_long"]
+            LCN["✅ Pass"]
+        end
+        
+        subgraph InjCheck["Step 2: Injection Detection"]
+            INJ{"Match any of<br/>12 regex patterns?"}
+            INJY["❌ BLOCKED<br/>reason: injection_detected"]
+            INJN["✅ Pass"]
+            
+            PATTERNS["Patterns:<br/>• ignore instructions<br/>• disregard instructions<br/>• forget everything<br/>• you are now a...<br/>• act as a...<br/>• pretend to be<br/>• roleplay as<br/>• jailbreak<br/>• DAN mode<br/>• bypass filters<br/>• reveal system prompt<br/>• do anything now"]
+        end
+        
+        subgraph PIICheck["Step 3: PII Detection & Redaction"]
+            PII["Presidio AnalyzerEngine<br/>+ AnonymizerEngine"]
+            ENTITIES["Scanned Entities:<br/>• PERSON<br/>• EMAIL_ADDRESS<br/>• PHONE_NUMBER<br/>• US_SSN<br/>• CREDIT_CARD<br/>• IP_ADDRESS"]
+            REDACT["Replace with:<br/>[REDACTED_PERSON]<br/>[REDACTED_EMAIL]<br/>[REDACTED_PHONE]<br/>[REDACTED_SSN]<br/>[REDACTED_CREDIT_CARD]<br/>[REDACTED_IP]"]
+        end
+        
+        SANITIZED["✅ Sanitized Query<br/>(PII removed, safe to send to LLM)"]
+    end
+    
+    subgraph RAG["🤖 RAG Pipeline"]
+        EMBED["Embed → Retrieve → LLM Call"]
+        RESPONSE["Raw LLM Response"]
+    end
+    
+    subgraph OutputLayer["🛡️ Layer 2: OUTPUT VALIDATION (Post-LLM)"]
+        direction TB
+        
+        subgraph OutPII["Step 1: Output PII Masking"]
+            OPII["Presidio scan on response"]
+            OMASK["Mask any leaked PII"]
+        end
+        
+        subgraph ConfCheck["Step 2: Confidence Gate"]
+            CONF{"confidence < 0.60?"}
+            CONFY["❌ REJECTED<br/>Low confidence fallback"]
+            CONFN["✅ Pass"]
+        end
+        
+        subgraph HallCheck["Step 3: Hallucination Detection"]
+            direction TB
+            HALL_A{"Contains phrases?<br/>• 'as an AI'<br/>• 'my training data'<br/>• 'I was trained'<br/>• 'I cannot access'<br/>• 'based on my knowledge'"}
+            HALL_B{"Word overlap<br/>with chunks < 30%?"}
+            HALLY["❌ REJECTED<br/>Hallucination fallback"]
+            HALLN["✅ Pass"]
+        end
+        
+        VALID["✅ Validated Response<br/>(Safe for user)"]
+    end
+    
+    subgraph RateLimit["🚦 Rate Limiting (slowapi)"]
+        RATE["Per-IP Limits:<br/>• /chat/*: 10/min<br/>• /ingest: 5/min<br/>• /health: 60/min<br/>• /analytics: 30/min<br/>• /reports: 10/min"]
+    end
+    
+    subgraph Audit["📋 Security Audit Trail"]
+        SQLITE["SQLite DB<br/>All interactions logged"]
+        JSONL["JSONL Audit Log<br/>Append-only, tamper-evident"]
+    end
+    
+    Q --> LC
+    LC -->|Yes| LCY
+    LC -->|No| LCN
+    LCN --> INJ
+    INJ -->|Yes| INJY
+    INJ -->|No| INJN
+    INJN --> PII
+    PII --> REDACT
+    REDACT --> SANITIZED
+    
+    SANITIZED --> EMBED
+    EMBED --> RESPONSE
+    
+    RESPONSE --> OPII
+    OPII --> OMASK
+    OMASK --> CONF
+    CONF -->|Yes| CONFY
+    CONF -->|No| CONFN
+    CONFN --> HALL_A
+    HALL_A -->|Yes| HALLY
+    HALL_A -->|No| HALL_B
+    HALL_B -->|Yes| HALLY
+    HALL_B -->|No| HALLN
+    HALLN --> VALID
+    
+    LCY --> Audit
+    INJY --> Audit
+    CONFY --> Audit
+    HALLY --> Audit
+    VALID --> Audit
+    
+    INJ -.-> PATTERNS
+    PII -.-> ENTITIES
+
+    classDef blocked fill:#F44336,stroke:#B71C1C,color:#fff
+    classDef pass fill:#4CAF50,stroke:#2E7D32,color:#fff
+    classDef check fill:#FF9800,stroke:#E65100,color:#fff
+    classDef info fill:#90CAF9,stroke:#1565C0,color:#000
+
+    class LCY,INJY,CONFY,HALLY blocked
+    class LCN,INJN,CONFN,HALLN,SANITIZED,VALID pass
+    class LC,INJ,CONF,HALL_A,HALL_B check
+    class PATTERNS,ENTITIES,REDACT,RATE info

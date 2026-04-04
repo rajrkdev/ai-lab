@@ -1,0 +1,48 @@
+# =============================================================================
+# InsureChat v3.0 — Python Dependencies
+# =============================================================================
+# Install with:  pip install -r requirements.txt
+# =============================================================================
+
+# ── Web Framework & Server ──────────────────────────────────────────────────
+fastapi>=0.110.0          # REST API framework — serves /chat, /ingest, /analytics, /reports
+uvicorn>=0.29.0           # ASGI server that runs the FastAPI app (hot-reload in dev)
+streamlit>=1.33.0         # Frontend UI framework — powers both chatbot UIs and analytics dashboard
+
+# ── MCP Protocol ────────────────────────────────────────────────────────────
+fastmcp>=0.1.0            # Model Context Protocol SDK — registers tools for MCP clients
+
+# ── Vector Database ─────────────────────────────────────────────────────────
+chromadb>=0.4.24          # ChromaDB — stores and queries document embeddings (cosine similarity)
+
+# ── LLM Clients ─────────────────────────────────────────────────────────────
+anthropic>=0.25.0         # Anthropic SDK — calls Claude Sonnet (answers) and Haiku (classification)
+google-genai>=1.0.0       # Google GenAI SDK — Gemini LLM fallback only (embeddings are local)
+
+# ── Document Parsing ────────────────────────────────────────────────────────
+pymupdf>=1.24.0           # PyMuPDF (fitz) — extracts text from PDF files during ingestion
+python-docx>=1.1.0        # Parses .docx (Word) files during ingestion
+pytesseract>=0.3.10       # OCR via Tesseract — extracts text from scanned images (if needed)
+Pillow>=10.3.0            # Image processing library required by pytesseract
+
+# ── Security / PII Detection ───────────────────────────────────────────────
+presidio-analyzer>=2.2.354   # Microsoft Presidio — detects PII entities (SSN, email, phone, etc.)
+presidio-anonymizer>=2.2.354 # Presidio anonymizer — redacts / masks detected PII in text
+
+# ── Utilities ───────────────────────────────────────────────────────────────
+pyyaml>=6.0.1             # YAML parser — reads/writes config.yaml
+python-dotenv>=1.0.1      # Loads .env file into os.environ for API keys
+python-multipart>=0.0.9   # Required by FastAPI for file upload (multipart form data)
+spacy>=3.7.4              # NLP pipeline — used by Presidio for tokenization (en_core_web_lg model)
+requests>=2.31.0          # HTTP client — Streamlit UIs call the FastAPI backend via requests
+slowapi>=0.1.9            # Rate-limiting middleware for FastAPI (per-IP limits)
+
+# ── Reporting ───────────────────────────────────────────────────────────────
+reportlab>=4.1.0          # PDF generation — daily, weekly, and security reports
+openpyxl>=3.1.2           # Excel generation — full analytics export (4-sheet workbook)
+
+# ── Embeddings & Re-ranking (Local) ─────────────────────────────────────────
+sentence-transformers>=2.6.0  # bge-small-en-v1.5 embeddings + CrossEncoder re-ranking (no API key)
+
+# ── Analytics / Math ────────────────────────────────────────────────────────
+scipy>=1.13.0             # Scientific computing — Z-score anomaly detection via numpy/scipy

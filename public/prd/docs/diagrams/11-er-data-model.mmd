@@ -1,0 +1,67 @@
+%% InsureChat v3.0 — Entity-Relationship / Data Model Diagram
+%% SQLite tables, ChromaDB collections, JSONL audit log, and config structure
+
+erDiagram
+    SESSIONS {
+        text session_id PK "e.g. sess_a1b2c3d4"
+        text chatbot_type "microsite | support"
+        timestamp created_at "First message time"
+        timestamp last_activity "Most recent message time"
+        integer message_count "Total messages in session"
+    }
+
+    MESSAGES {
+        text message_id PK "UUID"
+        text session_id FK "Links to SESSIONS"
+        text chatbot_type "microsite | support"
+        text query "User's original question"
+        text intent "Classified intent category"
+        text llm_used "claude-sonnet-4-6 | gemini-2.0-flash | none"
+        real confidence_score "0.0 to 1.0"
+        integer response_time_ms "End-to-end latency"
+        text pii_entities_detected "JSON array of entity types"
+        boolean injection_blocked "Was input blocked?"
+        boolean response_valid "Did output validation pass?"
+        timestamp created_at "When message was processed"
+    }
+
+    FEEDBACK {
+        text feedback_id PK "UUID"
+        text message_id FK "Links to MESSAGES"
+        integer rating "+1 (thumbs up) or -1 (thumbs down)"
+        timestamp created_at "When feedback was submitted"
+    }
+
+    SESSIONS ||--o{ MESSAGES : "has many"
+    MESSAGES ||--o| FEEDBACK : "may have"
+
+    CHROMADB_COLLECTION {
+        text id PK "SHA-256 hash: source_hash"
+        blob embedding "384-dim float vector"
+        text document "Chunk text content"
+        json metadata "source, category, chunk_index, total_chunks"
+    }
+
+    AUDIT_LOG_ENTRY {
+        timestamp timestamp "ISO 8601"
+        text event_type "interaction | blocked | feedback"
+        text session_id "Session reference"
+        text chatbot_type "microsite | support"
+        text query "User query (may be redacted)"
+        text intent "Classified intent"
+        text llm_used "Model that generated response"
+        real confidence_score "Retrieval confidence"
+        integer response_time_ms "Latency"
+        text pii_detected "Entity types found"
+        boolean injection_blocked "Injection flag"
+        boolean response_valid "Output validation result"
+    }
+
+    CONFIG_YAML {
+        json llm_routing "primary, fallback, classifier, mode, max_tokens, temperature"
+        json embeddings "provider, model, dimensions"
+        json security "input (max_length, pii, injection, rate_limit) + output (pii, confidence, hallucination)"
+        json rag "top_k, chunk_size, chunk_overlap, persist_dir, collections"
+        json conversation "max_history_turns, max_history_tokens, session_ttl_minutes, max_sessions"
+        json analytics "db_path, audit_log_path, anomaly_window_days, anomaly_zscore_threshold"
+    }

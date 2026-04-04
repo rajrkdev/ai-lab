@@ -62,7 +62,7 @@ jobs:
           python-version: "3.12"
 
       - name: Run concept structure validation
-        run: python scripts/validate_concepts.py
+        run: python public/scripts/validate_concepts.py
 
       - name: Upload validation report
         uses: actions/upload-artifact@v4

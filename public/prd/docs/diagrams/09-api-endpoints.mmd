@@ -1,0 +1,65 @@
+%% InsureChat v3.0 — API Endpoints Diagram
+%% All 16 FastAPI REST endpoints with methods, rate limits, and descriptions
+
+graph LR
+    subgraph FastAPI["⚙️ FastAPI Server — Port 8000"]
+        direction TB
+        
+        subgraph Chat["💬 Chat Endpoints"]
+            E1["POST /chat/microsite<br/>━━━━━━━━━━━━━━<br/>Rate: 10/min per IP<br/>Body: ChatRequest<br/>Returns: ChatResponse<br/>━━━━━━━━━━━━━━<br/>Insurance customer chat<br/>Full RAG pipeline"]
+            E2["POST /chat/support<br/>━━━━━━━━━━━━━━<br/>Rate: 10/min per IP<br/>Body: ChatRequest<br/>Returns: ChatResponse<br/>━━━━━━━━━━━━━━<br/>Developer support chat<br/>Full RAG pipeline"]
+        end
+        
+        subgraph Ingestion["📄 Ingestion"]
+            E3["POST /ingest<br/>━━━━━━━━━━━━━━<br/>Rate: 5/min per IP<br/>Body: multipart/form-data<br/>  • file: UploadFile<br/>  • chatbot_type: str<br/>  • category: str<br/>Returns: ingestion result<br/>━━━━━━━━━━━━━━<br/>Upload document to KB"]
+        end
+        
+        subgraph Health["❤️ Health & Config"]
+            E4["GET /health<br/>━━━━━━━━━━━━━━<br/>Rate: 60/min per IP<br/>Returns: status + checks<br/>━━━━━━━━━━━━━━<br/>ChromaDB, SQLite,<br/>API key status"]
+        end
+        
+        subgraph AnalyticsEP["📊 Analytics"]
+            E5["GET /analytics<br/>━━━━━━━━━━━━━━<br/>Rate: 30/min per IP<br/>Params: chatbot_type, days<br/>Returns: KPIs + timeseries<br/>━━━━━━━━━━━━━━<br/>Aggregated analytics"]
+            E6["GET /analytics/sessions<br/>━━━━━━━━━━━━━━<br/>Rate: 30/min per IP<br/>Params: chatbot_type, limit, offset<br/>Returns: session list<br/>━━━━━━━━━━━━━━<br/>Paginated sessions"]
+            E7["GET /analytics/sessions/:id<br/>━━━━━━━━━━━━━━<br/>Rate: 30/min per IP<br/>Params: session_id<br/>Returns: session detail<br/>━━━━━━━━━━━━━━<br/>Single session + messages"]
+            E8["GET /analytics/anomalies<br/>━━━━━━━━━━━━━━<br/>Rate: 30/min per IP<br/>Returns: anomaly list<br/>━━━━━━━━━━━━━━<br/>Z-score anomaly detection"]
+        end
+        
+        subgraph Feedback["👍 Feedback"]
+            E9["POST /feedback<br/>━━━━━━━━━━━━━━<br/>Rate: 30/min per IP<br/>Body: FeedbackRequest<br/>  • message_id: str<br/>  • rating: 1 or -1<br/>Returns: feedback_id<br/>━━━━━━━━━━━━━━<br/>Thumbs up/down"]
+        end
+        
+        subgraph Reports["📑 Reports"]
+            E10["GET /reports/:type<br/>━━━━━━━━━━━━━━<br/>Rate: 10/min per IP<br/>Types: daily_pdf,<br/>weekly_pdf, security_pdf,<br/>full_excel<br/>Returns: FileResponse<br/>━━━━━━━━━━━━━━<br/>Download PDF/Excel"]
+        end
+        
+        subgraph Management["🔧 Collection Management"]
+            E11["GET /management/collections<br/>━━━━━━━━━━━━━━<br/>Rate: 30/min per IP<br/>Returns: list of collections<br/>with stats<br/>━━━━━━━━━━━━━━<br/>List all collections"]
+            E12["GET /management/collections/:name/documents<br/>━━━━━━━━━━━━━━<br/>Rate: 30/min per IP<br/>Params: collection name<br/>Returns: document list<br/>━━━━━━━━━━━━━━<br/>List documents in collection"]
+            E13["GET /management/collections/:name/documents/:source/chunks<br/>━━━━━━━━━━━━━━<br/>Rate: 30/min per IP<br/>Params: collection, source<br/>Returns: chunk list<br/>━━━━━━━━━━━━━━<br/>Preview document chunks"]
+            E14["DELETE /management/collections/:name/documents/:source<br/>━━━━━━━━━━━━━━<br/>Rate: 10/min per IP<br/>Params: collection, source<br/>Returns: deleted count<br/>━━━━━━━━━━━━━━<br/>Delete a document"]
+            E15["DELETE /management/collections/:name<br/>━━━━━━━━━━━━━━<br/>Rate: 10/min per IP<br/>Params: collection name<br/>Returns: status<br/>━━━━━━━━━━━━━━<br/>Purge entire collection"]
+        end
+    end
+
+    subgraph Models["📦 Pydantic Models"]
+        M1["ChatRequest<br/>─────────<br/>query: str<br/>session_id: str (auto)"]
+        M2["ChatResponse<br/>─────────<br/>response: str<br/>sources: list<br/>confidence_score: float<br/>llm_used: str<br/>blocked: bool<br/>reason: str?<br/>response_time_ms: int<br/>message_id: str?"]
+        M3["FeedbackRequest<br/>─────────<br/>message_id: str<br/>rating: int (1 or -1)"]
+    end
+
+    M1 --> E1
+    M1 --> E2
+    E1 --> M2
+    E2 --> M2
+    M3 --> E9
+
+    classDef post fill:#4CAF50,stroke:#2E7D32,color:#fff
+    classDef get fill:#2196F3,stroke:#1565C0,color:#fff
+    classDef delete fill:#F44336,stroke:#B71C1C,color:#fff
+    classDef model fill:#FF9800,stroke:#E65100,color:#fff
+
+    class E1,E2,E3,E9 post
+    class E4,E5,E6,E7,E8,E10,E11,E12,E13 get
+    class E14,E15 delete
+    class M1,M2,M3 model

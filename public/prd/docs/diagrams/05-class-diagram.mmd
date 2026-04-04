@@ -1,0 +1,217 @@
+%% InsureChat v3.0 — Class Diagram
+%% Key classes, functions modules, Pydantic models, and singletons
+
+classDiagram
+    direction TB
+
+    class ChatRequest {
+        +str query
+        +str session_id
+    }
+
+    class ChatResponse {
+        +str response
+        +list sources
+        +float confidence_score
+        +str llm_used
+        +bool blocked
+        +str reason
+        +int response_time_ms
+        +str message_id
+    }
+
+    class FeedbackRequest {
+        +str message_id
+        +int rating
+    }
+
+    class FastAPIServer {
+        -bool _tools_loaded
+        +chat_microsite(request, body) ChatResponse
+        +chat_support(request, body) ChatResponse
+        +ingest_document(request, file, chatbot_type, category)
+        +health_check(request)
+        +get_analytics(request, chatbot_type, days)
+        +get_sessions(request, chatbot_type, limit, offset)
+        +get_session(request, session_id)
+        +submit_feedback(request, body)
+        +generate_report(request, report_type)
+        +get_anomalies(request)
+        -_ensure_tools()
+        -_run_chat_pipeline(query, session_id, chatbot_type) ChatResponse
+    }
+
+    class InputValidator {
+        -AnalyzerEngine _analyzer
+        -AnonymizerEngine _anonymizer
+        -List~Pattern~ INJECTION_PATTERNS
+        -List~str~ PII_ENTITIES
+        +validate_input(query, max_length) dict
+        +check_length(query, max_length) tuple
+        +check_injection(query) tuple
+        +detect_pii(text) list
+        +redact_pii(text) tuple
+    }
+
+    class Embedder {
+        -SentenceTransformer _model
+        -str MODEL = "all-MiniLM-L6-v2"
+        -int OUTPUT_DIMENSIONALITY = 384
+        +embed_query(text) list~float~
+        +embed_documents(texts, batch_size) list
+        +embed_texts(texts) list
+        +get_active_provider() str
+        +get_model_name() str
+    }
+
+    class VectorDB {
+        -PersistentClient _chroma_client
+        +get_or_create_collection(name) Collection
+        +get_collection_name(chatbot_type) str
+        +add_documents(collection, ids, embeddings, documents, metadatas)
+        +retrieve_chunks(embedding, collection, top_k) dict
+        +get_collection_count(collection_name) int
+        +health_check() dict
+        +list_documents(collection_name) list
+        +get_document_chunks(collection_name, source_name) list
+        +delete_document(collection_name, source_name) int
+        +purge_collection(collection_name) bool
+        +get_collection_stats(collection_name) dict
+    }
+
+    class LLMRouter {
+        -Anthropic _client
+        -Client _gemini_client
+        -dict SYSTEM_PROMPTS
+        +call_claude(query, chunks, sources, chatbot_type, model, history) dict
+        +build_rag_prompt(query, chunks, sources) str
+        -_call_gemini_fallback(llm_cfg, system_prompt, user_message, error, history) dict
+        -_get_client() Anthropic
+        -_get_gemini_client() Client
+    }
+
+    class OutputValidator {
+        -AnalyzerEngine _analyzer
+        -AnonymizerEngine _anonymizer
+        -List~str~ HALLUCINATION_PHRASES
+        -List~str~ PII_ENTITIES
+        +validate_output(response, chunks, confidence) dict
+        +mask_pii(text) tuple
+        +check_hallucination_phrases(response) bool
+        +compute_word_overlap(response, chunks) float
+    }
+
+    class IntentClassifier {
+        -str INTENT_PROMPT
+        -dict VALID_INTENTS
+        +classify_intent(query, chatbot_type) str
+    }
+
+    class Ingest {
+        +ingest_document(file_path, collection, category) dict
+        +ingest_file_for_chatbot(file_path, chatbot_type, category) dict
+        +extract_text(file_path) str
+        +extract_text_from_pdf(file_path) str
+        +extract_text_from_docx(file_path) str
+        +extract_text_from_txt(file_path) str
+        +extract_text_from_json(file_path) str
+        +extract_text_from_yaml(file_path) str
+        +chunk_text(text, chunk_size, chunk_overlap) list
+    }
+
+    class AnalyticsLogger {
+        -Connection _db_conn
+        +log_interaction(data) dict
+        +log_feedback(message_id, rating) str
+        +get_analytics_summary(chatbot_type, days) dict
+        +get_time_series(chatbot_type, days) list
+        +get_intent_distribution(chatbot_type, days) list
+        +get_sessions_list(chatbot_type, limit, offset) list
+        +get_session_detail(session_id) dict
+        +db_health_check() dict
+    }
+
+    class ConfigManager {
+        -Path CONFIG_PATH
+        +get_config() dict
+        +get_llm_config() dict
+        +get_security_config() dict
+        +get_rag_config() dict
+        +get_embeddings_config() dict
+        +get_analytics_config() dict
+        +get_conversation_config() dict
+        +update_config(mode, llm) dict
+    }
+
+    class SessionStore {
+        -dict _store
+        -Lock _lock
+        +add_turn(session_id, user_query, assistant_response)
+        +get_history(session_id) list
+        +clear_session(session_id)
+        +get_active_session_count() int
+        -_estimate_tokens(text) int
+        -_evict_expired()
+    }
+
+    class AnomalyDetector {
+        +detect_anomalies(chatbot_type) dict
+    }
+
+    class ReportGenerator {
+        +generate_daily_pdf() str
+        +generate_weekly_pdf() str
+        +generate_security_pdf() str
+        +generate_full_excel() str
+    }
+
+    class MCPServer {
+        -FastMCP mcp
+        +validate_input(query, max_length) dict
+        +embed_query(text) list
+        +retrieve_chunks(embedding, collection, top_k) dict
+        +call_claude(query, chunks, sources, chatbot_type, model) dict
+        +validate_output(response, chunks, confidence) dict
+        +classify_intent(query, chatbot_type) str
+        +log_interaction(data) dict
+        +ingest_document(file_path, collection, category) dict
+        +get_config() dict
+        +update_config(mode, llm) dict
+    }
+
+    FastAPIServer --> ChatRequest : receives
+    FastAPIServer --> ChatResponse : returns
+    FastAPIServer --> FeedbackRequest : receives
+    FastAPIServer --> InputValidator : Step 1
+    FastAPIServer --> Embedder : Step 2
+    FastAPIServer --> VectorDB : Step 3
+    FastAPIServer --> LLMRouter : Step 4
+    FastAPIServer --> OutputValidator : Step 5
+    FastAPIServer --> IntentClassifier : Step 6
+    FastAPIServer --> AnalyticsLogger : Step 7
+    FastAPIServer --> SessionStore : Step 3.5 + 7.5
+    FastAPIServer --> Ingest : /ingest
+    FastAPIServer --> AnomalyDetector : /anomalies
+    FastAPIServer --> ReportGenerator : /reports
+
+    MCPServer --> InputValidator
+    MCPServer --> Embedder
+    MCPServer --> VectorDB
+    MCPServer --> LLMRouter
+    MCPServer --> OutputValidator
+    MCPServer --> IntentClassifier
+    MCPServer --> AnalyticsLogger
+    MCPServer --> Ingest
+    MCPServer --> ConfigManager
+
+    SessionStore --> ConfigManager : get_conversation_config()
+    Ingest --> Embedder : embed_documents()
+    Ingest --> VectorDB : add_documents()
+    AnomalyDetector --> AnalyticsLogger : get_time_series()
+    AnomalyDetector --> ConfigManager : get_analytics_config()
+
+    InputValidator --> ConfigManager : get_security_config()
+    LLMRouter --> ConfigManager : get_llm_config()
+    OutputValidator --> ConfigManager : get_security_config()
+    VectorDB --> ConfigManager : get_rag_config()
+    IntentClassifier --> ConfigManager : get_llm_config()
