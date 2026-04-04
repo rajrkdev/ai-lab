@@ -29,6 +29,11 @@ pnpm-debug.log*
 # Task tracking
 tasks/
 
+# PRD (not published)
+prd/
+public/prd/
+src/content/docs/prd/
+
 # Temp / migration artifacts
 build_error.txt
 log.txt

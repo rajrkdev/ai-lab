@@ -12,12 +12,11 @@ export default defineConfig({
 			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/rajrkdev/ai-lab' }],
 			sidebar: [
 				{ label: 'Documentation', autogenerate: { directory: 'docs' } },
-				{ label: 'Langchain Reference', autogenerate: { directory: 'langchain' } },
 				{ label: 'RAG Guides', autogenerate: { directory: 'rag' } },
 				{ label: 'BERT Architectures', autogenerate: { directory: 'bert' } },
+				{ label: 'LangChain Reference', autogenerate: { directory: 'langchain' } },
 				{ label: 'Cert Prep', autogenerate: { directory: 'cert' } },
 				{ label: 'Prompts & Templates', autogenerate: { directory: 'prompts' } },
-				{ label: 'Reference', autogenerate: { directory: 'reference' } },
 			],
 		}),
 	],
