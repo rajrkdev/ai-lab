@@ -1,12 +1,14 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import react from '@astrojs/react';
 
 // https://astro.build/config
 export default defineConfig({
 	site: 'https://rajrkdev.github.io',
 	base: '/ai-lab',
 	integrations: [
+		react(),
 		starlight({
 			title: 'AI Lab',
 			customCss: ['./src/styles/custom.css'],
@@ -70,6 +72,7 @@ export default defineConfig({
 			],
 			sidebar: [
 				{ label: 'Documentation', autogenerate: { directory: 'docs' } },
+				{ label: 'Interactive Diagrams', autogenerate: { directory: 'diagrams' } },
 				{ label: 'RAG Guides', autogenerate: { directory: 'rag' } },
 				{ label: 'BERT Architectures', autogenerate: { directory: 'bert' } },
 				{ label: 'LangChain Reference', autogenerate: { directory: 'langchain' } },

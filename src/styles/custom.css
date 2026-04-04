@@ -70,6 +70,25 @@
   transition: width 0.25s ease, min-width 0.25s ease, padding 0.25s ease;
 }
 
+/* ── Interactive Tool Container ── */
+.interactive-tool {
+  width: 100%;
+  min-height: calc(100vh - var(--sl-nav-height) - 4rem);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid var(--sl-color-gray-6);
+}
+
+/* Remove default article padding/margins around interactive tools */
+.interactive-tool > * {
+  min-height: calc(100vh - var(--sl-nav-height) - 6rem);
+}
+
+/* Starlight wraps content in <article> — remove max-width for interactive pages */
+body:has(.interactive-tool) .sl-markdown-content {
+  max-width: none;
+}
+
 /* ── General Responsive Improvements ── */
 @media (max-width: 50rem) {
   .sl-container {
