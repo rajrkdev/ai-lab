@@ -34,20 +34,9 @@ export default defineConfig({
     }
   }
 
-  function setTocStyles(collapsed) {
-    var toc = document.querySelector('.right-sidebar-container');
-    if (!toc) return;
-    if (collapsed) {
-      toc.style.width = '0';
-      toc.style.minWidth = '0';
-      toc.style.overflow = 'hidden';
-      toc.style.padding = '0';
-    } else {
-      toc.style.width = '';
-      toc.style.minWidth = '';
-      toc.style.overflow = '';
-      toc.style.padding = '';
-    }
+  function dispatchResize() {
+    // Let React components (and any resize listeners) reflow after sidebar change
+    setTimeout(function() { window.dispatchEvent(new Event('resize')); }, 260);
   }
 
   function applyState() {
@@ -58,7 +47,6 @@ export default defineConfig({
     if (tocCollapsed) document.documentElement.setAttribute('data-toc-collapsed', '');
     else document.documentElement.removeAttribute('data-toc-collapsed');
     setNavCssVar(navCollapsed);
-    setTocStyles(tocCollapsed);
   }
 
   function injectToggles() {
@@ -74,27 +62,24 @@ export default defineConfig({
       navToggle.innerHTML = collapsed ? ICON_PANEL_OPEN : ICON_PANEL_CLOSE;
       setNavCssVar(collapsed);
       localStorage.setItem(NAV_KEY, collapsed ? '1' : '0');
+      dispatchResize();
     });
     document.body.appendChild(navToggle);
 
-    // Right TOC toggle — only if right sidebar exists on this page
-    var tocContainer = document.querySelector('.right-sidebar-container');
-    if (tocContainer) {
-      var tocToggle = document.createElement('button');
-      tocToggle.id = 'sl-toc-toggle';
-      tocToggle.setAttribute('aria-label', 'Toggle table of contents');
-      tocToggle.setAttribute('title', 'Toggle table of contents');
-      var tocCollapsed = document.documentElement.hasAttribute('data-toc-collapsed');
-      tocToggle.innerHTML = tocCollapsed ? ICON_RPANEL_OPEN : ICON_RPANEL_CLOSE;
-      tocToggle.addEventListener('click', function() {
-        var collapsed = document.documentElement.toggleAttribute('data-toc-collapsed');
-        tocToggle.innerHTML = collapsed ? ICON_RPANEL_OPEN : ICON_RPANEL_CLOSE;
-        setTocStyles(collapsed);
-        localStorage.setItem(TOC_KEY, collapsed ? '1' : '0');
-      });
-      document.body.appendChild(tocToggle);
-      setTocStyles(tocCollapsed);
-    }
+    // Right TOC toggle — always inject; CSS hides it when no right sidebar
+    var tocToggle = document.createElement('button');
+    tocToggle.id = 'sl-toc-toggle';
+    tocToggle.setAttribute('aria-label', 'Toggle table of contents');
+    tocToggle.setAttribute('title', 'Toggle table of contents');
+    var tocCollapsed = document.documentElement.hasAttribute('data-toc-collapsed');
+    tocToggle.innerHTML = tocCollapsed ? ICON_RPANEL_OPEN : ICON_RPANEL_CLOSE;
+    tocToggle.addEventListener('click', function() {
+      var collapsed = document.documentElement.toggleAttribute('data-toc-collapsed');
+      tocToggle.innerHTML = collapsed ? ICON_RPANEL_OPEN : ICON_RPANEL_CLOSE;
+      localStorage.setItem(TOC_KEY, collapsed ? '1' : '0');
+      dispatchResize();
+    });
+    document.body.appendChild(tocToggle);
   }
 
   function setup() {
