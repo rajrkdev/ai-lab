@@ -5,7 +5,7 @@ import react from '@astrojs/react';
 
 // https://astro.build/config
 export default defineConfig({
-	site: 'https://rajrkdev.github.io',
+	site: 'https://dearraj25rk-jpg.github.io',
 	base: '/ai-lab',
 	integrations: [
 		react(),
