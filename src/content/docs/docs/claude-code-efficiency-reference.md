@@ -311,7 +311,7 @@ CLAUDE.md files are injected into **every single API call** as input tokens. A 1
 ### 7.3 Recommended Structure (Anthropic's Scientific Computing Guide)
 
 ```markdown
-# Project: InsureChat v3.0
+# Project: MyProject
 
 ## Architecture
 - FastAPI + ChromaDB + Voyage AI voyage-3.5 embeddings

@@ -287,7 +287,7 @@ const STAGES=[
   {x:530,y:30,w:110,h:44,lbl:'[CLS] → classify',col:'purple',info:'[CLS] final hidden state (768-dim) → Linear → softmax.\nUsed for: sentiment, intent, NLI, sentence-pair tasks.\nFine-tune with small labeled dataset in minutes.'},
   {x:530,y:120,w:110,h:44,lbl:'All tokens → NER',col:'blue',info:'Every token\'s 768-dim vector → Linear → tag class.\nUsed for: Named Entity Recognition (PER, ORG, LOC, DATE)\nAnnotate entities in insurance documents automatically.'},
   {x:530,y:210,w:110,h:44,lbl:'Span → QA answer',col:'amber',info:'Two linear layers predict start+end position in context.\nInput: [CLS] question [SEP] context [SEP]\nAnswer = context[start:end]. No generation needed.'},
-  {x:530,y:300,w:110,h:44,lbl:'Embeddings → RAG',col:'green',info:'Mean-pool token vectors → sentence embedding for retrieval.\nUsed in: Sentence-BERT → all-MiniLM-L6-v2 → Voyage AI\nThe foundation of your InsureChat retrieval pipeline.'},
+  {x:530,y:300,w:110,h:44,lbl:'Embeddings → RAG',col:'green',info:'Mean-pool token vectors → sentence embedding for retrieval.\nUsed in: Sentence-BERT → all-MiniLM-L6-v2 → Voyage AI\nThe foundation of a production RAG retrieval pipeline.'},
 ];
 
 const ARROWS=[[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,8],[7,9],[7,10],[7,11]];

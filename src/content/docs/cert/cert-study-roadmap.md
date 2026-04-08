@@ -10,7 +10,7 @@ title: "Study Roadmap"
 Based on your existing work, here's an honest assessment of where you stand against each exam domain. This drives the priority weighting in the roadmap.
 
 **Domain 1: Agentic Architecture & Orchestration (27% of exam)**
-Current strength: MODERATE. You understand agentic concepts deeply from your RAG taxonomy work, agent framework evaluations, and InsureChat pipeline design. However, the exam tests *Claude Agent SDK specifics* — the `Agent` tool (formerly `Task`), `AgentDefinition` configuration, `allowedTools`, hooks (`PreToolUse`/`PostToolUse`), `stop_reason` handling, `fork_session`, and hub-and-spoke coordinator patterns. These are SDK-level implementation details you haven't drilled on yet.
+Current strength: MODERATE. You understand agentic concepts deeply from your RAG taxonomy work, and agent framework evaluations. However, the exam tests *Claude Agent SDK specifics* — the `Agent` tool (formerly `Task`), `AgentDefinition` configuration, `allowedTools`, hooks (`PreToolUse`/`PostToolUse`), `stop_reason` handling, `fork_session`, and hub-and-spoke coordinator patterns. These are SDK-level implementation details you haven't drilled on yet.
 
 **Domain 2: Tool Design & MCP Integration (18% of exam)**
 Current strength: STRONG. Your comprehensive MCP server types guide, stdio vs Streamable HTTP transport knowledge, and `.mcp.json` configuration expertise cover most of this domain. Gaps: the `isError` flag pattern for structured error responses, tool distribution principles (4-5 tools per agent vs 18), and `tool_choice` forced selection patterns.
@@ -19,7 +19,7 @@ Current strength: STRONG. Your comprehensive MCP server types guide, stdio vs St
 Current strength: STRONG. Your universal CLAUDE.md template, configuration hierarchy knowledge (precedence tiers, settings.json), and workflow orchestration SKILL.md put you ahead here. Gaps: `.claude/rules/` YAML frontmatter path-scoping (glob patterns for conditional loading), `context: fork` in skill frontmatter, the Explore subagent, and CI/CD integration with `-p` flag + `--output-format json` + `--json-schema`.
 
 **Domain 4: Prompt Engineering & Structured Output (20% of exam)**
-Current strength: MODERATE. You have strong prompt engineering instincts from InsureChat work, but this domain tests *specific Claude API patterns*: `tool_use` with JSON schemas for guaranteed structured output, `tool_choice` options (`"auto"` vs `"any"` vs forced), few-shot examples for false positive reduction, validation-retry loops, and the Message Batches API (50% savings, 24-hour window, `custom_id` correlation, no multi-turn tool calling).
+Current strength: MODERATE. You have strong prompt engineering instincts from previous applied work, but this domain tests *specific Claude API patterns*: `tool_use` with JSON schemas for guaranteed structured output, `tool_choice` options (`"auto"` vs `"any"` vs forced), few-shot examples for false positive reduction, validation-retry loops, and the Message Batches API (50% savings, 24-hour window, `custom_id` correlation, no multi-turn tool calling).
 
 **Domain 5: Context Management & Reliability (15% of exam)**
 Current strength: MODERATE-STRONG. Your context window management and prompt caching work provides foundation. Exam-specific patterns to learn: "lost in the middle" effect mitigation, progressive summarization risks, structured "case facts" extraction, scratchpad files for context boundaries, `/compact`, crash recovery via state manifests, and confidence calibration with stratified sampling.
@@ -196,7 +196,7 @@ Step 6: Run Claude Code in CI mode with `-p "review this PR" --output-format jso
 
 **Days 10–11: Exercise 3 — Structured Data Extraction Pipeline**
 
-Build an extraction system processing insurance documents. This covers Domain 4 + Domain 5 and directly maps to your InsureChat work.
+Build an extraction system processing insurance documents. This covers Domain 4 + Domain 5 and directly maps to your applied work.
 
 Step 1: Define an extraction tool with a JSON schema: required fields, optional/nullable fields, enum with `"other"` + detail, `"unclear"` for ambiguous cases.
 

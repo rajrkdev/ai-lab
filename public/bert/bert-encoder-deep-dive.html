@@ -235,7 +235,7 @@ Total BERT-Base:      ~110,000,000</div>
     <svg id="next-svg" width="100%" viewBox="0 0 660 340" style="display:block"></svg>
   </div>
   <div id="next-info" class="note" style="min-height:52px;margin-bottom:12px">Click any downstream task above.</div>
-  <h2 style="font-size:14px;margin-bottom:8px">The RAG connection — why this matters for InsureChat</h2>
+  <h2 style="font-size:14px;margin-bottom:8px">The RAG connection — why BERT matters for RAG</h2>
   <div class="col2">
     <div class="card">
       <div style="font-size:12px;font-weight:500;margin-bottom:6px">Sentence-BERT bridge</div>
@@ -247,7 +247,7 @@ Total BERT-Base:      ~110,000,000</div>
         <div>→ <strong style="color:var(--color-text-primary)">Sentence-BERT</strong>: siamese network + contrastive training on top of BERT</div>
         <div>→ <strong style="color:var(--color-text-primary)">Fine-tuning</strong>: add task head, train on small labeled dataset</div>
         <div>→ <strong style="color:var(--color-text-primary)">RoBERTa</strong>: remove NSP, 10× data, dynamic masking</div>
-        <div>→ <strong style="color:var(--color-text-primary)">Voyage AI</strong>: BERT-lineage, 1024-dim, domain-tuned for InsureChat</div>
+        <div>→ <strong style="color:var(--color-text-primary)">Voyage AI</strong>: BERT-lineage, 1024-dim, domain-tuned for insurance/legal documents</div>
       </div>
     </div>
   </div>
@@ -450,8 +450,8 @@ const NEXT_NODES=[
   {x:220,y:130,w:160,h:44,lbl:'All token vectors',sub:'seq_len × 768 → tags',c:'teal',info:'Apply a linear layer to every token vector (768 → num_tags). Each token independently classified. Used for: Named Entity Recognition (PER, ORG, LOC), POS tagging, token-level classification.'},
   {x:412,y:130,w:160,h:44,lbl:'Span extraction',sub:'start + end pointers',c:'amber',info:'Two linear layers predict start and end token positions over the context. Input: [CLS] question [SEP] context [SEP]. Used for: extractive QA (SQuAD), reading comprehension. Answers are copied from the text, not generated.'},
   {x:30,y:250,w:160,h:44,lbl:'Mean pool → embed',sub:'sentence embedding',c:'coral',info:'Average all token vectors (or use [CLS]) to produce a single 768-dim sentence embedding. With contrastive fine-tuning (Sentence-BERT) these embeddings cluster semantically. Foundation of RAG retrieval pipelines.'},
-  {x:220,y:250,w:160,h:44,lbl:'Sentence-BERT',sub:'384-dim (MiniLM)',c:'green',info:'Sentence-BERT adds a siamese network + contrastive training on top of BERT. Produces sentence-level embeddings where cosine similarity = semantic similarity. all-MiniLM-L6-v2 is a distilled version (384-dim) — the model in your InsureChat dev environment.'},
-  {x:412,y:250,w:160,h:44,lbl:'Voyage AI',sub:'1024-dim, domain-tuned',c:'purple',info:'Voyage AI uses a BERT-lineage model fine-tuned on domain-specific data with larger embedding dimensions (1024-dim). For InsureChat: voyage-2 or voyage-finance-2. Handles insurance jargon better than general-purpose embeddings.'},
+  {x:220,y:250,w:160,h:44,lbl:'Sentence-BERT',sub:'384-dim (MiniLM)',c:'green',info:'Sentence-BERT adds a siamese network + contrastive training on top of BERT. Produces sentence-level embeddings where cosine similarity = semantic similarity. all-MiniLM-L6-v2 is a distilled version (384-dim) — a widely used model in RAG dev environments.'},
+  {x:412,y:250,w:160,h:44,lbl:'Voyage AI',sub:'1024-dim, domain-tuned',c:'purple',info:'Voyage AI uses a BERT-lineage model fine-tuned on domain-specific data with larger embedding dimensions (1024-dim). voyage-2 or voyage-finance-2 handle insurance/legal jargon better than general-purpose embeddings.'},
 ];
 const NEXT_ARROWS=[[0,1],[0,2],[0,3],[1,4],[2,4],[4,5],[4,6]];
 function drawNext(){
@@ -470,7 +470,7 @@ function drawNext(){
     g.appendChild(se('text',{x:n.x+n.w/2,y:n.y+n.h/2+9,'text-anchor':'middle','font-size':9,fill:cT(n.c),'font-family':'var(--font-sans)',opacity:.8},n.sub));
     svg.appendChild(g);
   });
-  svg.appendChild(se('text',{x:330,y:318,'text-anchor':'middle','font-size':10,'font-weight':500,fill:'var(--color-text-tertiary)','font-family':'var(--font-sans)'},'InsureChat RAG pipeline ↓'));
+  svg.appendChild(se('text',{x:330,y:318,'text-anchor':'middle','font-size':10,'font-weight':500,fill:'var(--color-text-tertiary)','font-family':'var(--font-sans)'},'RAG pipeline ↓'));
 }
 function clickNext(i){document.getElementById('next-info').textContent=NEXT_NODES[i].info;}
 

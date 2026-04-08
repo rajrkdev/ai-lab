@@ -283,7 +283,7 @@ function ClaudeMdTab() {
       ]} />
     </Section>
     <Section title="Recommended structure" badge={<CcafBadge domain={2} />}>
-      <CodeBlock title="Under 200 lines — Anthropic's scientific computing guide" code={`# Project: InsureChat v3.0
+      <CodeBlock title="Under 200 lines — Anthropic's scientific computing guide" code={`# Project: MyProject
 
 ## Architecture
 - FastAPI + ChromaDB + Voyage AI voyage-3.5

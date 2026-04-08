@@ -269,7 +269,7 @@ input[type=range]{flex:1}
   </div>
   <h2 style="font-size:14px;margin-bottom:8px">Chunking strategy for RAG pipelines</h2>
   <div id="chunk-grid" class="col3" style="margin-bottom:12px"></div>
-  <div class="note">For InsureChat: use chunk_size=180 tokens with 20-token overlap. At ~100 tokens per sentence this gives ~1.8 sentences per chunk with context continuity. Voyage AI (voyage-2) supports up to 4096 tokens — you can use much larger chunks, which is one of its key advantages over all-MiniLM.</div>
+  <div class="note">For production RAG: use chunk_size=180 tokens with 20-token overlap. At ~100 tokens per sentence this gives ~1.8 sentences per chunk with context continuity. Voyage AI (voyage-2) supports up to 4096 tokens — you can use much larger chunks, which is one of its key advantages over all-MiniLM.</div>
 </div>
 
 <!-- S7: OOV & UNK -->
@@ -534,7 +534,7 @@ function toggleNS(i){document.getElementById('ns'+i).classList.toggle('op');}
 const CHUNK_DATA=[
   {model:'all-MiniLM-L6-v2',limit:256,rec:180,overlap:20,note:'RAG dev / local',col:'info'},
   {model:'BERT-base',limit:512,rec:400,overlap:40,note:'General NLU',col:'success'},
-  {model:'Voyage AI voyage-2',limit:4096,rec:1500,overlap:150,note:'InsureChat prod',col:'secondary'},
+  {model:'Voyage AI voyage-2',limit:4096,rec:1500,overlap:150,note:'Production RAG',col:'secondary'},
 ];
 function initLimit(){
   document.getElementById('chunk-grid').innerHTML=CHUNK_DATA.map(d=>`<div class="card" style="margin:0"><div style="font-size:11px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px">${d.model}</div><div style="font-size:12px;font-weight:500;color:var(--color-text-${d.col});margin-bottom:2px">Max: ${d.limit.toLocaleString()}</div><div style="font-size:11px;color:var(--color-text-secondary);line-height:1.6">Rec chunk: ${d.rec}<br>Overlap: ${d.overlap}<br>${d.note}</div></div>`).join('');
