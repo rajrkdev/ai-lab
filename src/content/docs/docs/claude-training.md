@@ -1,5 +1,4 @@
 ---
-layout: default
 title: Elite Claude Code Mastery — Training Program
 ---
 

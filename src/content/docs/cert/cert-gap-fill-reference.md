@@ -1,5 +1,4 @@
 ---
-layout: default
 title: "Gap-Fill Study Reference"
 ---
 

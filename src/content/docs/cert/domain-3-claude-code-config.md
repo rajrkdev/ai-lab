@@ -1,5 +1,4 @@
 ---
-layout: default
 title: "Domain 3: Claude Code Config"
 ---
 

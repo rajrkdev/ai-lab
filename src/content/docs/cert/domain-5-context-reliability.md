@@ -1,5 +1,4 @@
 ---
-layout: default
 title: "Domain 5: Context & Reliability"
 ---
 

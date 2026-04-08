@@ -1,5 +1,4 @@
 ---
-layout: default
 title: "Domain 4: Prompt Engineering"
 ---
 

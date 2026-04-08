@@ -1,5 +1,4 @@
 ---
-layout: default
 title: "Master Study Guide"
 ---
 

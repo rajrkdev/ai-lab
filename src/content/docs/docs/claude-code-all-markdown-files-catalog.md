@@ -1,5 +1,4 @@
 ---
-layout: default
 title: Every Markdown File Claude Code Recognizes — Complete Catalog
 ---
 

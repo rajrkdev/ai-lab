@@ -1,5 +1,4 @@
 ---
-layout: default
 title: Concept Validation Report
 ---
 

@@ -1,5 +1,4 @@
 ---
-layout: default
 title: CLAUDE.md vs Skills vs Rules — Architecture Guide
 ---
 

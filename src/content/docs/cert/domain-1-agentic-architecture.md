@@ -1,5 +1,4 @@
 ---
-layout: default
 title: "Domain 1: Agentic Architecture"
 ---
 

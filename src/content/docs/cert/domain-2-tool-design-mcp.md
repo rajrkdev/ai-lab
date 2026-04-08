@@ -1,5 +1,4 @@
 ---
-layout: default
 title: "Domain 2: Tool Design & MCP"
 ---
 
