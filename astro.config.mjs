@@ -108,6 +108,7 @@ export default defineConfig({
 				{ label: 'BERT Architectures', autogenerate: { directory: 'bert' } },
 				{ label: 'LangChain Reference', autogenerate: { directory: 'langchain' } },
 				{ label: 'Cert Prep', autogenerate: { directory: 'cert' } },
+				{ label: 'Claude Code', autogenerate: { directory: 'claude-code' } },
 			],
 		}),
 	],
