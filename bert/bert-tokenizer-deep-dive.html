@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BERT Tokenizer — Deep Dive</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --color-background-primary:#ffffff;
+  --color-background-secondary:#f5f4f0;
+  --color-background-tertiary:#eeece6;
+  --color-text-primary:#1a1a18;
+  --color-text-secondary:#5a5a56;
+  --color-text-tertiary:#9a9890;
+  --color-border-tertiary:rgba(0,0,0,0.12);
+  --color-border-secondary:rgba(0,0,0,0.22);
+  --color-border-primary:rgba(0,0,0,0.35);
+  --color-background-info:#e6f1fb;
+  --color-text-info:#0c447c;
+  --color-border-info:rgba(23,95,165,0.4);
+  --color-background-success:#eaf3de;
+  --color-text-success:#3b6d11;
+  --color-border-success:rgba(59,109,17,0.4);
+  --color-background-warning:#faeeda;
+  --color-text-warning:#633806;
+  --color-border-warning:rgba(99,56,6,0.4);
+  --color-background-danger:#fcebeb;
+  --color-text-danger:#791f1f;
+  --color-border-danger:rgba(121,31,31,0.4);
+  --font-sans:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --font-mono:'SF Mono','Fira Code',monospace;
+  --border-radius-md:8px;
+  --border-radius-lg:12px;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --color-background-primary:#1e1e1c;
+    --color-background-secondary:#2a2a28;
+    --color-background-tertiary:#242422;
+    --color-text-primary:#e8e6de;
+    --color-text-secondary:#a8a69e;
+    --color-text-tertiary:#6a6860;
+    --color-border-tertiary:rgba(255,255,255,0.10);
+    --color-border-secondary:rgba(255,255,255,0.20);
+    --color-border-primary:rgba(255,255,255,0.32);
+    --color-background-info:#042c53;
+    --color-text-info:#85b7eb;
+    --color-border-info:rgba(133,183,235,0.35);
+    --color-background-success:#173404;
+    --color-text-success:#97c459;
+    --color-border-success:rgba(151,196,89,0.35);
+    --color-background-warning:#412402;
+    --color-text-warning:#fac775;
+    --color-border-warning:rgba(250,199,117,0.35);
+    --color-background-danger:#501313;
+    --color-text-danger:#f09595;
+    --color-border-danger:rgba(240,149,149,0.35);
+  }
+}
+body{
+  font-family:var(--font-sans);
+  background:var(--color-background-tertiary);
+  color:var(--color-text-primary);
+  min-height:100vh;
+  padding:24px 16px;
+}
+.wrapper{max-width:780px;margin:0 auto}
+.header{margin-bottom:20px}
+.header h1{font-size:20px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px}
+.header p{font-size:13px;color:var(--color-text-secondary)}
+.root{padding:0 0 32px}
+.nav{display:flex;gap:3px;flex-wrap:wrap;padding:4px;background:var(--color-background-secondary);border-radius:12px;margin-bottom:18px}
+.nb{padding:6px 12px;border:none;background:transparent;color:var(--color-text-secondary);cursor:pointer;font-size:12px;font-weight:500;border-radius:8px;transition:all .15s;white-space:nowrap;font-family:var(--font-sans)}
+.nb.on{background:var(--color-background-primary);color:var(--color-text-primary);border:0.5px solid var(--color-border-tertiary)}
+.sc{display:none}.sc.on{display:block}
+h2{font-size:16px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px}
+.sub{font-size:12px;color:var(--color-text-secondary);margin-bottom:14px;line-height:1.6}
+.card{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:10px;padding:14px;margin-bottom:10px}
+.cw{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:10px;padding:14px;margin-bottom:10px}
+.lbl{font-size:10px;font-weight:500;color:var(--color-text-tertiary);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px}
+.btn{padding:6px 14px;border:0.5px solid var(--color-border-secondary);border-radius:8px;background:transparent;color:var(--color-text-secondary);cursor:pointer;font-size:12px;font-family:var(--font-sans);transition:all .15s}
+.btn:hover{background:var(--color-background-secondary);color:var(--color-text-primary)}
+.btn.p{border-color:var(--color-border-info);background:var(--color-background-info);color:var(--color-text-info)}
+.note{font-size:12px;color:var(--color-text-secondary);padding:10px 12px;background:var(--color-background-secondary);border-radius:8px;line-height:1.6;border-left:2.5px solid var(--color-border-info)}
+.code{font-family:var(--font-mono);font-size:11px;background:var(--color-background-secondary);padding:10px 12px;border-radius:7px;line-height:1.75;color:var(--color-text-secondary);margin-bottom:10px;overflow-x:auto;white-space:pre}
+.col2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.col3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.stat{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:8px;padding:10px 12px}
+.sv{font-size:20px;font-weight:500;color:var(--color-text-primary)}
+.sl{font-size:10px;color:var(--color-text-secondary);margin-top:2px}
+.tok{display:inline-flex;align-items:center;padding:5px 10px;border-radius:7px;margin:2px;font-size:12px;font-weight:500;border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);font-family:var(--font-sans);cursor:default}
+.tok.cont{background:var(--color-background-success);color:var(--color-text-success);border-color:var(--color-border-success)}
+.tok.sp{background:var(--color-background-info);color:var(--color-text-info);border-color:var(--color-border-info)}
+.tok.unk{background:var(--color-background-danger);color:var(--color-text-danger);border-color:var(--color-border-danger)}
+.tok.hi{background:var(--color-background-warning);color:var(--color-text-warning);border-color:var(--color-border-warning)}
+.tok.ok{background:var(--color-background-success);color:var(--color-text-success);border-color:var(--color-border-success)}
+input[type=text]{width:100%;padding:9px 12px;border:0.5px solid var(--color-border-secondary);border-radius:8px;font-size:13px;background:var(--color-background-secondary);color:var(--color-text-primary);font-family:var(--font-sans);margin-bottom:10px;outline:none}
+input[type=text]:focus{border-color:var(--color-border-info)}
+input[type=range]{flex:1}
+.step-box{border:0.5px solid var(--color-border-tertiary);border-radius:9px;overflow:hidden;margin-bottom:8px}
+.step-hdr{padding:10px 14px;cursor:pointer;background:var(--color-background-secondary);display:flex;align-items:center;gap:10px;transition:background .15s}
+.step-hdr:hover{background:var(--color-background-primary)}
+.step-num{width:24px;height:24px;border-radius:50%;background:var(--color-background-info);color:var(--color-text-info);font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-body{display:none;padding:12px 14px;background:var(--color-background-primary);border-top:0.5px solid var(--color-border-tertiary)}
+.step-body.op{display:block}
+.arrow-row{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>BERT Tokenizer — Deep Dive</h1>
+    <p>WordPiece tokenization · 30,522-token vocabulary · 8 interactive sections</p>
+  </div>
+
+<div class="root">
+<div class="nav" id="nav"></div>
+
+<!-- S1: LIVE TOKENIZER -->
+<div class="sc on" id="s-live">
+  <h2>Live BERT tokenizer</h2>
+  <div class="sub">Type any text. Watch it get lowercased, split into WordPiece subwords, wrapped in special tokens, and converted to IDs.</div>
+  <div class="cw">
+    <div class="lbl">Input text</div>
+    <input type="text" id="live-input" placeholder="e.g. uninsurable policyholder" oninput="liveTok(this.value)">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn" onclick="setLive('The policyholder filed an uninsurable claim')">Insurance sentence</button>
+      <button class="btn" onclick="setLive('BERT uses WordPiece tokenization')">ML sentence</button>
+      <button class="btn" onclick="setLive('deductible endorsement subrogation reinsurance')">Insurance jargon</button>
+      <button class="btn" onclick="setLive('unwanted undeniably unremarkable')">Prefix words</button>
+      <button class="btn" onclick="setLive('Hello World!')">Hello World</button>
+    </div>
+    <div class="lbl">Tokens (## = continuation subword)</div>
+    <div id="live-toks" style="min-height:42px;margin-bottom:14px"></div>
+    <div class="lbl">Token IDs (vocab lookup)</div>
+    <div id="live-ids" style="min-height:28px;font-family:var(--font-mono);font-size:11px;color:var(--color-text-secondary);margin-bottom:14px"></div>
+    <div class="col3" style="margin-bottom:6px">
+      <div class="stat"><div class="sv" id="st-total">0</div><div class="sl">Total tokens</div></div>
+      <div class="stat"><div class="sv" id="st-sub">0</div><div class="sl">Subword pieces (##)</div></div>
+      <div class="stat"><div class="sv" id="st-words">0</div><div class="sl">Full words</div></div>
+    </div>
+  </div>
+  <div class="note" id="live-note">Type something above or pick a preset sentence.</div>
+</div>
+
+<!-- S2: WORDPIECE ALGORITHM -->
+<div class="sc" id="s-algorithm">
+  <h2>WordPiece algorithm — step by step</h2>
+  <div class="sub">Choose a word to see exactly how the greedy longest-match algorithm splits it into subword tokens.</div>
+  <div class="cw">
+    <div class="lbl">Select a word to trace</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px" id="algo-btns"></div>
+    <div id="algo-trace"></div>
+  </div>
+  <div class="col2">
+    <div class="card">
+      <div style="font-size:12px;font-weight:500;margin-bottom:6px">Algorithm pseudocode</div>
+      <div class="code">function wordpiece(word, vocab):
+  tokens = []
+  start = 0
+  while start &lt; len(word):
+    end = len(word)       # try longest first
+    while start &lt; end:
+      substr = word[start:end]
+      if start > 0:
+        substr = "##" + substr  # continuation
+      if substr in vocab:
+        tokens.append(substr)
+        break
+      end -= 1             # shrink until found
+    if start == end:
+      return ["[UNK]"]    # no match possible
+    start = end
+  return tokens</div>
+    </div>
+    <div class="card">
+      <div style="font-size:12px;font-weight:500;margin-bottom:6px">Why greedy longest-match?</div>
+      <div style="font-size:11px;color:var(--color-text-secondary);line-height:1.7">
+        Always tries the longest possible substring first, then shrinks until a vocab match is found.<br><br>
+        Maximises information per token — fewer pieces per word = more context fits in the 512-token window.<br><br>
+        "insurance" → 1 token (whole word in vocab)<br>
+        "insurability" → 3 tokens (splits at morpheme boundaries)
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- S3: VOCAB STRUCTURE -->
+<div class="sc" id="s-vocab">
+  <h2>Vocabulary structure</h2>
+  <div class="sub">BERT's vocabulary has exactly 30,522 tokens. Every token has a unique integer ID. The vocabulary is fixed after pre-training.</div>
+  <svg id="vocab-svg" width="100%" viewBox="0 0 660 320" style="display:block;margin-bottom:14px"></svg>
+  <div class="col2">
+    <div class="cw">
+      <div class="lbl">Special tokens (reserved IDs)</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="arrow-row"><span class="tok sp">[PAD]</span><span style="font-size:11px;color:var(--color-text-secondary)">ID 0 — padding to fixed length</span></div>
+        <div class="arrow-row"><span class="tok unk">[UNK]</span><span style="font-size:11px;color:var(--color-text-secondary)">ID 100 — unknown / unresolvable</span></div>
+        <div class="arrow-row"><span class="tok sp">[CLS]</span><span style="font-size:11px;color:var(--color-text-secondary)">ID 101 — sentence start / classifier</span></div>
+        <div class="arrow-row"><span class="tok sp">[SEP]</span><span style="font-size:11px;color:var(--color-text-secondary)">ID 102 — sentence boundary</span></div>
+        <div class="arrow-row"><span class="tok hi">[MASK]</span><span style="font-size:11px;color:var(--color-text-secondary)">ID 103 — MLM masking token</span></div>
+      </div>
+    </div>
+    <div class="cw">
+      <div class="lbl">Vocabulary composition</div>
+      <div id="vocab-breakdown"></div>
+    </div>
+  </div>
+  <div class="note">The ## prefix is not stored in the vocab entry itself — "##ing" is stored as "##ing". The prefix signals to the model that this piece continues the previous token with no whitespace. All tokens including ## pieces are equally valid vocab entries with their own embedding vector.</div>
+</div>
+
+<!-- S4: SPECIAL TOKENS -->
+<div class="sc" id="s-special">
+  <h2>Special tokens — [CLS], [SEP], [MASK], [PAD], [UNK]</h2>
+  <div class="sub">BERT adds wrapper tokens that are never in the original text. Each has a specific job.</div>
+  <div id="sp-cards" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px"></div>
+  <h2 style="margin-bottom:8px;font-size:14px">Sentence pair encoding — the full template</h2>
+  <div class="cw">
+    <div class="lbl">Single sentence</div>
+    <div style="margin-bottom:10px" id="sp-single"></div>
+    <div class="lbl">Sentence pair (e.g. Question Answering)</div>
+    <div id="sp-pair"></div>
+  </div>
+</div>
+
+<!-- S5: NORMALISATION -->
+<div class="sc" id="s-normalise">
+  <h2>Text normalisation pipeline</h2>
+  <div class="sub">Before WordPiece runs, BERT applies 5 normalisation steps. Each step changes the text in a specific way.</div>
+  <div class="cw">
+    <div class="lbl">Input text — edit to see transformations live</div>
+    <input type="text" id="norm-input" placeholder="The Policy Covers FLOOD damage! Café résumé." oninput="updateNorm(this.value)">
+    <div id="norm-steps"></div>
+  </div>
+  <div class="col2">
+    <div class="card">
+      <div style="font-size:12px;font-weight:500;margin-bottom:6px">bert-base-uncased vs cased</div>
+      <div style="font-size:11px;color:var(--color-text-secondary);line-height:1.7">
+        <strong style="color:var(--color-text-primary)">uncased</strong>: lowercases + strips accents. Smaller effective vocab. Better for tasks where case doesn't matter (most NLU tasks).<br><br>
+        <strong style="color:var(--color-text-primary)">cased</strong>: preserves case. Essential for NER (London ≠ london) and tasks where capitalisation is a signal.
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-size:12px;font-weight:500;margin-bottom:6px">Unicode normalisation (NFC)</div>
+      <div style="font-size:11px;color:var(--color-text-secondary);line-height:1.7">
+        The same character can be encoded multiple ways in Unicode.<br><br>
+        "é" = U+00E9 (single code point)<br>
+        "é" = U+0065 + U+0301 (e + combining acute)<br><br>
+        NFC normalisation collapses these to the canonical single form before any processing.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- S6: 512-TOKEN LIMIT -->
+<div class="sc" id="s-limits">
+  <h2>Truncation, padding, and the 512-token limit</h2>
+  <div class="sub">BERT's position embeddings only go up to 512. Everything beyond is truncated. Everything shorter must be padded. This has direct consequences for RAG chunking.</div>
+  <div class="cw">
+    <div class="lbl">Drag to set token count — see what happens</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <input type="range" id="tok-slider" min="50" max="600" value="200" style="flex:1" oninput="updateSlider(this.value)">
+      <span id="tok-val" style="font-size:14px;font-weight:500;min-width:40px;color:var(--color-text-primary)">200</span>
+      <span id="tok-status" style="font-size:11px;min-width:80px"></span>
+    </div>
+    <svg id="limit-svg" width="100%" viewBox="0 0 640 110" style="display:block;margin-bottom:10px"></svg>
+    <div id="limit-note" class="note" style="min-height:44px"></div>
+  </div>
+  <h2 style="font-size:14px;margin-bottom:8px">Chunking strategy for RAG pipelines</h2>
+  <div id="chunk-grid" class="col3" style="margin-bottom:12px"></div>
+  <div class="note">For production RAG: use chunk_size=180 tokens with 20-token overlap. At ~100 tokens per sentence this gives ~1.8 sentences per chunk with context continuity. Voyage AI (voyage-2) supports up to 4096 tokens — you can use much larger chunks, which is one of its key advantages over all-MiniLM.</div>
+</div>
+
+<!-- S7: OOV & UNK -->
+<div class="sc" id="s-oov">
+  <h2>Out-of-vocabulary handling</h2>
+  <div class="sub">WordPiece handles most unknown words through subword splitting. True [UNK] only occurs when even individual characters are not in the vocabulary.</div>
+  <div class="cw">
+    <div class="lbl">OOV word examples — click any</div>
+    <div id="oov-btns" style="margin-bottom:14px"></div>
+    <div id="oov-detail"></div>
+  </div>
+  <div class="col2">
+    <div class="card">
+      <div style="font-size:12px;font-weight:500;margin-bottom:6px">When does [UNK] appear?</div>
+      <div style="font-size:11px;color:var(--color-text-secondary);line-height:1.7">
+        Almost never for English text. The 30k vocab covers virtually all English characters and common subwords.<br><br>
+        [UNK] appears for:<br>
+        • Non-Latin scripts (Chinese, Arabic, Cyrillic) in uncased BERT<br>
+        • Rare unicode symbols (✓, ⚡, emoji)<br>
+        • Extremely long strings with no valid subwords
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-size:12px;font-weight:500;margin-bottom:6px">WordPiece vs BPE vs Unigram</div>
+      <div style="font-size:11px;color:var(--color-text-secondary);line-height:1.7">
+        <strong style="color:var(--color-text-primary)">WordPiece (BERT)</strong>: likelihood-based. Trained to maximise LM probability of training data.<br><br>
+        <strong style="color:var(--color-text-primary)">BPE (GPT, RoBERTa)</strong>: frequency-based. Merges most frequent pairs iteratively.<br><br>
+        <strong style="color:var(--color-text-primary)">Unigram (T5, Albert)</strong>: probabilistic. Removes tokens that least reduce vocabulary likelihood.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- S8: FULL PIPELINE -->
+<div class="sc" id="s-pipeline">
+  <h2>Full tokenisation pipeline — animated</h2>
+  <div class="sub">See every step from raw text to model-ready tensors. Click Step through or jump to any stage.</div>
+  <div class="cw">
+    <div class="lbl">Input sentence</div>
+    <div class="arrow-row" style="margin-bottom:14px">
+      <span class="tok hi" style="font-size:13px">"The policyholder's claim was DENIED."</span>
+    </div>
+    <div id="pipeline-steps"></div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button class="btn p" onclick="runPipeline()">▶ Step through</button>
+      <button class="btn" onclick="resetPipeline()">Reset</button>
+    </div>
+  </div>
+  <div id="pipeline-note" class="note" style="min-height:44px">Press Step through to begin.</div>
+</div>
+
+</div>
+</div>
+
+<script>
+const SECS=[{id:'live',l:'Live tokenizer'},{id:'algorithm',l:'WordPiece algo'},{id:'vocab',l:'Vocab structure'},{id:'special',l:'Special tokens'},{id:'normalise',l:'Normalisation'},{id:'limits',l:'512-token limit'},{id:'oov',l:'OOV & [UNK]'},{id:'pipeline',l:'Full pipeline'}];
+
+function initNav(){
+  const n=document.getElementById('nav');
+  SECS.forEach((s,i)=>{
+    const b=document.createElement('button');b.className='nb'+(i===0?' on':'');b.textContent=s.l;
+    b.onclick=()=>{document.querySelectorAll('.nb').forEach((x,j)=>x.classList.toggle('on',j===i));document.querySelectorAll('.sc').forEach(x=>x.classList.remove('on'));document.getElementById('s-'+s.id).classList.add('on');};
+    n.appendChild(b);
+  });
+}
+
+const WP={
+  uninsurable:['un','##insur','##able'],policyholder:['policy','##holder'],
+  policyholders:['policy','##holder','##s'],deductible:['de','##duct','##ible'],
+  endorsement:['endorse','##ment'],subrogation:['sub','##rog','##ation'],
+  reinsurance:['re','##insurance'],reinsurer:['re','##insurer'],
+  transformers:['transform','##ers'],transformer:['transform','##er'],
+  tokenization:['token','##ization'],tokenize:['token','##ize'],
+  revolutionized:['revolution','##ized'],unwanted:['un','##want','##ed'],
+  undeniably:['un','##deni','##ably'],unremarkable:['un','##remark','##able'],
+  claiming:['claim','##ing'],claimant:['claim','##ant'],
+  insured:['insured'],insurance:['insurance'],flood:['flood'],claim:['claim'],
+  damage:['damage'],policy:['policy'],filed:['filed'],the:['the'],a:['a'],
+  an:['an'],is:['is'],was:['was'],in:['in'],of:['of'],for:['for'],under:['under'],
+  bert:['bert'],wordpiece:['word','##piece'],denied:['denied'],hello:['hello'],
+  world:['world'],covers:['covers'],not:['not'],conditions:['conditions'],
+  used:['used'],blanket:['blanket'],herself:['herself'],
+};
+const IDS={
+  '[CLS]':101,'[SEP]':102,'[PAD]':0,'[UNK]':100,'[MASK]':103,
+  the:1996,policy:3343,covers:6815,flood:4177,damage:4366,
+  un:4895,'##insur':2015,'##able':3831,'##holder':2015,claim:4366,
+  '##ing':2075,'##ant':3455,insured:18021,insurance:3199,de:1996,
+  '##duct':7524,'##ible':3821,endorse:20312,'##ment':2222,sub:4942,
+  '##rog':2048,'##ation':2008,re:2128,'##insurance':3199,transform:4103,
+  '##ers':2545,'##er':2121,token:19204,'##ization':3553,'##ize':3523,
+  revolution:4329,'##ized':2098,bert:14324,word:2773,'##piece':3794,
+  filed:4840,for:2005,a:1037,an:2019,is:2003,was:2001,denied:3936,
+  hello:7592,world:2088,under:2104,of:1997,in:1999,
+};
+function getID(t){return IDS[t.toLowerCase()]||Math.floor(Math.random()*28000+200);}
+
+function tokenize(text){
+  if(!text.trim())return[];
+  const tokens=[{t:'[CLS]',sp:true,id:101}];
+  const raw=text.toLowerCase().replace(/['']/g,"'").replace(/[^\w\s']/g,' $& ').trim();
+  const words=raw.split(/\s+/).filter(Boolean);
+  words.forEach(w=>{
+    if(/^[^\w]$/.test(w)){tokens.push({t:w,sp:false,id:getID(w)});return;}
+    w=w.replace(/[^a-z0-9']/g,'');if(!w)return;
+    const k=WP[w];
+    if(k){k.forEach((p,i)=>tokens.push({t:p,sp:false,cont:i>0,id:getID(p)}));}
+    else{
+      let start=0;const wlen=w.length;
+      while(start<wlen){
+        for(let end=Math.min(wlen,start+12);end>start;end--){
+          const sub=(start>0?'##':'')+w.slice(start,end);
+          tokens.push({t:sub,sp:false,cont:start>0,id:getID(sub)});
+          start=end;break;
+        }
+      }
+    }
+  });
+  tokens.push({t:'[SEP]',sp:true,id:102});
+  return tokens;
+}
+
+function renderToks(toks,container){
+  container.innerHTML=toks.map(t=>{
+    let cls='tok';
+    if(t.sp)cls+=' sp';
+    if(t.cont)cls+=' cont';
+    if(t.unk)cls+=' unk';
+    return`<span class="${cls}">${t.t}</span>`;
+  }).join('');
+}
+
+function liveTok(text){
+  if(!text.trim()){['live-toks','live-ids'].forEach(id=>document.getElementById(id).innerHTML='');['st-total','st-sub','st-words'].forEach(id=>document.getElementById(id).textContent='0');document.getElementById('live-note').textContent='Type something above or pick a preset sentence.';return;}
+  const toks=tokenize(text);
+  renderToks(toks,document.getElementById('live-toks'));
+  document.getElementById('live-ids').textContent=toks.map(t=>t.id).join(', ');
+  const sub=toks.filter(t=>t.cont).length;
+  const full=toks.filter(t=>!t.sp&&!t.cont).length;
+  document.getElementById('st-total').textContent=toks.length;
+  document.getElementById('st-sub').textContent=sub;
+  document.getElementById('st-words').textContent=full;
+  const pct=Math.round((toks.length/512)*100);
+  let note=`${toks.length} tokens used (${pct}% of 512 max). `;
+  if(sub>0)note+=`${sub} subword piece${sub>1?'s':''} with ## prefix. `;
+  if(toks.length>400)note+='⚠ Approaching 512 limit — consider chunking.';
+  document.getElementById('live-note').textContent=note;
+}
+function setLive(t){document.getElementById('live-input').value=t;liveTok(t);}
+
+const ALGO_WORDS=['uninsurable','policyholder','deductible','endorsement','subrogation','tokenization','unwanted','reinsurance'];
+const ALGO_STEPS={
+  uninsurable:[{try:'uninsurable',result:'not in vocab',ok:false},{try:'uninsurab',result:'not in vocab',ok:false},{try:'uninsur',result:'not in vocab',ok:false},{try:'uninsu',result:'not in vocab',ok:false},{try:'unins',result:'not in vocab',ok:false},{try:'unin',result:'not in vocab',ok:false},{try:'uni',result:'not in vocab',ok:false},{try:'un',result:'✓ found — emit "un"',ok:true,emit:'un'},{try:'##insurable',result:'not in vocab',ok:false},{try:'##insurab',result:'not in vocab',ok:false},{try:'##insur',result:'✓ found — emit "##insur"',ok:true,emit:'##insur'},{try:'##able',result:'✓ found — emit "##able"',ok:true,emit:'##able'}],
+  policyholder:[{try:'policyholder',result:'not in vocab',ok:false},{try:'policyholde',result:'not in vocab',ok:false},{try:'policyhold',result:'not in vocab',ok:false},{try:'policyho',result:'not in vocab',ok:false},{try:'policy',result:'✓ found — emit "policy"',ok:true,emit:'policy'},{try:'##holder',result:'✓ found — emit "##holder"',ok:true,emit:'##holder'}],
+  deductible:[{try:'deductible',result:'not in vocab',ok:false},{try:'deductibl',result:'not in vocab',ok:false},{try:'deductib',result:'not in vocab',ok:false},{try:'deducti',result:'not in vocab',ok:false},{try:'deduct',result:'not in vocab',ok:false},{try:'de',result:'✓ found — emit "de"',ok:true,emit:'de'},{try:'##ductible',result:'not in vocab',ok:false},{try:'##ductibl',result:'not in vocab',ok:false},{try:'##ductib',result:'not in vocab',ok:false},{try:'##ducti',result:'not in vocab',ok:false},{try:'##duct',result:'✓ found — emit "##duct"',ok:true,emit:'##duct'},{try:'##ible',result:'✓ found — emit "##ible"',ok:true,emit:'##ible'}],
+  endorsement:[{try:'endorsement',result:'not in vocab',ok:false},{try:'endorsemen',result:'not in vocab',ok:false},{try:'endorseme',result:'not in vocab',ok:false},{try:'endorsem',result:'not in vocab',ok:false},{try:'endorse',result:'✓ found — emit "endorse"',ok:true,emit:'endorse'},{try:'##ment',result:'✓ found — emit "##ment"',ok:true,emit:'##ment'}],
+  subrogation:[{try:'subrogation',result:'not in vocab',ok:false},{try:'sub',result:'✓ found — emit "sub"',ok:true,emit:'sub'},{try:'##rogation',result:'not in vocab',ok:false},{try:'##rogatio',result:'not in vocab',ok:false},{try:'##rogati',result:'not in vocab',ok:false},{try:'##rogat',result:'not in vocab',ok:false},{try:'##rog',result:'✓ found — emit "##rog"',ok:true,emit:'##rog'},{try:'##ation',result:'✓ found — emit "##ation"',ok:true,emit:'##ation'}],
+  tokenization:[{try:'tokenization',result:'not in vocab',ok:false},{try:'tokenizatio',result:'not in vocab',ok:false},{try:'token',result:'✓ found — emit "token"',ok:true,emit:'token'},{try:'##ization',result:'✓ found — emit "##ization"',ok:true,emit:'##ization'}],
+  unwanted:[{try:'unwanted',result:'not in vocab',ok:false},{try:'un',result:'✓ found — emit "un"',ok:true,emit:'un'},{try:'##wanted',result:'not in vocab',ok:false},{try:'##wante',result:'not in vocab',ok:false},{try:'##want',result:'✓ found — emit "##want"',ok:true,emit:'##want'},{try:'##ed',result:'✓ found — emit "##ed"',ok:true,emit:'##ed'}],
+  reinsurance:[{try:'reinsurance',result:'not in vocab',ok:false},{try:'re',result:'✓ found — emit "re"',ok:true,emit:'re'},{try:'##insurance',result:'✓ found — emit "##insurance"',ok:true,emit:'##insurance'}],
+};
+let algoWord='uninsurable';
+function initAlgo(){
+  const c=document.getElementById('algo-btns');c.innerHTML='';
+  ALGO_WORDS.forEach(w=>{
+    const b=document.createElement('button');b.className='btn'+(w===algoWord?' p':'');b.textContent=w;
+    b.onclick=()=>{algoWord=w;initAlgo();};c.appendChild(b);
+  });
+  const steps=ALGO_STEPS[algoWord]||[];
+  const emitted=[];
+  let html=`<div class="lbl">Tracing: "${algoWord}" through greedy longest-match</div>`;
+  html+=`<div style="background:var(--color-background-secondary);border-radius:8px;padding:12px;margin-bottom:12px;font-family:var(--font-mono);font-size:11px;line-height:1.9">`;
+  steps.forEach(s=>{
+    if(s.ok&&s.emit)emitted.push(s.emit);
+    const col=s.ok?'var(--color-text-success)':'var(--color-text-tertiary)';
+    html+=`<div style="display:flex;align-items:center;gap:10px"><span style="min-width:180px;color:${col}">try: "${s.try}"</span><span style="color:${col};font-size:10px">${s.ok?'✓':'✗'} ${s.result}</span></div>`;
+  });
+  html+=`</div><div class="lbl">Result tokens</div><div style="margin-bottom:10px">`;
+  emitted.forEach((e,i)=>{html+=`<span class="tok ${i>0?'cont':''}" style="font-size:13px;margin-right:4px">${e}</span>${i<emitted.length-1?'<span style="color:var(--color-text-tertiary);margin-right:4px;font-size:16px">+</span>':''}`;});
+  html+=`</div><div class="note">"${algoWord}" → [${emitted.map(e=>`"${e}"`).join(', ')}] — ${emitted.length} token${emitted.length>1?'s':''}. The ## prefix tells the model this piece continues the previous token without a space.</div>`;
+  document.getElementById('algo-trace').innerHTML=html;
+}
+
+function isDark(){return window.matchMedia('(prefers-color-scheme: dark)').matches;}
+const COLMAP={gray:['#D3D1C7','#5F5E5A'],blue:['#B5D4F4','#0C447C'],teal:['#9FE1CB','#0F6E56'],purple:['#CECBF6','#3C3489'],coral:['#F5C4B3','#993C1D'],amber:['#FAC775','#633806'],green:['#C0DD97','#3B6D11']};
+function colFill(c){const d=isDark();const m=COLMAP[c]||COLMAP.gray;return d?m[1]:m[0];}
+function colTxt(c){const d=isDark();const m=COLMAP[c]||COLMAP.gray;return d?m[0]:m[1];}
+
+function drawVocab(){
+  const svg=document.getElementById('vocab-svg');svg.innerHTML='';
+  function el(tag,attrs,text){const e=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));if(text!=null)e.textContent=text;return e;}
+  const segs=[
+    {lbl:'Special tokens',np:0.016/100,col:'blue',cnt:5,note:'[PAD][UNK][CLS][SEP][MASK]'},
+    {lbl:'Chars & punct',np:250/30522,col:'teal',cnt:250,note:'a-z, 0-9, punctuation'},
+    {lbl:'Common words',np:10000/30522,col:'purple',cnt:10000,note:'the, of, policy…'},
+    {lbl:'## subwords',np:15000/30522,col:'amber',cnt:15000,note:'##ing, ##ed, ##ment…'},
+    {lbl:'Rare words',np:5267/30522,col:'coral',cnt:5267,note:'rare whole words'},
+  ];
+  let cum=0;const BAR_X=80,BAR_Y=60,BAR_W=520,BAR_H=60;
+  segs.forEach(s=>{
+    const w=Math.round(s.np*BAR_W);const x=BAR_X+cum;
+    const fill=colFill(s.col);const stroke=colTxt(s.col);
+    svg.appendChild(el('rect',{x,y:BAR_Y,width:w,height:BAR_H,fill,stroke:'none'}));
+    if(w>45){
+      svg.appendChild(el('text',{x:x+w/2,y:BAR_Y+BAR_H/2-6,'text-anchor':'middle','dominant-baseline':'central','font-size':10,'font-weight':500,fill:stroke,'font-family':'var(--font-sans)'},s.lbl));
+      svg.appendChild(el('text',{x:x+w/2,y:BAR_Y+BAR_H/2+10,'text-anchor':'middle','font-size':9,fill:stroke,'font-family':'var(--font-sans)',opacity:.8},s.cnt.toLocaleString()));
+    }
+    cum+=w;
+  });
+  svg.appendChild(el('rect',{x:BAR_X,y:BAR_Y,width:BAR_W,height:BAR_H,fill:'none',stroke:'var(--color-border-secondary)','stroke-width':.5,rx:4}));
+  svg.appendChild(el('text',{x:BAR_X+BAR_W/2,y:BAR_Y-12,'text-anchor':'middle','font-size':11,'font-weight':500,fill:'var(--color-text-primary)','font-family':'var(--font-sans)'},'BERT vocabulary — 30,522 tokens total'));
+  cum=0;
+  segs.forEach((s,i)=>{
+    const fill=colFill(s.col);const stroke=colTxt(s.col);
+    const lx=80+Math.floor(i/3)*220,ly=160+(i%3)*38;
+    svg.appendChild(el('rect',{x:lx,y:ly,width:14,height:14,rx:3,fill,stroke:'none'}));
+    svg.appendChild(el('text',{x:lx+20,y:ly+7,'dominant-baseline':'central','font-size':11,fill:'var(--color-text-secondary)','font-family':'var(--font-sans)'},s.lbl+' (~'+s.cnt.toLocaleString()+')'));
+    svg.appendChild(el('text',{x:lx+20,y:ly+20,'font-size':10,fill:'var(--color-text-tertiary)','font-family':'var(--font-sans)'},s.note));
+  });
+  document.getElementById('vocab-breakdown').innerHTML=`<div style="font-size:11px;color:var(--color-text-secondary);line-height:2">Total tokens: <strong style="color:var(--color-text-primary)">30,522</strong><br>Vocab file: <code style="font-family:var(--font-mono);font-size:10px">vocab.txt</code> (one per line)<br>Line number = token ID (0-indexed)<br><br>Line 0: [PAD]<br>Line 100: [UNK]<br>Line 101: [CLS]<br>Line 102: [SEP]<br>Line 103: [MASK]<br>Line 104–999: punctuation, symbols<br>Line 1000+: words and subwords</div>`;
+}
+
+const SP_DATA=[
+  {tok:'[CLS]',id:101,col:'sp',title:'Classification token',when:'Prepended to every single input.',role:'Its final 768-dim hidden state aggregates the full sentence. Used as input to classification heads (sentiment, NLI, intent). In sentence-pair tasks it sees both sentences through attention.'},
+  {tok:'[SEP]',id:102,col:'sp',title:'Separator token',when:'After each sentence. Always at the very end.',role:'Marks sentence boundaries. For sentence pairs: [CLS] A [SEP] B [SEP]. Segment embeddings (A/B) change at the first [SEP]. The model uses [SEP] to know where one sentence ends and another begins.'},
+  {tok:'[MASK]',id:103,col:'hi',title:'Mask token — MLM pre-training only',when:'Replaces 80% of the 15% masked tokens during pre-training.',role:'BERT learns to predict the original token at [MASK] positions using surrounding context. Never used at inference time — only during pre-training. Its embedding is learned like any other token.'},
+  {tok:'[PAD]',id:0,col:'sp',title:'Padding token',when:'Appended to make all sequences the same length in a batch.',role:'BERT processes batches — all sequences must be the same length. [PAD] fills short sequences. The attention mask is 0 for all [PAD] positions so they contribute zero to self-attention.'},
+  {tok:'[UNK]',id:100,col:'unk',title:'Unknown token',when:'Only if WordPiece cannot split a string into any known subwords.',role:'Extremely rare for English text. More common for non-Latin scripts in uncased BERT, unusual unicode symbols, or sequences with no valid subword decomposition.'},
+];
+function initSpecial(){
+  const c=document.getElementById('sp-cards');c.innerHTML='';
+  SP_DATA.forEach(s=>{
+    const d=document.createElement('div');d.className='cw';d.style.marginBottom='0';
+    d.innerHTML=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span class="tok ${s.col}" style="font-size:13px">${s.tok}</span><span style="font-family:var(--font-mono);font-size:11px;color:var(--color-text-tertiary)">ID ${s.id}</span><span style="font-size:13px;font-weight:500;color:var(--color-text-primary)">${s.title}</span></div><div style="font-size:11px;color:var(--color-text-secondary);line-height:1.6;margin-bottom:6px"><strong style="color:var(--color-text-primary)">When added:</strong> ${s.when}</div><div style="font-size:11px;color:var(--color-text-secondary);line-height:1.6"><strong style="color:var(--color-text-primary)">Role:</strong> ${s.role}</div>`;
+    c.appendChild(d);
+  });
+  const single=[{t:'[CLS]',sp:true},{t:'The'},{t:'policy'},{t:'covers'},{t:'flood'},{t:'[SEP]',sp:true}];
+  document.getElementById('sp-single').innerHTML=single.map(t=>`<span class="tok ${t.sp?'sp':''}">${t.t}</span>`).join('')+`<span style="font-size:11px;color:var(--color-text-tertiary);margin-left:8px">Segment A throughout</span>`;
+  const pair=[{t:'[CLS]',a:true},{t:'What',a:true},{t:'is',a:true},{t:'covered',a:true},{t:'?',a:true},{t:'[SEP]',a:true},{t:'The',a:false},{t:'policy',a:false},{t:'covers',a:false},{t:'flood',a:false},{t:'[SEP]',a:false}];
+  document.getElementById('sp-pair').innerHTML=pair.map(t=>`<span class="tok ${t.t.startsWith('[')?'sp':''}" style="${!t.a?'border-color:var(--color-border-success);background:var(--color-background-success);color:var(--color-text-success)':''}">${t.t}</span>`).join('')+`<div style="margin-top:6px;font-size:11px;color:var(--color-text-secondary)"><span class="tok sp" style="font-size:10px">blue = Segment A</span>&nbsp;<span class="tok ok" style="font-size:10px">green = Segment B</span></div>`;
+}
+
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function updateNorm(text){
+  if(!text.trim()){document.getElementById('norm-steps').innerHTML='';return;}
+  const steps=[
+    {lbl:'1. Unicode NFC normalisation',fn:t=>t.normalize('NFC'),note:'Collapse composite unicode to canonical form. "é" (e + combining accent) → "é" (single codepoint).'},
+    {lbl:'2. Lowercase (uncased only)',fn:t=>t.toLowerCase(),note:'bert-base-uncased lowercases everything. bert-base-cased skips this step.'},
+    {lbl:'3. Strip accents (uncased only)',fn:t=>t.normalize('NFD').replace(/[\u0300-\u036f]/g,'').normalize('NFC'),note:'Accented characters stripped: "café" → "cafe", "résumé" → "resume". Reduces vocabulary size.'},
+    {lbl:'4. Tokenize on whitespace',fn:t=>t.split(/\s+/).filter(Boolean).join(' | '),note:'Split on whitespace to get initial word candidates.'},
+    {lbl:'5. Split on punctuation',fn:t=>t.replace(/([^\w\s])/g,' $1 ').replace(/\s+/g,' ').trim(),note:'Punctuation separated: "claim," → "claim , ". Prevents "claim." and "claim" being different tokens.'},
+  ];
+  let current=text;let html='';
+  steps.forEach((s,i)=>{
+    const prev=current;current=s.fn(current);
+    html+=`<div class="step-box"><div class="step-hdr" onclick="toggleNS(${i})"><div class="step-num">${i+1}</div><div><div style="font-size:12px;font-weight:500;color:var(--color-text-primary)">${s.lbl}</div><div style="font-size:10px;color:var(--color-text-tertiary);margin-top:1px">${s.note}</div></div></div><div class="step-body${i===0?' op':''}" id="ns${i}"><div class="lbl" style="margin-bottom:3px">Input</div><div style="font-family:var(--font-mono);font-size:11px;color:var(--color-text-secondary);padding:6px 8px;background:var(--color-background-secondary);border-radius:5px;margin-bottom:6px;word-break:break-all">${escHtml(prev)}</div><div class="lbl" style="margin-bottom:3px">Output</div><div style="font-family:var(--font-mono);font-size:11px;color:var(--color-text-primary);padding:6px 8px;background:var(--color-background-secondary);border-radius:5px;word-break:break-all">${escHtml(current)}</div></div></div>`;
+  });
+  document.getElementById('norm-steps').innerHTML=html;
+}
+function toggleNS(i){document.getElementById('ns'+i).classList.toggle('op');}
+
+const CHUNK_DATA=[
+  {model:'all-MiniLM-L6-v2',limit:256,rec:180,overlap:20,note:'RAG dev / local',col:'info'},
+  {model:'BERT-base',limit:512,rec:400,overlap:40,note:'General NLU',col:'success'},
+  {model:'Voyage AI voyage-2',limit:4096,rec:1500,overlap:150,note:'Production RAG',col:'secondary'},
+];
+function initLimit(){
+  document.getElementById('chunk-grid').innerHTML=CHUNK_DATA.map(d=>`<div class="card" style="margin:0"><div style="font-size:11px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px">${d.model}</div><div style="font-size:12px;font-weight:500;color:var(--color-text-${d.col});margin-bottom:2px">Max: ${d.limit.toLocaleString()}</div><div style="font-size:11px;color:var(--color-text-secondary);line-height:1.6">Rec chunk: ${d.rec}<br>Overlap: ${d.overlap}<br>${d.note}</div></div>`).join('');
+  updateSlider(200);
+}
+function updateSlider(v){
+  v=parseInt(v);document.getElementById('tok-val').textContent=v;
+  const over=v>512,near=v>400&&v<=512;
+  document.getElementById('tok-status').textContent=over?'TRUNCATED ✗':near?'Near limit ⚠':'OK ✓';
+  document.getElementById('tok-status').style.color=over?'var(--color-text-danger)':near?'var(--color-text-warning)':'var(--color-text-success)';
+  const svg=document.getElementById('limit-svg');svg.innerHTML='';
+  function el(tag,attrs,text){const e=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));if(text!=null)e.textContent=text;return e;}
+  const W=560,BAR_Y=30,BAR_H=40,BAR_X=30;
+  svg.appendChild(el('rect',{x:BAR_X,y:BAR_Y,width:W,height:BAR_H,rx:6,fill:'var(--color-background-secondary)',stroke:'var(--color-border-tertiary)','stroke-width':.5}));
+  const usedW=Math.min(v,512)/512*W;
+  const useCol=over?'rgba(163,45,45,.5)':near?'rgba(186,117,23,.5)':'rgba(55,138,221,.5)';
+  svg.appendChild(el('rect',{x:BAR_X,y:BAR_Y,width:Math.min(usedW,W),height:BAR_H,rx:6,fill:useCol,stroke:'none'}));
+  svg.appendChild(el('line',{x1:BAR_X+W,y1:BAR_Y-6,x2:BAR_X+W,y2:BAR_Y+BAR_H+6,stroke:'var(--color-border-danger)','stroke-width':1.5,'stroke-dasharray':'4 3'}));
+  svg.appendChild(el('text',{x:BAR_X+W,y:BAR_Y-10,'text-anchor':'middle','font-size':10,fill:'var(--color-text-danger)','font-family':'var(--font-sans)'},'512 hard limit'));
+  const label=`${Math.min(v,512)} tokens${over?` (${v-512} truncated!)`:''}`;
+  svg.appendChild(el('text',{x:BAR_X+Math.min(usedW,W)/2,y:BAR_Y+BAR_H/2,'text-anchor':'middle','dominant-baseline':'central','font-size':11,'font-weight':500,fill:'var(--color-text-primary)','font-family':'var(--font-sans)'},label));
+  svg.appendChild(el('text',{x:BAR_X+4,y:BAR_Y+BAR_H+14,'font-size':9,fill:'var(--color-text-tertiary)','font-family':'var(--font-sans)'},'[CLS] + [SEP] = 2 tokens overhead. Effective text capacity = 510 tokens.'));
+  let note='';
+  if(over)note=`${v} tokens exceeds 512. BERT silently truncates — the last ${v-512} tokens are dropped without warning. One of the most common bugs in BERT-based RAG pipelines.`;
+  else if(near)note=`${v} tokens is close to the 512 limit. [CLS]+[SEP] = 2 overhead tokens, leaving ${512-v} token buffer. Keep chunks ≤400 for safety.`;
+  else note=`${v} tokens — well within the 512 limit. ${512-v} tokens remaining. Effective text space available: ${510-(v-2)} more tokens.`;
+  document.getElementById('limit-note').textContent=note;
+}
+
+const OOV_DATA=[
+  {word:'insurability',toks:['insur','##ability'],type:'subword split',note:'No single entry for "insurability" but BERT splits at the morpheme boundary. Both pieces are common enough to be in vocab.'},
+  {word:'COVID-19',toks:['covid','-','19'],type:'alphanumeric split',note:'Numbers and hyphens cause splits. "covid" maps via lowercasing. The hyphen and "19" are separate tokens.'},
+  {word:'subrogation',toks:['sub','##rog','##ation'],type:'3-piece split',note:'Rare insurance term. Splits into prefix "sub" + stem "##rog" + suffix "##ation". The model still learns a contextual representation by composing the three pieces.'},
+  {word:'pneumonoultramicroscopic…',toks:['p','##ne','##um','##ono','##ul','##tra','##micro','##sc','##op','##ic','##si','##li','##co','##vol','##can','##oc','##on','##io','##sis'],type:'extreme split',note:'The longest English word forces BERT into character-level decomposition. Still no [UNK] because all characters are in vocab!'},
+  {word:'🔥 emoji',toks:['[UNK]','em','##oji'],type:'partial [UNK]',note:'Emoji characters are not in the 30k ASCII-focused vocab. The fire emoji becomes [UNK]. The word "emoji" is split normally. One of the few real [UNK] cases.'},
+  {word:'xQz42',toks:['x','##q','##z','##42'],type:'nonsense string',note:'Even completely random strings decompose without [UNK] — individual letters and digits are always in vocab. WordPiece acts as a character-level fallback.'},
+];
+function initOOV(){
+  const c=document.getElementById('oov-btns');c.innerHTML='';
+  OOV_DATA.forEach((d,i)=>{
+    const b=document.createElement('button');b.className='btn';b.textContent=d.word;
+    b.onclick=()=>{showOOV(i);document.querySelectorAll('#oov-btns .btn').forEach((x,j)=>x.className='btn'+(j===i?' p':''));};
+    c.appendChild(b);
+  });
+  showOOV(0);document.querySelectorAll('#oov-btns .btn')[0].className='btn p';
+}
+function showOOV(i){
+  const d=OOV_DATA[i];
+  let html=`<div class="lbl">Word: "${d.word}" — type: ${d.type}</div>`;
+  html+=`<div style="margin-bottom:10px">${d.toks.map((t,i)=>`<span class="tok ${t==='[UNK]'?'unk':i>0&&t.startsWith('##')?'cont':''}">${t}</span>`).join('')}</div>`;
+  html+=`<div class="note">${d.note}</div>`;
+  document.getElementById('oov-detail').innerHTML=html;
+}
+
+const PIPELINE=[
+  {lbl:'Raw input',note:'The policyholder\'s claim was DENIED. — raw unicode string, no processing yet.',fn:()=>`<span class="tok hi" style="font-size:13px">"The policyholder's claim was DENIED."</span>`},
+  {lbl:'1. Lowercase + strip accents',note:'bert-base-uncased lowercases everything. Accents stripped. Apostrophe kept.',fn:()=>`<span class="tok" style="font-size:13px">"the policyholder's claim was denied."</span>`},
+  {lbl:'2. Split on whitespace & punctuation',note:'Whitespace split → words. Punctuation detached: "denied." → "denied" + "."',fn:()=>['the',"policyholder","'","s",'claim','was','denied','.'].map(t=>`<span class="tok">${t}</span>`).join('')},
+  {lbl:'3. WordPiece subword split',note:'"policyholder" → policy + ##holder. All other words are whole-vocab matches.',fn:()=>{const ts=[{t:'the'},{t:'policy'},{t:'##holder',c:true},{t:"'"},{t:'s'},{t:'claim'},{t:'was'},{t:'denied'},{t:'.'}];return ts.map(t=>`<span class="tok ${t.c?'cont':''}">${t.t}</span>`).join('');}},
+  {lbl:'4. Add special tokens',note:'[CLS] prepended, [SEP] appended. Total = 11 tokens.',fn:()=>{const ts=[{t:'[CLS]',sp:true},{t:'the'},{t:'policy'},{t:'##holder',c:true},{t:"'"},{t:'s'},{t:'claim'},{t:'was'},{t:'denied'},{t:'.'},{t:'[SEP]',sp:true}];return ts.map(t=>`<span class="tok ${t.sp?'sp':t.c?'cont':''}">${t.t}</span>`).join('');}},
+  {lbl:'5. Convert to token IDs',note:'Vocab lookup: each token → integer. [CLS]=101, the=1996, policy=3343…',fn:()=>`<div style="font-family:var(--font-mono);font-size:11px;color:var(--color-text-secondary);padding:8px;background:var(--color-background-secondary);border-radius:6px">[101, 1996, 3343, 2015, 1005, 1055, 4366, 2001, 3936, 1012, 102]</div>`},
+  {lbl:'6. Attention mask',note:'1 for real tokens, 0 for [PAD]. No padding here — all 11 are real tokens.',fn:()=>`<div style="font-family:var(--font-mono);font-size:11px;color:var(--color-text-secondary);padding:8px;background:var(--color-background-secondary);border-radius:6px">[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]</div><div style="font-size:11px;color:var(--color-text-tertiary);margin-top:6px">In a batch with a longer sequence: shorter sequences get [PAD] tokens, mask=0 there.</div>`},
+  {lbl:'7. Segment IDs',note:'All 0 (segment A) for single sentence. Sentence B tokens get 1 in pair tasks.',fn:()=>`<div style="font-family:var(--font-mono);font-size:11px;color:var(--color-text-secondary);padding:8px;background:var(--color-background-secondary);border-radius:6px">[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]</div>`},
+  {lbl:'8. Tensor → BERT encoder',note:'Three integer tensors feed into the embedding layer. Output: 11 × 768 contextual vectors.',fn:()=>`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div style="padding:8px 12px;background:var(--color-background-info);color:var(--color-text-info);border-radius:7px;font-size:11px;font-weight:500">input_ids</div><div style="padding:8px 12px;background:var(--color-background-success);color:var(--color-text-success);border-radius:7px;font-size:11px;font-weight:500">attention_mask</div><div style="padding:8px 12px;background:var(--color-background-warning);color:var(--color-text-warning);border-radius:7px;font-size:11px;font-weight:500">token_type_ids</div><div style="font-size:20px;color:var(--color-text-tertiary)">→</div><div style="padding:8px 12px;border:0.5px solid var(--color-border-info);border-radius:7px;font-size:11px;font-weight:500;color:var(--color-text-primary)">BERT encoder → 11 × 768 output</div></div>`},
+];
+let pStep=-1,pTimer=null;
+function initPipeline(){
+  const c=document.getElementById('pipeline-steps');c.innerHTML='';
+  PIPELINE.forEach((s,i)=>{
+    const d=document.createElement('div');d.className='step-box';d.style.opacity='0.35';d.style.transition='opacity .3s';d.id='ps'+i;
+    d.innerHTML=`<div class="step-hdr" onclick="jumpStep(${i})"><div class="step-num">${i}</div><div style="font-size:12px;font-weight:500;color:var(--color-text-primary)">${s.lbl}</div></div><div class="step-body" id="psb${i}"><div style="margin-bottom:8px">${s.fn()}</div></div>`;
+    c.appendChild(d);
+  });
+  document.getElementById('ps0').style.opacity='1';
+  document.getElementById('psb0').classList.add('op');
+}
+function jumpStep(i){
+  pStep=i;
+  PIPELINE.forEach((_,j)=>{
+    document.getElementById('ps'+j).style.opacity=j<=i?'1':'0.35';
+    const b=document.getElementById('psb'+j);
+    j===i?b.classList.add('op'):b.classList.remove('op');
+  });
+  document.getElementById('pipeline-note').textContent=PIPELINE[i].note;
+}
+function runPipeline(){clearInterval(pTimer);pStep=-1;PIPELINE.forEach((_,j)=>{document.getElementById('ps'+j).style.opacity='0.35';document.getElementById('psb'+j).classList.remove('op');});pTimer=setInterval(()=>{if(pStep>=PIPELINE.length-1){clearInterval(pTimer);return;}pStep++;jumpStep(pStep);},850);}
+function resetPipeline(){clearInterval(pTimer);pStep=-1;PIPELINE.forEach((_,j)=>{document.getElementById('ps'+j).style.opacity=j===0?'1':'0.35';j===0?document.getElementById('psb'+j).classList.add('op'):document.getElementById('psb'+j).classList.remove('op');});document.getElementById('pipeline-note').textContent='Press Step through to begin.';}
+
+window.addEventListener('load',()=>{
+  initNav();
+  setLive('The policyholder filed an uninsurable claim');
+  initAlgo();
+  drawVocab();
+  initSpecial();
+  updateNorm('The Policy Covers FLOOD damage! Café résumé.');
+  document.getElementById('norm-input').value='The Policy Covers FLOOD damage! Café résumé.';
+  initLimit();
+  initOOV();
+  initPipeline();
+});
+</script>
+</body>
+</html>

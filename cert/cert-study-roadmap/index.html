@@ -1,0 +1,442 @@
+<!DOCTYPE html><html lang="en" dir="ltr" data-theme="dark" data-has-toc data-has-sidebar class="astro-bguv2lll"> <head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Study Roadmap | AI Lab</title><link rel="canonical" href="https://rajrkdev.github.io/ai-lab/cert/cert-study-roadmap/"/><link rel="sitemap" href="/ai-lab/sitemap-index.xml"/><script>
+(function() {
+  var NAV_KEY = 'sl-nav-collapsed';
+  var TOC_KEY = 'sl-toc-collapsed';
+
+  // SVG icons — chevron panel icons
+  var ICON_PANEL_CLOSE = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><polyline points="16 15 13 12 16 9"/></svg>';
+  var ICON_PANEL_OPEN  = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><polyline points="13 9 16 12 13 15"/></svg>';
+  var ICON_RPANEL_CLOSE = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18"/><polyline points="8 9 11 12 8 15"/></svg>';
+  var ICON_RPANEL_OPEN  = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18"/><polyline points="11 15 8 12 11 9"/></svg>';
+
+  function setNavCssVar(collapsed) {
+    if (collapsed) {
+      document.body.style.setProperty('--sl-content-inline-start', '0rem');
+    } else {
+      document.body.style.removeProperty('--sl-content-inline-start');
+    }
+  }
+
+  function dispatchResize() {
+    // Let React components (and any resize listeners) reflow after sidebar change
+    setTimeout(function() { window.dispatchEvent(new Event('resize')); }, 260);
+  }
+
+  function applyState() {
+    var navCollapsed = localStorage.getItem(NAV_KEY) === '1';
+    var tocCollapsed = localStorage.getItem(TOC_KEY) === '1';
+    if (navCollapsed) document.documentElement.setAttribute('data-nav-collapsed', '');
+    else document.documentElement.removeAttribute('data-nav-collapsed');
+    if (tocCollapsed) document.documentElement.setAttribute('data-toc-collapsed', '');
+    else document.documentElement.removeAttribute('data-toc-collapsed');
+    setNavCssVar(navCollapsed);
+  }
+
+  function injectToggles() {
+    // Left nav toggle
+    var navToggle = document.createElement('button');
+    navToggle.id = 'sl-nav-toggle';
+    navToggle.setAttribute('aria-label', 'Toggle navigation sidebar');
+    navToggle.setAttribute('title', 'Toggle navigation sidebar');
+    var navCollapsed = document.documentElement.hasAttribute('data-nav-collapsed');
+    navToggle.innerHTML = navCollapsed ? ICON_PANEL_OPEN : ICON_PANEL_CLOSE;
+    navToggle.addEventListener('click', function() {
+      var collapsed = document.documentElement.toggleAttribute('data-nav-collapsed');
+      navToggle.innerHTML = collapsed ? ICON_PANEL_OPEN : ICON_PANEL_CLOSE;
+      setNavCssVar(collapsed);
+      localStorage.setItem(NAV_KEY, collapsed ? '1' : '0');
+      dispatchResize();
+    });
+    document.body.appendChild(navToggle);
+
+    // Right TOC toggle — always inject; CSS hides it when no right sidebar
+    var tocToggle = document.createElement('button');
+    tocToggle.id = 'sl-toc-toggle';
+    tocToggle.setAttribute('aria-label', 'Toggle table of contents');
+    tocToggle.setAttribute('title', 'Toggle table of contents');
+    var tocCollapsed = document.documentElement.hasAttribute('data-toc-collapsed');
+    tocToggle.innerHTML = tocCollapsed ? ICON_RPANEL_OPEN : ICON_RPANEL_CLOSE;
+    tocToggle.addEventListener('click', function() {
+      var collapsed = document.documentElement.toggleAttribute('data-toc-collapsed');
+      tocToggle.innerHTML = collapsed ? ICON_RPANEL_OPEN : ICON_RPANEL_CLOSE;
+      localStorage.setItem(TOC_KEY, collapsed ? '1' : '0');
+      dispatchResize();
+    });
+    document.body.appendChild(tocToggle);
+  }
+
+  function setup() {
+    ['sl-nav-toggle','sl-toc-toggle'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.remove();
+    });
+    applyState();
+    injectToggles();
+  }
+
+  // Apply state immediately to prevent flash before DOM ready
+  if (localStorage.getItem(NAV_KEY) === '1') document.documentElement.setAttribute('data-nav-collapsed', '');
+  if (localStorage.getItem(TOC_KEY) === '1') document.documentElement.setAttribute('data-toc-collapsed', '');
+
+  document.addEventListener('DOMContentLoaded', setup);
+  document.addEventListener('astro:page-load', setup);
+})();
+					</script><link rel="shortcut icon" href="/ai-lab/favicon.svg" type="image/svg+xml"/><meta name="generator" content="Astro v6.1.3"/><meta name="generator" content="Starlight v0.38.2"/><meta property="og:title" content="Study Roadmap"/><meta property="og:type" content="article"/><meta property="og:url" content="https://rajrkdev.github.io/ai-lab/cert/cert-study-roadmap/"/><meta property="og:locale" content="en"/><meta property="og:site_name" content="AI Lab"/><meta name="twitter:card" content="summary_large_image"/><script>
+	window.StarlightThemeProvider = (() => {
+		const storedTheme =
+			typeof localStorage !== 'undefined' && localStorage.getItem('starlight-theme');
+		const theme =
+			storedTheme ||
+			(window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+		document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
+		return {
+			updatePickers(theme = storedTheme || 'auto') {
+				document.querySelectorAll('starlight-theme-select').forEach((picker) => {
+					const select = picker.querySelector('select');
+					if (select) select.value = theme;
+					/** @type {HTMLTemplateElement | null} */
+					const tmpl = document.querySelector(`#theme-icons`);
+					const newIcon = tmpl && tmpl.content.querySelector('.' + theme);
+					if (newIcon) {
+						const oldIcon = picker.querySelector('svg.label-icon');
+						if (oldIcon) {
+							oldIcon.replaceChildren(...newIcon.cloneNode(true).childNodes);
+						}
+					}
+				});
+			},
+		};
+	})();
+</script><template id="theme-icons"><svg aria-hidden="true" class="light astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M5 12a1 1 0 0 0-1-1H3a1 1 0 0 0 0 2h1a1 1 0 0 0 1-1Zm.64 5-.71.71a1 1 0 0 0 0 1.41 1 1 0 0 0 1.41 0l.71-.71A1 1 0 0 0 5.64 17ZM12 5a1 1 0 0 0 1-1V3a1 1 0 0 0-2 0v1a1 1 0 0 0 1 1Zm5.66 2.34a1 1 0 0 0 .7-.29l.71-.71a1 1 0 1 0-1.41-1.41l-.66.71a1 1 0 0 0 0 1.41 1 1 0 0 0 .66.29Zm-12-.29a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.71-.71a1.004 1.004 0 1 0-1.43 1.41l.73.71ZM21 11h-1a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2Zm-2.64 6A1 1 0 0 0 17 18.36l.71.71a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.76-.66ZM12 6.5a5.5 5.5 0 1 0 5.5 5.5A5.51 5.51 0 0 0 12 6.5Zm0 9a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm0 3.5a1 1 0 0 0-1 1v1a1 1 0 0 0 2 0v-1a1 1 0 0 0-1-1Z"/></svg><svg aria-hidden="true" class="dark astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.64 13a1 1 0 0 0-1.05-.14 8.049 8.049 0 0 1-3.37.73 8.15 8.15 0 0 1-8.14-8.1 8.59 8.59 0 0 1 .25-2A1 1 0 0 0 8 2.36a10.14 10.14 0 1 0 14 11.69 1 1 0 0 0-.36-1.05Zm-9.5 6.69A8.14 8.14 0 0 1 7.08 5.22v.27a10.15 10.15 0 0 0 10.14 10.14 9.784 9.784 0 0 0 2.1-.22 8.11 8.11 0 0 1-7.18 4.32v-.04Z"/></svg><svg aria-hidden="true" class="auto astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg></template><link rel="stylesheet" href="/ai-lab/_astro/print.DNXP8c50.css" media="print"><link rel="stylesheet" href="/ai-lab/_astro/common.DyMCQG_B.css"><script type="module" src="/ai-lab/_astro/page.BIhdncjw.js"></script></head> <body class="astro-bguv2lll"> <a href="#_top" class="astro-7q3lir66">Skip to content</a> <div class="page sl-flex astro-vrdttmbt"> <header class="header astro-vrdttmbt"><div class="header astro-kmkmnagf"> <div class="title-wrapper sl-flex astro-kmkmnagf"> <a href="/ai-lab/" class="site-title sl-flex astro-m46x6ez3">  <span class="astro-m46x6ez3" translate="no"> AI Lab </span> </a> </div> <div class="sl-flex print:hidden astro-kmkmnagf"> <site-search class="astro-kmkmnagf astro-v37mnknz" data-translations="{&#34;placeholder&#34;:&#34;Search&#34;}"> <button data-open-modal disabled aria-label="Search" aria-keyshortcuts="Control+K" class="astro-v37mnknz"> <svg aria-hidden="true" class="astro-v37mnknz astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.71 20.29 18 16.61A9 9 0 1 0 16.61 18l3.68 3.68a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.39ZM11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z"/></svg> <span class="sl-hidden md:sl-block astro-v37mnknz" aria-hidden="true">Search</span> <kbd class="sl-hidden md:sl-flex astro-v37mnknz" style="display: none;"> <kbd class="astro-v37mnknz">Ctrl</kbd><kbd class="astro-v37mnknz">K</kbd> </kbd> </button> <dialog style="padding:0" aria-label="Search" class="astro-v37mnknz"> <div class="dialog-frame sl-flex astro-v37mnknz">  <button data-close-modal class="sl-flex md:sl-hidden astro-v37mnknz"> Cancel </button> <div class="search-container astro-v37mnknz"> <div id="starlight__search" class="astro-v37mnknz"></div> </div> </div> </dialog> </site-search>  <script>
+	(() => {
+		const openBtn = document.querySelector('button[data-open-modal]');
+		const shortcut = openBtn?.querySelector('kbd');
+		if (!openBtn || !(shortcut instanceof HTMLElement)) return;
+		const platformKey = shortcut.querySelector('kbd');
+		if (platformKey && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) {
+			platformKey.textContent = '⌘';
+			openBtn.setAttribute('aria-keyshortcuts', 'Meta+K');
+		}
+		shortcut.style.display = '';
+	})();
+</script> <script type="module" src="/ai-lab/_astro/Search.astro_astro_type_script_index_0_lang.5I8Mqpy2.js"></script>  </div> <div class="sl-hidden md:sl-flex print:hidden right-group astro-kmkmnagf"> <div class="sl-flex social-icons astro-kmkmnagf">  </div> <starlight-theme-select>  <label style="--sl-select-width: 6.25em" class="astro-4yphtoen"> <span class="sr-only astro-4yphtoen">Select theme</span> <svg aria-hidden="true" class="icon label-icon astro-4yphtoen astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg> <select autocomplete="off" class="astro-4yphtoen"> <option value="dark" class="astro-4yphtoen">Dark</option><option value="light" class="astro-4yphtoen">Light</option><option value="auto" selected class="astro-4yphtoen">Auto</option> </select> <svg aria-hidden="true" class="icon caret astro-4yphtoen astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg> </label> </starlight-theme-select>  <script>
+	StarlightThemeProvider.updatePickers();
+</script> <script type="module">const r="starlight-theme",o=e=>e==="auto"||e==="dark"||e==="light"?e:"auto",c=()=>o(typeof localStorage<"u"&&localStorage.getItem(r));function n(e){typeof localStorage<"u"&&localStorage.setItem(r,e==="light"||e==="dark"?e:"")}const l=()=>matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";function t(e){StarlightThemeProvider.updatePickers(e),document.documentElement.dataset.theme=e==="auto"?l():e,n(e)}matchMedia("(prefers-color-scheme: light)").addEventListener("change",()=>{c()==="auto"&&t("auto")});class s extends HTMLElement{constructor(){super(),t(c()),this.querySelector("select")?.addEventListener("change",a=>{a.currentTarget instanceof HTMLSelectElement&&t(o(a.currentTarget.value))})}}customElements.define("starlight-theme-select",s);</script> <script type="module">class s extends HTMLElement{constructor(){super();const e=this.querySelector("select");e&&(e.addEventListener("change",t=>{t.currentTarget instanceof HTMLSelectElement&&(window.location.pathname=t.currentTarget.value)}),window.addEventListener("pageshow",t=>{if(!t.persisted)return;const n=e.querySelector("option[selected]")?.index;n!==e.selectedIndex&&(e.selectedIndex=n??0)}))}}customElements.define("starlight-lang-select",s);</script> </div> </div></header> <nav class="sidebar print:hidden astro-vrdttmbt" aria-label="Main"> <starlight-menu-button class="print:hidden astro-jif73yzw"> <button aria-expanded="false" aria-label="Menu" aria-controls="starlight__sidebar" class="sl-flex md:sl-hidden astro-jif73yzw"> <svg aria-hidden="true" class="open-menu astro-jif73yzw astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M3 8h18a1 1 0 1 0 0-2H3a1 1 0 0 0 0 2Zm18 8H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Zm0-5H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Z"/></svg> <svg aria-hidden="true" class="close-menu astro-jif73yzw astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="m13.41 12 6.3-6.29a1.004 1.004 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1.004 1.004 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 0 1.42.998.998 0 0 0 1.42 0l6.29-6.3 6.29 6.3a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.42L13.41 12Z"/></svg> </button> </starlight-menu-button> <script type="module">class s extends HTMLElement{constructor(){super(),this.btn=this.querySelector("button"),this.btn.addEventListener("click",()=>this.toggleExpanded());const t=this.closest("nav");t&&t.addEventListener("keyup",e=>this.closeOnEscape(e))}setExpanded(t){this.setAttribute("aria-expanded",String(t)),document.body.toggleAttribute("data-mobile-menu-expanded",t)}toggleExpanded(){this.setExpanded(this.getAttribute("aria-expanded")!=="true")}closeOnEscape(t){t.code==="Escape"&&(this.setExpanded(!1),this.btn.focus())}}customElements.define("starlight-menu-button",s);</script>  <div id="starlight__sidebar" class="sidebar-pane astro-vrdttmbt"> <div class="sidebar-content sl-flex astro-vrdttmbt"> <sl-sidebar-state-persist data-hash="1u88qvf" class="astro-kku4brbg"> <script aria-hidden="true">
+		(() => {
+			try {
+				if (!matchMedia('(min-width: 50em)').matches) return;
+				/** @type {HTMLElement | null} */
+				const target = document.querySelector('sl-sidebar-state-persist');
+				const state = JSON.parse(sessionStorage.getItem('sl-sidebar-state') || '0');
+				if (!target || !state || target.dataset.hash !== state.hash) return;
+				window._starlightScrollRestore = state.scroll;
+				customElements.define(
+					'sl-sidebar-restore',
+					class SidebarRestore extends HTMLElement {
+						connectedCallback() {
+							try {
+								const idx = parseInt(this.dataset.index || '');
+								const details = this.closest('details');
+								if (details && typeof state.open[idx] === 'boolean') details.open = state.open[idx];
+							} catch {}
+						}
+					}
+				);
+			} catch {}
+		})();
+	</script>  <ul class="top-level astro-3ii7xxms"> <li class="astro-3ii7xxms"> <details open class="astro-3ii7xxms"> <summary class="astro-3ii7xxms"> <span class="group-label astro-3ii7xxms"> <span class="large astro-3ii7xxms">Documentation</span>  </span> <svg aria-hidden="true" class="caret astro-3ii7xxms astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg> </summary> <sl-sidebar-restore data-index="0"></sl-sidebar-restore> <ul class="astro-3ii7xxms"> <li class="astro-3ii7xxms"> <a href="/ai-lab/docs/claude-code-all-markdown-files-catalog/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Every Markdown File Claude Code Recognizes — Complete Catalog</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/docs/claude-code-config-guide/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">CLAUDE.md vs Skills vs Rules — Architecture Guide</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/docs/claude-code-efficiency-reference/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Claude Code: Context, Cost &amp; Token Efficiency — Reference</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/docs/claude-training/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Elite Claude Code Mastery — Training Program</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/docs/compass-research-notes/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Compass Research Notes</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/docs/validation-report/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Concept Validation Report</span>  </a> </li> </ul> </details> </li><li class="astro-3ii7xxms"> <details open class="astro-3ii7xxms"> <summary class="astro-3ii7xxms"> <span class="group-label astro-3ii7xxms"> <span class="large astro-3ii7xxms">Interactive Diagrams</span>  </span> <svg aria-hidden="true" class="caret astro-3ii7xxms astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg> </summary> <sl-sidebar-restore data-index="1"></sl-sidebar-restore> <ul class="astro-3ii7xxms"> <li class="astro-3ii7xxms"> <a href="/ai-lab/diagrams/architecture/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Architecture Diagram — Full Lifecycle</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/diagrams/file-catalog/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">File Catalog — Interactive</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/diagrams/override-test-lab/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Override Test Lab</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/diagrams/precedence/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Precedence Diagram — Full Hierarchy Guide</span>  </a> </li> </ul> </details> </li><li class="astro-3ii7xxms"> <details open class="astro-3ii7xxms"> <summary class="astro-3ii7xxms"> <span class="group-label astro-3ii7xxms"> <span class="large astro-3ii7xxms">RAG Guides</span>  </span> <svg aria-hidden="true" class="caret astro-3ii7xxms astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg> </summary> <sl-sidebar-restore data-index="2"></sl-sidebar-restore> <ul class="astro-3ii7xxms"> <li class="astro-3ii7xxms"> <a href="/ai-lab/rag/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">RAG Guides</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/rag/memory-rag/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Memory-Augmented RAG</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/rag/naive-rag/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Naive RAG Explainer</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/rag/rag-academy/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">RAG Academy</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/rag/rag-speed-quality/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">RAG Speed vs Quality</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/rag/rag-types/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">RAG Types</span>  </a> </li> </ul> </details> </li><li class="astro-3ii7xxms"> <details open class="astro-3ii7xxms"> <summary class="astro-3ii7xxms"> <span class="group-label astro-3ii7xxms"> <span class="large astro-3ii7xxms">BERT Architectures</span>  </span> <svg aria-hidden="true" class="caret astro-3ii7xxms astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg> </summary> <sl-sidebar-restore data-index="3"></sl-sidebar-restore> <ul class="astro-3ii7xxms"> <li class="astro-3ii7xxms"> <a href="/ai-lab/bert/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">BERT Architectures</span>  </a> </li> </ul> </details> </li><li class="astro-3ii7xxms"> <details open class="astro-3ii7xxms"> <summary class="astro-3ii7xxms"> <span class="group-label astro-3ii7xxms"> <span class="large astro-3ii7xxms">LangChain Reference</span>  </span> <svg aria-hidden="true" class="caret astro-3ii7xxms astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg> </summary> <sl-sidebar-restore data-index="4"></sl-sidebar-restore> <ul class="astro-3ii7xxms"> <li class="astro-3ii7xxms"> <a href="/ai-lab/langchain/langchain-reference/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">LangChain: Deep Reference Guide</span>  </a> </li> </ul> </details> </li><li class="astro-3ii7xxms"> <details open class="astro-3ii7xxms"> <summary class="astro-3ii7xxms"> <span class="group-label astro-3ii7xxms"> <span class="large astro-3ii7xxms">Cert Prep</span>  </span> <svg aria-hidden="true" class="caret astro-3ii7xxms astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg> </summary> <sl-sidebar-restore data-index="5"></sl-sidebar-restore> <ul class="astro-3ii7xxms"> <li class="astro-3ii7xxms"> <a href="/ai-lab/cert/cert-complete-study-guide/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Complete Study Guide</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/cert-gap-fill-reference/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Gap-Fill Study Reference</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/cert-quiz/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Domain Quiz — All Domains</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/cert-study-roadmap/" aria-current="page" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Study Roadmap</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/cert-visual/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Visual Learning — All Domains</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/claude-code-efficiency-guide/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Claude Code — Context, Cost &amp; Token Efficiency Guide</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/d1-visual/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Domain 1 — Agentic Architecture Visual Guide</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/d2-d5-visual/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Domains 2–5 Visual Learning Guide</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/domain-1-agentic-architecture/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Domain 1: Agentic Architecture</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/domain-2-tool-design-mcp/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Domain 2: Tool Design &amp; MCP</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/domain-3-claude-code-config/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Domain 3: Claude Code Config</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/domain-4-prompt-engineering/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Domain 4: Prompt Engineering</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/domain-5-context-reliability/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Domain 5: Context &amp; Reliability</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/master-study-guide/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Master Study Guide</span>  </a> </li> </ul> </details> </li><li class="astro-3ii7xxms"> <details open class="astro-3ii7xxms"> <summary class="astro-3ii7xxms"> <span class="group-label astro-3ii7xxms"> <span class="large astro-3ii7xxms">Prompts &amp; Templates</span>  </span> <svg aria-hidden="true" class="caret astro-3ii7xxms astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg> </summary> <sl-sidebar-restore data-index="6"></sl-sidebar-restore> <ul class="astro-3ii7xxms"> <li class="astro-3ii7xxms"> <a href="/ai-lab/prompts/document/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">document</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/prompts/learning-prompt-template/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Learning-prompt-template</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/prompts/prompt/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">prompt</span>  </a> </li> </ul> </details> </li> </ul>  <script aria-hidden="true">
+		(() => {
+			const scroller = document.getElementById('starlight__sidebar');
+			if (!window._starlightScrollRestore || !scroller) return;
+			scroller.scrollTop = window._starlightScrollRestore;
+			delete window._starlightScrollRestore;
+		})();
+	</script> </sl-sidebar-state-persist> <div class="md:sl-hidden"> <div class="mobile-preferences sl-flex astro-wu23bvmt"> <div class="social-icons astro-wu23bvmt">  </div> <starlight-theme-select>  <label style="--sl-select-width: 6.25em" class="astro-4yphtoen"> <span class="sr-only astro-4yphtoen">Select theme</span> <svg aria-hidden="true" class="icon label-icon astro-4yphtoen astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg> <select autocomplete="off" class="astro-4yphtoen"> <option value="dark" class="astro-4yphtoen">Dark</option><option value="light" class="astro-4yphtoen">Light</option><option value="auto" selected class="astro-4yphtoen">Auto</option> </select> <svg aria-hidden="true" class="icon caret astro-4yphtoen astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg> </label> </starlight-theme-select>  <script>
+	StarlightThemeProvider.updatePickers();
+</script>   </div> </div> </div> </div> </nav> <div class="main-frame astro-vrdttmbt">  <script type="module">const a=document.getElementById("starlight__sidebar"),n=a?.querySelector("sl-sidebar-state-persist"),o="sl-sidebar-state",i=()=>{let t=[];const e=n?.dataset.hash||"";try{const s=sessionStorage.getItem(o),r=JSON.parse(s||"{}");Array.isArray(r.open)&&r.hash===e&&(t=r.open)}catch{}return{hash:e,open:t,scroll:a?.scrollTop||0}},c=t=>{try{sessionStorage.setItem(o,JSON.stringify(t))}catch{}},d=()=>c(i()),l=(t,e)=>{const s=i();s.open[e]=t,c(s)};n?.addEventListener("click",t=>{if(!(t.target instanceof Element))return;const e=t.target.closest("summary")?.closest("details");if(!e)return;const s=e.querySelector("sl-sidebar-restore"),r=parseInt(s?.dataset.index||"");isNaN(r)||l(!e.open,r)});addEventListener("visibilitychange",()=>{document.visibilityState==="hidden"&&d()});addEventListener("pageHide",d);</script> <div class="lg:sl-flex astro-67yu43on"> <aside class="right-sidebar-container print:hidden astro-67yu43on"> <div class="right-sidebar astro-67yu43on"> <script type="module" src="/ai-lab/_astro/MobileTableOfContents.astro_astro_type_script_index_0_lang.hwBsy0Mo.js"></script><script type="module" src="/ai-lab/_astro/TableOfContents.astro_astro_type_script_index_0_lang.FuRcXuRY.js"></script><div class="lg:sl-hidden astro-pb3aqygn"><mobile-starlight-toc data-min-h="2" data-max-h="3" class="astro-doynk5tl"><nav aria-labelledby="starlight__on-this-page--mobile" class="astro-doynk5tl"><details id="starlight__mobile-toc" class="astro-doynk5tl"><summary id="starlight__on-this-page--mobile" class="sl-flex astro-doynk5tl"><span class="toggle sl-flex astro-doynk5tl">On this page<svg aria-hidden="true" class="caret astro-doynk5tl astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></span><span class="display-current astro-doynk5tl"></span></summary><div class="dropdown astro-doynk5tl"><ul class="isMobile astro-gnoq344e" style="--depth: 0;"> <li class="astro-gnoq344e" style="--depth: 0;"> <a href="#_top" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">Overview</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#your-starting-position" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">Your Starting Position</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#study-architecture-4-phases" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">Study Architecture: 4 Phases</span> </a> <ul class="isMobile astro-gnoq344e" style="--depth: 1;"> <li class="astro-gnoq344e" style="--depth: 1;"> <a href="#phase-1-conceptual-foundations-days-15" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">Phase 1: Conceptual Foundations (Days 1–5)</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#phase-2-hands-on-implementation-days-612" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">Phase 2: Hands-On Implementation (Days 6–12)</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#phase-3-scenario-practice-days-1317" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">Phase 3: Scenario Practice (Days 13–17)</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#phase-4-exam-simulation--final-review-days-1821" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">Phase 4: Exam Simulation &amp; Final Review (Days 18–21)</span> </a>  </li> </ul> </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#official-resources-checklist" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">Official Resources Checklist</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#exam-day-strategy" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">Exam Day Strategy</span> </a>  </li> </ul></div></details></nav></mobile-starlight-toc></div><div class="right-sidebar-panel sl-hidden lg:sl-block astro-pb3aqygn"><div class="sl-container astro-pb3aqygn"><starlight-toc data-min-h="2" data-max-h="3"><nav aria-labelledby="starlight__on-this-page"><h2 id="starlight__on-this-page">On this page</h2><ul class="astro-gnoq344e" style="--depth: 0;"> <li class="astro-gnoq344e" style="--depth: 0;"> <a href="#_top" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">Overview</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#your-starting-position" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">Your Starting Position</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#study-architecture-4-phases" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">Study Architecture: 4 Phases</span> </a> <ul class="astro-gnoq344e" style="--depth: 1;"> <li class="astro-gnoq344e" style="--depth: 1;"> <a href="#phase-1-conceptual-foundations-days-15" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">Phase 1: Conceptual Foundations (Days 1–5)</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#phase-2-hands-on-implementation-days-612" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">Phase 2: Hands-On Implementation (Days 6–12)</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#phase-3-scenario-practice-days-1317" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">Phase 3: Scenario Practice (Days 13–17)</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#phase-4-exam-simulation--final-review-days-1821" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">Phase 4: Exam Simulation &amp; Final Review (Days 18–21)</span> </a>  </li> </ul> </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#official-resources-checklist" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">Official Resources Checklist</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#exam-day-strategy" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">Exam Day Strategy</span> </a>  </li> </ul></nav></starlight-toc></div></div> </div> </aside> <div class="main-pane astro-67yu43on">  <main data-pagefind-body class="astro-bguv2lll" lang="en" dir="ltr">    <div class="content-panel astro-7nkwcw3z"> <div class="sl-container astro-7nkwcw3z"> <h1 id="_top" class="astro-j6tvhyss">Study Roadmap</h1> </div> </div> <div class="content-panel astro-7nkwcw3z"> <div class="sl-container astro-7nkwcw3z"> <div class="sl-markdown-content"> <div class="sl-heading-wrapper level-h1"><h1 id="claude-certified-architect--foundations-detailed-study-roadmap">Claude Certified Architect – Foundations: Detailed Study Roadmap</h1><a class="sl-anchor-link" href="#claude-certified-architect--foundations-detailed-study-roadmap"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Claude Certified Architect – Foundations: Detailed Study Roadmap”</span></a></div>
+<div class="sl-heading-wrapper level-h2"><h2 id="your-starting-position">Your Starting Position</h2><a class="sl-anchor-link" href="#your-starting-position"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Your Starting Position”</span></a></div>
+<p>Based on your existing work, here’s an honest assessment of where you stand against each exam domain. This drives the priority weighting in the roadmap.</p>
+<p><strong>Domain 1: Agentic Architecture &#x26; Orchestration (27% of exam)</strong>
+Current strength: MODERATE. You understand agentic concepts deeply from your RAG taxonomy work, and agent framework evaluations. However, the exam tests <em>Claude Agent SDK specifics</em> — the <code dir="auto">Agent</code> tool (formerly <code dir="auto">Task</code>), <code dir="auto">AgentDefinition</code> configuration, <code dir="auto">allowedTools</code>, hooks (<code dir="auto">PreToolUse</code>/<code dir="auto">PostToolUse</code>), <code dir="auto">stop_reason</code> handling, <code dir="auto">fork_session</code>, and hub-and-spoke coordinator patterns. These are SDK-level implementation details you haven’t drilled on yet.</p>
+<p><strong>Domain 2: Tool Design &#x26; MCP Integration (18% of exam)</strong>
+Current strength: STRONG. Your comprehensive MCP server types guide, stdio vs Streamable HTTP transport knowledge, and <code dir="auto">.mcp.json</code> configuration expertise cover most of this domain. Gaps: the <code dir="auto">isError</code> flag pattern for structured error responses, tool distribution principles (4-5 tools per agent vs 18), and <code dir="auto">tool_choice</code> forced selection patterns.</p>
+<p><strong>Domain 3: Claude Code Configuration &#x26; Workflows (20% of exam)</strong>
+Current strength: STRONG. Your universal CLAUDE.md template, configuration hierarchy knowledge (precedence tiers, settings.json), and workflow orchestration SKILL.md put you ahead here. Gaps: <code dir="auto">.claude/rules/</code> YAML frontmatter path-scoping (glob patterns for conditional loading), <code dir="auto">context: fork</code> in skill frontmatter, the Explore subagent, and CI/CD integration with <code dir="auto">-p</code> flag + <code dir="auto">--output-format json</code> + <code dir="auto">--json-schema</code>.</p>
+<p><strong>Domain 4: Prompt Engineering &#x26; Structured Output (20% of exam)</strong>
+Current strength: MODERATE. You have strong prompt engineering instincts from previous applied work, but this domain tests <em>specific Claude API patterns</em>: <code dir="auto">tool_use</code> with JSON schemas for guaranteed structured output, <code dir="auto">tool_choice</code> options (<code dir="auto">"auto"</code> vs <code dir="auto">"any"</code> vs forced), few-shot examples for false positive reduction, validation-retry loops, and the Message Batches API (50% savings, 24-hour window, <code dir="auto">custom_id</code> correlation, no multi-turn tool calling).</p>
+<p><strong>Domain 5: Context Management &#x26; Reliability (15% of exam)</strong>
+Current strength: MODERATE-STRONG. Your context window management and prompt caching work provides foundation. Exam-specific patterns to learn: “lost in the middle” effect mitigation, progressive summarization risks, structured “case facts” extraction, scratchpad files for context boundaries, <code dir="auto">/compact</code>, crash recovery via state manifests, and confidence calibration with stratified sampling.</p>
+<hr>
+<div class="sl-heading-wrapper level-h2"><h2 id="study-architecture-4-phases">Study Architecture: 4 Phases</h2><a class="sl-anchor-link" href="#study-architecture-4-phases"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Study Architecture: 4 Phases”</span></a></div>
+<p>The roadmap is organized in 4 phases that follow a deliberate progression: conceptual foundations first, then hands-on implementation, then scenario practice, and finally exam simulation. Each phase builds on the previous one.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="phase-1-conceptual-foundations-days-15">Phase 1: Conceptual Foundations (Days 1–5)</h3><a class="sl-anchor-link" href="#phase-1-conceptual-foundations-days-15"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Phase 1: Conceptual Foundations (Days 1–5)”</span></a></div>
+<p>The goal of this first phase is to build a complete mental model of every testable concept before writing any code. Read actively — for each topic, ask yourself “what tradeoff is being tested here?” because every exam question is a tradeoff question.</p>
+<p><strong>Day 1: Agent SDK Deep Dive — The Agentic Loop (Domain 1, Task 1.1 + 1.7)</strong></p>
+<p>Start here because Domain 1 is 27% of the exam and likely your biggest knowledge gap at the SDK level.</p>
+<p>Study the agentic loop lifecycle end-to-end. The loop follows a precise sequence: your code sends a prompt to Claude → Claude responds with text and/or <code dir="auto">tool_use</code> blocks → you check <code dir="auto">stop_reason</code> → if <code dir="auto">"tool_use"</code>, execute the tools, append results to conversation history, send again → if <code dir="auto">"end_turn"</code>, the loop terminates. This is the most fundamental concept on the exam.</p>
+<p>Key anti-patterns to memorize (these appear as wrong answers):</p>
+<ul>
+<li>Parsing Claude’s natural language output to decide when to stop (e.g., checking if the response contains “I’m done”) — always use <code dir="auto">stop_reason</code></li>
+<li>Setting an arbitrary iteration cap (like <code dir="auto">max_iterations = 5</code>) as the primary stopping mechanism</li>
+<li>Checking for assistant text content as a completion indicator</li>
+</ul>
+<p>Then study session management: <code dir="auto">--resume &#x3C;session-name></code> continues a named session, <code dir="auto">fork_session</code> creates independent branches from a shared baseline, and starting fresh with injected summaries is more reliable than resuming when tool results are stale.</p>
+<p>Resources to read:</p>
+<ul>
+<li>Agent loop docs: <code dir="auto">platform.claude.com/docs/en/agent-sdk/agent-loop</code></li>
+<li>Agent SDK overview: <code dir="auto">platform.claude.com/docs/en/agent-sdk/overview</code></li>
+<li>Anthropic engineering blog: “Building agents with the Claude Agent SDK”</li>
+</ul>
+<p><strong>Day 2: Multi-Agent Orchestration &#x26; Hooks (Domain 1, Tasks 1.2–1.5)</strong></p>
+<p>This is the highest-value study day because it covers the exam’s most heavily weighted topics.</p>
+<p>Start with the hub-and-spoke pattern: a coordinator agent manages all communication, error handling, and routing between subagents. Subagents operate with isolated context — they do NOT inherit the coordinator’s conversation history. The coordinator must explicitly pass findings in the subagent’s prompt. The <code dir="auto">Agent</code> tool (renamed from <code dir="auto">Task</code> in v2.1.63) is the mechanism for spawning subagents, and <code dir="auto">allowedTools</code> must include <code dir="auto">"Agent"</code> for a coordinator to invoke them.</p>
+<p>Study <code dir="auto">AgentDefinition</code>: it takes <code dir="auto">description</code> (when to use this agent), <code dir="auto">prompt</code> (system prompt), <code dir="auto">tools</code> (allowed tool names), and <code dir="auto">model</code>. The <code dir="auto">description</code> field is what Claude reads to decide which subagent to invoke — make it precise.</p>
+<p>Then study hooks. <code dir="auto">PreToolUse</code> hooks intercept outgoing tool calls before execution — use them to enforce compliance rules (block refunds > $500, verify customer ID before order lookup). <code dir="auto">PostToolUse</code> hooks intercept tool results before the model processes them — use them to normalize data formats (Unix timestamps → ISO 8601). The critical exam concept: hooks provide <em>deterministic guarantees</em> while prompt instructions provide <em>probabilistic compliance</em>. When business rules require guaranteed compliance (identity verification before financial operations), always choose hooks.</p>
+<p>Parallel subagent spawning: the coordinator can emit multiple <code dir="auto">Agent</code> tool calls in a single response to run subagents concurrently.</p>
+<p>Resources:</p>
+<ul>
+<li>Subagents docs: <code dir="auto">platform.claude.com/docs/en/agent-sdk/subagents</code></li>
+<li>Hooks docs: <code dir="auto">platform.claude.com/docs/en/agent-sdk/hooks</code></li>
+<li>Permissions docs: <code dir="auto">platform.claude.com/docs/en/agent-sdk/permissions</code></li>
+</ul>
+<p><strong>Day 3: Tool Design, MCP Integration &#x26; Built-in Tools (Domain 2)</strong></p>
+<p>You have strong MCP foundations. Focus on the exam-specific angles you haven’t drilled.</p>
+<p>Tool descriptions are the primary mechanism LLMs use for tool selection. Minimal descriptions lead to unreliable selection. The exam tests your ability to diagnose and fix tool misrouting by expanding descriptions to include input formats, example queries, edge cases, and boundary explanations. When two tools have overlapping descriptions (like <code dir="auto">analyze_content</code> and <code dir="auto">analyze_document</code>), the fix is to rename them and differentiate their descriptions, not to add few-shot examples or build routing classifiers.</p>
+<p>The <code dir="auto">isError</code> flag pattern: MCP tool results can include <code dir="auto">isError: true</code> to signal failures. Return structured error metadata including <code dir="auto">errorCategory</code> (transient/validation/permission), <code dir="auto">isRetryable</code> boolean, and human-readable descriptions. The exam distinguishes between access failures (timeouts needing retry) and valid empty results (successful queries with no matches) — these must not be confused.</p>
+<p>Tool distribution principle: giving an agent 18 tools degrades selection reliability vs 4-5 focused tools. Each subagent should get only tools relevant to its role. But you can provide scoped cross-role tools for high-frequency needs (e.g., a <code dir="auto">verify_fact</code> tool for the synthesis agent).</p>
+<p><code dir="auto">tool_choice</code> options:</p>
+<ul>
+<li><code dir="auto">"auto"</code> — Claude decides freely (may return text without calling a tool)</li>
+<li><code dir="auto">"any"</code> — must call a tool but can choose which</li>
+<li><code dir="auto">{"type": "tool", "name": "extract_metadata"}</code> — forced to call that specific tool
+These are testable facts. <code dir="auto">"any"</code> guarantees structured output when document type is unknown. Forced selection ensures a specific tool runs first (e.g., metadata extraction before enrichment).</li>
+</ul>
+<p>Built-in tools: Grep searches file <em>contents</em> for patterns. Glob finds files by <em>name/extension</em> patterns. Read/Write for full file operations; Edit for targeted modifications using unique text matching. When Edit fails (non-unique match), fall back to Read + Write.</p>
+<p>Resources:</p>
+<ul>
+<li>MCP tools spec: <code dir="auto">modelcontextprotocol.io/specification/draft/server/tools</code></li>
+<li>MCP resources spec: <code dir="auto">modelcontextprotocol.io/specification/2025-06-18/server/resources</code></li>
+<li>MCP in Claude Code: <code dir="auto">code.claude.com/docs/en/mcp</code></li>
+<li>Tool use docs: <code dir="auto">docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview</code></li>
+</ul>
+<p><strong>Day 4: Claude Code Configuration &#x26; CI/CD (Domain 3)</strong></p>
+<p>This is your strongest domain. Focus on exam-specific details you might get wrong.</p>
+<p>CLAUDE.md hierarchy — the exact precedence matters:</p>
+<ul>
+<li><code dir="auto">~/.claude/CLAUDE.md</code> → user-level, NOT shared via version control</li>
+<li><code dir="auto">.claude/CLAUDE.md</code> or root <code dir="auto">CLAUDE.md</code> → project-level, version-controlled</li>
+<li>Subdirectory <code dir="auto">CLAUDE.md</code> → directory-level, most specific</li>
+</ul>
+<p><code dir="auto">.claude/rules/</code> with YAML frontmatter is a key testable pattern. Rules files use <code dir="auto">paths</code> fields with glob patterns (e.g., <code dir="auto">paths: ["terraform/**/*"]</code>) for conditional activation. These load only when editing matching files, reducing irrelevant context. The advantage over subdirectory CLAUDE.md files: glob patterns can target files spread across the codebase (like <code dir="auto">**/*.test.tsx</code> for all test files regardless of directory).</p>
+<p>Skills frontmatter: <code dir="auto">context: fork</code> runs the skill in an isolated subagent context (prevents polluting main conversation). <code dir="auto">allowed-tools</code> restricts tool access during skill execution. <code dir="auto">argument-hint</code> prompts for required parameters.</p>
+<p>CI/CD integration facts:</p>
+<ul>
+<li><code dir="auto">-p</code> (or <code dir="auto">--print</code>) flag runs Claude Code in non-interactive mode — this is the correct answer for CI pipeline hangs</li>
+<li><code dir="auto">--output-format json</code> with <code dir="auto">--json-schema</code> produces machine-parseable structured output</li>
+<li>CLAUDE.md provides project context (testing standards, review criteria) to CI-invoked Claude Code</li>
+<li>Session context isolation: the same session that generated code is less effective at reviewing it — use independent review instances</li>
+</ul>
+<p>Plan mode vs direct execution:</p>
+<ul>
+<li>Plan mode: complex tasks, large-scale changes, multiple valid approaches, architectural decisions</li>
+<li>Direct execution: simple, well-scoped changes (single-file bug fix, adding one validation check)</li>
+<li>Explore subagent: isolates verbose discovery output, returns summaries to preserve main context</li>
+</ul>
+<p>Resources:</p>
+<ul>
+<li>Claude Code settings: <code dir="auto">code.claude.com/docs/en/settings</code></li>
+<li>Headless/CI mode: <code dir="auto">code.claude.com/docs/en/headless</code></li>
+<li>Subagents: <code dir="auto">code.claude.com/docs/en/sub-agents</code></li>
+</ul>
+<p><strong>Day 5: Prompt Engineering, Structured Output &#x26; Batch Processing (Domain 4)</strong></p>
+<p>Start with structured output via <code dir="auto">tool_use</code>. This is the exam’s recommended approach for guaranteed schema-compliant output — it eliminates JSON syntax errors entirely. You define an extraction tool with a JSON schema as its input parameters, force Claude to call it, and extract structured data from the <code dir="auto">tool_use</code> response.</p>
+<p>Schema design considerations tested on the exam:</p>
+<ul>
+<li>Make fields optional (nullable) when source documents may not contain the info — this prevents fabrication</li>
+<li>Use <code dir="auto">enum</code> with <code dir="auto">"other"</code> + detail string patterns for extensible categories</li>
+<li>Add <code dir="auto">"unclear"</code> as an enum value for ambiguous cases</li>
+<li>Strict JSON schemas eliminate <em>syntax</em> errors but NOT <em>semantic</em> errors (line items that don’t sum to total)</li>
+</ul>
+<p>Few-shot prompting: the exam treats this as the most effective technique for consistency when detailed instructions alone produce inconsistent results. Create 2-4 targeted examples for ambiguous scenarios showing reasoning for why one action was chosen. Few-shot examples enable generalization to novel patterns — this is a key distinction from rule-based approaches.</p>
+<p>Explicit criteria > vague instructions: “flag comments only when claimed behavior contradicts actual code behavior” beats “check that comments are accurate.” General instructions like “be conservative” or “only report high-confidence findings” fail to improve precision.</p>
+<p>Validation-retry loops: append specific validation errors to the prompt on retry. But recognize when retries are ineffective — when information is absent from the source document (vs format or structural errors).</p>
+<p>Message Batches API facts (these are testable):</p>
+<ul>
+<li>50% cost savings</li>
+<li>Up to 24-hour processing window, no guaranteed latency SLA</li>
+<li>Appropriate for: overnight reports, weekly audits, nightly test generation</li>
+<li>NOT appropriate for: blocking pre-merge checks</li>
+<li>Does NOT support multi-turn tool calling within a single request</li>
+<li><code dir="auto">custom_id</code> fields correlate request/response pairs</li>
+<li>Handle failures by resubmitting only failed documents identified by <code dir="auto">custom_id</code></li>
+</ul>
+<p>Multi-instance review: a second independent Claude instance (without prior reasoning context) catches more issues than self-review instructions or extended thinking in the same session.</p>
+<p>Resources:</p>
+<ul>
+<li>Structured outputs: <code dir="auto">platform.claude.com/docs/en/build-with-claude/structured-outputs</code></li>
+<li>Tool use implementation: <code dir="auto">docs.anthropic.com/en/docs/build-with-claude/tool-use/implement-tool-use</code></li>
+<li>Batch processing: <code dir="auto">docs.anthropic.com/en/docs/build-with-claude/message-batches</code></li>
+</ul>
+<hr>
+<div class="sl-heading-wrapper level-h3"><h3 id="phase-2-hands-on-implementation-days-612">Phase 2: Hands-On Implementation (Days 6–12)</h3><a class="sl-anchor-link" href="#phase-2-hands-on-implementation-days-612"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Phase 2: Hands-On Implementation (Days 6–12)”</span></a></div>
+<p>Now build the four exercises from the exam guide. These reinforce concepts through muscle memory and reveal gaps your reading missed.</p>
+<p><strong>Days 6–7: Exercise 1 — Multi-Tool Agent with Escalation Logic</strong></p>
+<p>Build a customer support agent using the Claude Agent SDK (Python). This single exercise covers Domain 1 + Domain 2 + Domain 5.</p>
+<p>Step 1: Define 3-4 tools (<code dir="auto">get_customer</code>, <code dir="auto">lookup_order</code>, <code dir="auto">process_refund</code>, <code dir="auto">escalate_to_human</code>) with detailed descriptions that clearly differentiate each tool’s purpose.</p>
+<p>Step 2: Implement the agentic loop checking <code dir="auto">stop_reason</code> — continue on <code dir="auto">"tool_use"</code>, terminate on <code dir="auto">"end_turn"</code>.</p>
+<p>Step 3: Add structured error responses to tools with <code dir="auto">errorCategory</code>, <code dir="auto">isRetryable</code>, and human-readable descriptions.</p>
+<p>Step 4: Implement a <code dir="auto">PreToolUse</code> hook that blocks <code dir="auto">process_refund</code> when amount exceeds $500, redirecting to escalation.</p>
+<p>Step 5: Implement a <code dir="auto">PostToolUse</code> hook that normalizes timestamps from tool results before the model processes them.</p>
+<p>Step 6: Test with a multi-concern message (e.g., “I want to return order #123 AND dispute the charge on order #456”) and verify the agent decomposes, handles each, and synthesizes.</p>
+<p>What to observe and note: How does the agent behave when you remove the hook and rely only on prompt instructions? This demonstrates the deterministic vs probabilistic compliance distinction.</p>
+<p><strong>Days 8–9: Exercise 2 — Claude Code Team Configuration</strong></p>
+<p>Set up a real project with the full configuration stack. This covers Domain 3 + Domain 2.</p>
+<p>Step 1: Create a project-level CLAUDE.md with universal standards.</p>
+<p>Step 2: Create <code dir="auto">.claude/rules/testing.md</code> with <code dir="auto">paths: ["**/*.test.*"]</code> and <code dir="auto">.claude/rules/api.md</code> with <code dir="auto">paths: ["src/api/**/*"]</code>.</p>
+<p>Step 3: Create a skill in <code dir="auto">.claude/skills/analyze-codebase/SKILL.md</code> with <code dir="auto">context: fork</code> and <code dir="auto">allowed-tools</code> restrictions.</p>
+<p>Step 4: Configure an MCP server in <code dir="auto">.mcp.json</code> with <code dir="auto">${GITHUB_TOKEN}</code> environment variable expansion.</p>
+<p>Step 5: Test plan mode on a multi-file refactoring task vs direct execution on a single-file bug fix. Note the behavioral differences.</p>
+<p>Step 6: Run Claude Code in CI mode with <code dir="auto">-p "review this PR" --output-format json --json-schema '{"type":"object","properties":{"findings":{"type":"array"}}}'</code></p>
+<p><strong>Days 10–11: Exercise 3 — Structured Data Extraction Pipeline</strong></p>
+<p>Build an extraction system processing insurance documents. This covers Domain 4 + Domain 5 and directly maps to your applied work.</p>
+<p>Step 1: Define an extraction tool with a JSON schema: required fields, optional/nullable fields, enum with <code dir="auto">"other"</code> + detail, <code dir="auto">"unclear"</code> for ambiguous cases.</p>
+<p>Step 2: Use <code dir="auto">tool_choice: {"type": "tool", "name": "extract_claim"}</code> to force extraction.</p>
+<p>Step 3: Process a document with missing fields — verify null returns instead of fabrication.</p>
+<p>Step 4: Implement a validation-retry loop: when validation fails, send follow-up with original document + failed extraction + specific error.</p>
+<p>Step 5: Add 3 few-shot examples showing extraction from documents with varied formats.</p>
+<p>Step 6: Design a batch processing strategy with <code dir="auto">custom_id</code> correlation and failure handling.</p>
+<p><strong>Day 12: Exercise 4 — Multi-Agent Research Pipeline</strong></p>
+<p>Build a coordinator with web search + document analysis + synthesis subagents. This covers Domain 1 + Domain 2 + Domain 5.</p>
+<p>Step 1: Build coordinator with <code dir="auto">allowedTools</code> including <code dir="auto">"Agent"</code>. Define subagents via <code dir="auto">AgentDefinition</code>.</p>
+<p>Step 2: Emit multiple <code dir="auto">Agent</code> tool calls in a single coordinator response for parallel execution.</p>
+<p>Step 3: Design structured output separating content from metadata (claim, evidence, source URL, publication date).</p>
+<p>Step 4: Simulate a subagent timeout — return structured error context and verify coordinator proceeds with partial results.</p>
+<p>Step 5: Test with conflicting source data — verify synthesis preserves both values with attribution rather than arbitrarily selecting one.</p>
+<hr>
+<div class="sl-heading-wrapper level-h3"><h3 id="phase-3-scenario-practice-days-1317">Phase 3: Scenario Practice (Days 13–17)</h3><a class="sl-anchor-link" href="#phase-3-scenario-practice-days-1317"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Phase 3: Scenario Practice (Days 13–17)”</span></a></div>
+<p>Now shift to exam-format practice. For each scenario, work through questions focusing on tradeoff reasoning.</p>
+<p><strong>Day 13: Scenario 1 — Customer Support Resolution Agent</strong></p>
+<p>This scenario tests the intersection of Domains 1, 2, and 5. The key tradeoffs:</p>
+<ul>
+<li>Programmatic enforcement (hooks) vs prompt-based guidance for workflow ordering</li>
+<li>When to escalate (policy gaps, customer requests, inability to progress) vs resolve autonomously</li>
+<li>Structured handoff summaries for human agents</li>
+<li>Tool description quality for reliable selection</li>
+<li>Context management across multi-issue sessions</li>
+</ul>
+<p>Practice questions to work through:</p>
+<ol>
+<li>Agent skips <code dir="auto">get_customer</code> 12% of the time — what’s the fix? (Programmatic prerequisite, not prompt enhancement)</li>
+<li>Agent calls wrong tool due to minimal descriptions — what’s the first step? (Expand tool descriptions, not few-shot examples)</li>
+<li>Agent has 55% first-contact resolution — how to improve escalation? (Explicit criteria + few-shot examples, not confidence scores or sentiment analysis)</li>
+<li>Customer asks for human agent — what should the agent do? (Honor immediately without attempting investigation first)</li>
+<li>Multiple customer matches from <code dir="auto">get_customer</code> — what should the agent do? (Ask for additional identifiers, not heuristic selection)</li>
+</ol>
+<p><strong>Day 14: Scenarios 2 + 3 — Code Generation &#x26; Multi-Agent Research</strong></p>
+<p>Scenario 2 tradeoffs:</p>
+<ul>
+<li>Plan mode vs direct execution (complexity assessment)</li>
+<li><code dir="auto">.claude/rules/</code> with glob patterns vs subdirectory CLAUDE.md (test files spread across codebase)</li>
+<li>Skills with <code dir="auto">context: fork</code> vs CLAUDE.md (on-demand vs always-loaded)</li>
+<li>Iterative refinement: input/output examples, test-driven iteration, interview pattern</li>
+</ul>
+<p>Scenario 3 tradeoffs:</p>
+<ul>
+<li>Narrow task decomposition by coordinator → incomplete coverage</li>
+<li>Subagent context isolation — must explicitly pass findings</li>
+<li>Iterative refinement loops — coordinator evaluates synthesis for gaps</li>
+<li>Parallel subagent spawning via multiple <code dir="auto">Agent</code> calls in one turn</li>
+<li>Scoped cross-role tools (verify_fact for synthesis) vs full tool access</li>
+</ul>
+<p><strong>Day 15: Scenarios 4 + 5 — Developer Productivity &#x26; CI/CD</strong></p>
+<p>Scenario 4 tradeoffs:</p>
+<ul>
+<li>Grep (content search) vs Glob (file pattern matching)</li>
+<li>Incremental codebase understanding: Grep → Read → trace flows (not read all files upfront)</li>
+<li>Edit tool failure → Read + Write fallback</li>
+<li>MCP tool descriptions must be detailed enough to prevent agent preferring built-in tools</li>
+</ul>
+<p>Scenario 5 tradeoffs:</p>
+<ul>
+<li><code dir="auto">-p</code> flag for non-interactive CI mode (not <code dir="auto">CLAUDE_HEADLESS</code> or <code dir="auto">--batch</code>)</li>
+<li>Batch API for overnight reports, synchronous API for pre-merge checks</li>
+<li>Session context isolation: independent review instance > same-session self-review</li>
+<li>Include prior review findings to avoid duplicate comments</li>
+<li>Multi-pass review: per-file local analysis + cross-file integration pass</li>
+</ul>
+<p><strong>Day 16: Scenario 6 — Structured Data Extraction</strong></p>
+<p>This scenario tests Domains 4 + 5. Focus on:</p>
+<ul>
+<li><code dir="auto">tool_use</code> with JSON schemas eliminates syntax errors but not semantic errors</li>
+<li>Optional/nullable fields prevent fabrication when info is absent</li>
+<li><code dir="auto">tool_choice: "any"</code> guarantees structured output with unknown document types</li>
+<li>Retry-with-error-feedback for format mismatches; retries are ineffective for absent information</li>
+<li>Batch API: <code dir="auto">custom_id</code> correlation, resubmit only failed docs, no multi-turn tool calling</li>
+<li>Human review routing: field-level confidence scores calibrated with labeled validation sets</li>
+<li>Aggregate accuracy metrics (97% overall) can mask poor performance on specific document types</li>
+</ul>
+<p><strong>Day 17: Cross-Domain Pattern Recognition</strong></p>
+<p>The exam’s hardest questions require recognizing which principle applies across domains. Study these cross-cutting patterns:</p>
+<p>Pattern 1 — Deterministic vs Probabilistic: Hooks for guaranteed compliance, prompt instructions for guidance. This applies to tool ordering (D1), data normalization (D1), and review criteria (D4).</p>
+<p>Pattern 2 — Isolation: Subagent context isolation (D1), <code dir="auto">context: fork</code> for skills (D3), independent review instances (D4), session context isolation in CI (D3).</p>
+<p>Pattern 3 — Structured Metadata: Claim-source mappings (D5), structured error responses with <code dir="auto">errorCategory</code> (D2), <code dir="auto">detected_pattern</code> fields for feedback loops (D4), <code dir="auto">custom_id</code> for batch correlation (D4).</p>
+<p>Pattern 4 — Proportionate Response: Expand tool descriptions before building routing classifiers (D2), add explicit criteria before deploying ML classifiers (D5), test prompts on samples before batch processing (D4).</p>
+<p>Pattern 5 — Anti-patterns as Distractors: Same-session self-review, sentiment-based escalation, generic “be conservative” instructions, arbitrary iteration caps, silently suppressing errors, parsing natural language for loop termination.</p>
+<hr>
+<div class="sl-heading-wrapper level-h3"><h3 id="phase-4-exam-simulation--final-review-days-1821">Phase 4: Exam Simulation &#x26; Final Review (Days 18–21)</h3><a class="sl-anchor-link" href="#phase-4-exam-simulation--final-review-days-1821"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Phase 4: Exam Simulation &#x26; Final Review (Days 18–21)”</span></a></div>
+<p><strong>Day 18: Practice Exam</strong></p>
+<p>Take the official practice exam (link provided by Anthropic through Skilljar). The practice exam uses the same scenarios, format, and difficulty level. After each answer, read the explanation thoroughly — the explanations reveal the exam’s reasoning framework.</p>
+<p><strong>Day 19: Gap Analysis &#x26; Targeted Review</strong></p>
+<p>Based on practice exam results, identify which domains and task statements you missed. Go back to the specific documentation for those areas. Focus on the tradeoff reasoning — if you got a question wrong, understand <em>why</em> the correct answer is better, not just <em>what</em> it is.</p>
+<p><strong>Day 20: Rapid-Fire Concept Review</strong></p>
+<p>Review these high-frequency exam facts one final time:</p>
+<p>Agent SDK: <code dir="auto">stop_reason</code> values (<code dir="auto">"tool_use"</code> → continue, <code dir="auto">"end_turn"</code> → stop). <code dir="auto">Agent</code> tool for subagent spawning. <code dir="auto">allowedTools</code> must include <code dir="auto">"Agent"</code>. <code dir="auto">AgentDefinition</code> with description, prompt, tools. Hooks: <code dir="auto">PreToolUse</code> for blocking, <code dir="auto">PostToolUse</code> for normalization. Subagents don’t inherit parent context.</p>
+<p>MCP: <code dir="auto">isError</code> flag. <code dir="auto">.mcp.json</code> project scope vs <code dir="auto">~/.claude.json</code> user scope. <code dir="auto">${VAR}</code> expansion. MCP resources for content catalogs. Tools from all configured servers available simultaneously.</p>
+<p>Claude Code: CLAUDE.md hierarchy (user &#x3C; project &#x3C; directory). <code dir="auto">.claude/rules/</code> with <code dir="auto">paths</code> glob patterns. <code dir="auto">.claude/commands/</code> (project) vs <code dir="auto">~/.claude/commands/</code> (personal). Skills with <code dir="auto">context: fork</code>, <code dir="auto">allowed-tools</code>, <code dir="auto">argument-hint</code>. <code dir="auto">-p</code> flag for CI. <code dir="auto">--output-format json</code> + <code dir="auto">--json-schema</code>. Plan mode for complex tasks. <code dir="auto">/compact</code> for context reduction. <code dir="auto">/memory</code> for checking loaded files.</p>
+<p>API: <code dir="auto">tool_use</code> with JSON schemas for guaranteed structured output. <code dir="auto">tool_choice</code>: <code dir="auto">"auto"</code> (optional), <code dir="auto">"any"</code> (must use a tool), forced (must use specific tool). Message Batches API: 50% savings, 24hr window, <code dir="auto">custom_id</code>, no multi-turn tool calling.</p>
+<p>Context: “Lost in the middle” effect. Progressive summarization loses numerical details. Trim verbose tool outputs. Place key findings at beginning. Scratchpad files for long sessions. <code dir="auto">/compact</code> for context reduction.</p>
+<p><strong>Day 21: Final Exam Simulation</strong></p>
+<p>Do one more pass through the 12 sample questions from the exam guide. For each, before looking at the answer, write down your reasoning for eliminating each distractor. If you can confidently eliminate 2 distractors on every question, your pass probability is extremely high.</p>
+<hr>
+<div class="sl-heading-wrapper level-h2"><h2 id="official-resources-checklist">Official Resources Checklist</h2><a class="sl-anchor-link" href="#official-resources-checklist"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Official Resources Checklist”</span></a></div>
+<p>These are the documentation pages to read (in priority order matching the roadmap):</p>
+<ol>
+<li>Agent SDK overview — <code dir="auto">platform.claude.com/docs/en/agent-sdk/overview</code></li>
+<li>Agent loop — <code dir="auto">platform.claude.com/docs/en/agent-sdk/agent-loop</code></li>
+<li>Subagents — <code dir="auto">platform.claude.com/docs/en/agent-sdk/subagents</code></li>
+<li>Hooks — <code dir="auto">platform.claude.com/docs/en/agent-sdk/hooks</code></li>
+<li>Permissions — <code dir="auto">platform.claude.com/docs/en/agent-sdk/permissions</code></li>
+<li>Agent Skills — <code dir="auto">platform.claude.com/docs/en/agent-sdk/skills</code></li>
+<li>Tool use — <code dir="auto">docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview</code></li>
+<li>Implement tool use — <code dir="auto">docs.anthropic.com/en/docs/build-with-claude/tool-use/implement-tool-use</code></li>
+<li>Structured outputs — <code dir="auto">platform.claude.com/docs/en/build-with-claude/structured-outputs</code></li>
+<li>Batch processing — <code dir="auto">docs.anthropic.com/en/docs/build-with-claude/message-batches</code></li>
+<li>MCP tools spec — <code dir="auto">modelcontextprotocol.io/specification/draft/server/tools</code></li>
+<li>MCP resources spec — <code dir="auto">modelcontextprotocol.io/specification/2025-06-18/server/resources</code></li>
+<li>MCP in Claude Code — <code dir="auto">code.claude.com/docs/en/mcp</code></li>
+<li>Claude Code settings — <code dir="auto">code.claude.com/docs/en/settings</code></li>
+<li>Claude Code headless — <code dir="auto">code.claude.com/docs/en/headless</code></li>
+<li>Claude Code subagents — <code dir="auto">code.claude.com/docs/en/sub-agents</code></li>
+<li>Anthropic engineering blog: “Building agents with the Claude Agent SDK”</li>
+</ol>
+<p>Anthropic Academy courses on Skilljar (free):</p>
+<ul>
+<li>Claude Code in Action</li>
+<li>Building with the Claude API</li>
+<li>Introduction to MCP</li>
+<li>Advanced MCP Patterns</li>
+<li>Introduction to Agent Skills</li>
+</ul>
+<p>Community resources:</p>
+<ul>
+<li>GitHub: <code dir="auto">SGridworks/claude-certified-architect-training</code> (110 practice questions)</li>
+<li>Exam guide PDF (you already have this)</li>
+</ul>
+<hr>
+<div class="sl-heading-wrapper level-h2"><h2 id="exam-day-strategy">Exam Day Strategy</h2><a class="sl-anchor-link" href="#exam-day-strategy"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Exam Day Strategy”</span></a></div>
+<p>The exam presents 4 random scenarios from a pool of 6, with approximately 15 questions each. Here is how to approach it:</p>
+<p>First, read each scenario description carefully before answering any questions. The scenario context often contains details that eliminate wrong answers.</p>
+<p>Second, for each question, eliminate distractors before selecting. The exam guide reveals that distractors target candidates with “incomplete knowledge or experience.” Common distractor patterns include: over-engineered solutions when a simple fix exists (routing classifiers when tool descriptions are the problem), probabilistic approaches when deterministic guarantees are needed (prompt instructions when hooks are required), and wrong-level fixes (blaming downstream agents when the coordinator’s task decomposition is the issue).</p>
+<p>Third, watch for “most effective first step” phrasing. This always points toward the lowest-effort, highest-leverage fix — not the most comprehensive solution.</p>
+<p>Fourth, there is no penalty for guessing. Never leave a question blank.</p>
+<p>Fifth, pace yourself. With 60 questions and scenario reading time, you have roughly 1-1.5 minutes per question. If you’re stuck, eliminate what you can, pick the best remaining option, and move on.</p> </div> <footer class="sl-flex astro-3yyafb3n"> <div class="meta sl-flex astro-3yyafb3n">   </div> <div class="pagination-links print:hidden astro-u2l5gyhi" dir="ltr"> <a href="/ai-lab/cert/cert-quiz/" rel="prev" class="astro-u2l5gyhi"> <svg aria-hidden="true" class="astro-u2l5gyhi astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17 11H9.41l3.3-3.29a1.004 1.004 0 1 0-1.42-1.42l-5 5a1 1 0 0 0-.21.33 1 1 0 0 0 0 .76 1 1 0 0 0 .21.33l5 5a1.002 1.002 0 0 0 1.639-.325 1 1 0 0 0-.219-1.095L9.41 13H17a1 1 0 0 0 0-2Z"/></svg> <span class="astro-u2l5gyhi"> Previous <br class="astro-u2l5gyhi"> <span class="link-title astro-u2l5gyhi">Domain Quiz — All Domains</span> </span> </a> <a href="/ai-lab/cert/cert-visual/" rel="next" class="astro-u2l5gyhi"> <svg aria-hidden="true" class="astro-u2l5gyhi astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg> <span class="astro-u2l5gyhi"> Next <br class="astro-u2l5gyhi"> <span class="link-title astro-u2l5gyhi">Visual Learning — All Domains</span> </span> </a> </div>  </footer> </div> </div>  </main> </div> </div> </div> </div> </body></html>
