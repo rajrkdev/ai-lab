@@ -82,6 +82,36 @@ export default defineConfig({
     document.body.appendChild(tocToggle);
   }
 
+  // ── TOC scroll sync ──────────────────────────────────────────
+  // Starlight's IntersectionObserver updates aria-current on TOC links but never
+  // calls scrollIntoView, so active items below the visible TOC area are invisible.
+  // This MutationObserver scrolls the active link into view whenever it changes.
+  var tocSyncObserver = null;
+  function setupTocScrollSync() {
+    if (tocSyncObserver) { tocSyncObserver.disconnect(); tocSyncObserver = null; }
+    var tocEl = document.querySelector('starlight-toc');
+    if (!tocEl) return;
+    var tocContainer = tocEl.closest('.right-sidebar-container');
+    tocSyncObserver = new MutationObserver(function() {
+      var active = tocEl.querySelector('a[aria-current="true"]');
+      if (!active) return;
+      if (tocContainer) {
+        // Scroll the sticky container so the active link stays in view
+        var cRect = tocContainer.getBoundingClientRect();
+        var aRect = active.getBoundingClientRect();
+        var visible = aRect.top >= cRect.top && aRect.bottom <= cRect.bottom;
+        if (!visible) {
+          active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+      } else {
+        active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    });
+    tocSyncObserver.observe(tocEl, {
+      subtree: true, attributes: true, attributeFilter: ['aria-current']
+    });
+  }
+
   function setup() {
     ['sl-nav-toggle','sl-toc-toggle'].forEach(function(id) {
       var el = document.getElementById(id);
@@ -89,6 +119,8 @@ export default defineConfig({
     });
     applyState();
     injectToggles();
+    // Delay slightly so starlight-toc custom element can finish its own init
+    setTimeout(setupTocScrollSync, 300);
   }
 
   // Apply state immediately to prevent flash before DOM ready
