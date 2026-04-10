@@ -66,18 +66,10 @@
   }
 }
 
-/* ── Right sidebar collapse ── */
-:root[data-toc-collapsed] .right-sidebar-container {
-  width: 0 !important;
-  min-width: 0 !important;
-  overflow: hidden !important;
-  padding: 0 !important;
-}
-
 .sidebar-pane,
 .main-frame,
 .right-sidebar-container {
-  transition: width 0.25s ease, min-width 0.25s ease,
+  transition: width 0.25s ease, min-width 0.25s ease, max-width 0.25s ease,
               padding 0.25s ease, padding-inline-start 0.25s ease;
 }
 
@@ -89,29 +81,61 @@
   }
 }
 
-/* ── Right sidebar: fixed width, no formula-based expansion ── */
+/* ── Right sidebar: sticky layout (replaces Starlight's broken fixed/width:100% pattern) ──
+   Starlight's default: .right-sidebar is position:fixed with width:100%, which means
+   100% of the VIEWPORT — so it starts at the container's x-offset and extends off-screen.
+   Fix: make the container sticky and the inner panel static so dimensions are relative
+   to the container, not the viewport.
+*/
 @media (min-width: 72rem) {
-  /* Pin right sidebar to constant width — eliminates the expanding empty column */
+  /* Container: sticky, constant width, scrollable */
   .right-sidebar-container {
     width: var(--sl-sidebar-width) !important;
     min-width: var(--sl-sidebar-width) !important;
     max-width: var(--sl-sidebar-width) !important;
     flex-shrink: 0 !important;
+    align-self: flex-start !important;
+    position: sticky !important;
+    top: var(--sl-nav-height) !important;
+    max-height: calc(100vh - var(--sl-nav-height)) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
   }
 
-  /* Main pane: fill all remaining space after right sidebar */
+  /* Inner panel: remove fixed positioning — container handles sticky */
+  .right-sidebar {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    padding-top: 1rem !important;
+    border-inline-start: 1px solid var(--sl-color-hairline) !important;
+    overflow-y: visible !important;
+    scrollbar-width: none !important;
+  }
+
+  /* Main pane: fill all remaining space */
   .main-pane {
     flex: 1 !important;
     min-width: 0 !important;
     width: auto !important;
   }
 
-  /* Content container: center in main-pane with a readable max-width.
-     Overrides Starlight's `auto 0` (right-align) which creates a left gap. */
+  /* Content: fluid width, fills the main pane — no hard cap */
   .sl-container {
-    max-width: min(55rem, 100%) !important;
-    margin-inline: auto !important;
+    max-width: 100% !important;
+    margin-inline: 0 !important;
+    width: 100% !important;
   }
+}
+
+/* Collapsed right sidebar: shrink to zero, content expands automatically */
+:root[data-toc-collapsed] .right-sidebar-container {
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  border: none !important;
 }
 
 /* ── Interactive Tool Container ── */
