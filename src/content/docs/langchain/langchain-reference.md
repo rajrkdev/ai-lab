@@ -9,32 +9,6 @@ title: "LangChain: Deep Reference Guide"
 
 ---
 
-## Table of Contents
-
-1. [Mental Model & Core Philosophy](#1-mental-model--core-philosophy)
-2. [Ecosystem & Package Architecture](#2-ecosystem--package-architecture)
-3. [The Runnable Interface — LCEL Core](#3-the-runnable-interface--lcel-core)
-4. [LLM & Chat Model Wrappers](#4-llm--chat-model-wrappers)
-5. [Prompt Templates — All Patterns](#5-prompt-templates--all-patterns)
-6. [Output Parsers — All Types](#6-output-parsers--all-types)
-7. [Runnable Primitives](#7-runnable-primitives)
-8. [Document Loaders](#8-document-loaders)
-9. [Text Splitters — Strategy Guide](#9-text-splitters--strategy-guide)
-10. [Embeddings — Deep Reference](#10-embeddings--deep-reference)
-11. [Vectorstores — Complete Reference](#11-vectorstores--complete-reference)
-12. [Retrievers — Basic to Advanced](#12-retrievers--basic-to-advanced)
-13. [Memory & Conversation State](#13-memory--conversation-state)
-14. [Agents — ReAct & Tool Calling](#14-agents--react--tool-calling)
-15. [Tools — Design Patterns & Best Practices](#15-tools--design-patterns--best-practices)
-16. [LangGraph — StateGraph Architecture](#16-langgraph--stategraph-architecture)
-17. [LangGraph — Advanced Patterns](#17-langgraph--advanced-patterns)
-18. [Callbacks & Observability](#18-callbacks--observability)
-19. [Async, Streaming & Batching](#19-async-streaming--batching)
-20. [Production Deployment Patterns](#20-production-deployment-patterns)
-21. [Application Stack Mapping](#21-application-stack-mapping)
-
----
-
 ## 1. Mental Model & Core Philosophy
 
 ### What LangChain Actually Is
