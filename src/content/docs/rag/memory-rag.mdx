@@ -2,9 +2,15 @@
 tableOfContents: false
 title: Memory-Augmented RAG
 description: Adding persistent memory layers to RAG systems for multi-turn and long-horizon tasks
+sidebar:
+  order: 11
 ---
 
 import MemoryRAG from '../../../components/interactive/MemoryRAG.jsx';
+
+Memory-augmented RAG adds a persistent memory layer alongside the vector store, enabling multi-turn conversations where the system accumulates facts across sessions. This interactive guide shows how episodic memory, semantic memory, and procedural memory slots complement standard retrieval.
+
+For related production topics: [Agentic RAG](./agentic-rag) · [Production RAG](./production-rag)
 
 <div class="interactive-tool">
   <MemoryRAG client:only="react" />

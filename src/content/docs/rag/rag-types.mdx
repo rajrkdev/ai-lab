@@ -1,10 +1,18 @@
 ---
 tableOfContents: false
-title: RAG Types
-description: Survey of RAG architectures — naive, advanced, modular, and agentic — with diagrams comparing when to use each
+title: RAG Types Comparison
+description: Interactive side-by-side comparison of naive, advanced, modular, and agentic RAG — pipelines, code, accuracy, and when to use each
+sidebar:
+  order: 8
 ---
 
 import RAGTypes from '../../../components/interactive/RAGTypes.jsx';
+
+Interactive comparison of all four RAG generations — Generation 1 (Naive), Generation 2 (Advanced + Modular), and Generation 3 (Agentic). Select any architecture to see its pipeline diagram, code sample, accuracy rating, and ideal use case.
+
+For the deep dive on each architecture:
+- [Advanced RAG](./advanced-rag) — query rewriting, FLARE, step-back prompting
+- [Agentic RAG](./agentic-rag) — Self-RAG, CRAG, tool-calling, LangGraph
 
 <div class="interactive-tool">
   <RAGTypes client:only="react" />

@@ -489,31 +489,34 @@ const EmbeddingsContent = () => (
       </div>
     </div>
 
-    <h3 style={{ color: "#e6edf3", marginTop: 20, marginBottom: 8 }}>Embedding Model Comparison</h3>
+    <h3 style={{ color: "#e6edf3", marginTop: 20, marginBottom: 8 }}>Embedding Model Comparison (MTEB 2025)</h3>
     <div style={{ overflowX: "auto" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
         <thead>
           <tr style={{ background: "#161b22" }}>
-            {["Model", "Dims", "Speed", "Best For"].map(h => (
+            {["Model", "Dims", "MTEB", "Size", "Best For"].map(h => (
               <th key={h} style={{ padding: "8px 12px", textAlign: "left", color: "#8b949e", fontWeight: 600, border: "1px solid #21262d" }}>{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {[
-            ["voyage-3 (your stack!)", "1024", "Fast API", "Insurance domain, long docs"],
-            ["text-embedding-3-large", "3072", "API", "General, high accuracy"],
-            ["all-MiniLM-L6-v2", "384", "⚡ CPU local", "Speed-critical, lower quality"],
-            ["BAAI/bge-m3", "1024", "GPU/CPU", "Multilingual, dense+sparse"],
+            ["NV-Embed-v2 (SOTA)", "4096", "62.7", "7B", "Highest accuracy, GPU required"],
+            ["text-embedding-3-large", "3072", "54.9", "API", "General, high accuracy, OpenAI"],
+            ["BAAI/bge-large-en-v1.5", "1024", "55.4", "335M", "English RAG, open-source"],
+            ["BAAI/bge-m3", "1024", "~54", "568M", "Multilingual, dense+sparse hybrid"],
+            ["intfloat/e5-large-v2", "1024", "50.6", "335M", "Needs 'query:'/'passage:' prefix"],
+            ["all-MiniLM-L6-v2", "384", "41.9", "22M", "CPU-fast, lightweight, lower quality"],
           ].map((row, i) => (
             <tr key={i} style={{ background: i % 2 === 0 ? "#0d1117" : "#0a0e13" }}>
               {row.map((cell, j) => (
-                <td key={j} style={{ padding: "8px 12px", color: j === 0 ? "#00d4ff" : "#c9d1d9", border: "1px solid #21262d", fontFamily: j === 0 ? "monospace" : "inherit" }}>{cell}</td>
+                <td key={j} style={{ padding: "8px 12px", color: j === 0 ? "#00d4ff" : j === 2 ? "#4ade80" : "#c9d1d9", border: "1px solid #21262d", fontFamily: j === 0 ? "monospace" : "inherit" }}>{cell}</td>
               ))}
             </tr>
           ))}
         </tbody>
       </table>
+      <div style={{ color: "#475569", fontSize: 11, marginTop: 6 }}>MTEB = Massive Text Embedding Benchmark average score (higher is better). Scores as of mid-2025.</div>
     </div>
 
     <CodeBlock lang="python" code={`import chromadb

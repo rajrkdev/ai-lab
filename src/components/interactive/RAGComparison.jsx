@@ -161,6 +161,22 @@ const ragData = [
     tradeoff: "The most powerful — handles multi-step reasoning, tool use, cross-document synthesis. Latency is the cost of intelligence.",
     bestFor: "Complex analytical queries, comparisons, calculations, multi-document synthesis",
   },
+  {
+    id: "adaptive",
+    emoji: "🧭",
+    name: "Adaptive RAG",
+    speed: 75,
+    quality: 91,
+    latency: "~150ms–3s",
+    color: "#22d3ee",
+    speedLabel: "Variable (by design)",
+    qualityLabel: "Very High",
+    llmCalls: "1 + N",
+    dbCalls: "0–4+",
+    why: "1 classifier call first. Then 0 DB calls (no retrieval), 1 call (single-hop), or 2–4 calls (multi-hop) depending on query. Avg latency is lower than always-retrieving.",
+    tradeoff: "Best average-case performance. Simple queries bypass retrieval entirely (fast + cheap). Hard queries get full multi-hop retrieval. Misclassification is the only risk.",
+    bestFor: "Mixed workloads where query complexity varies: support bots, assistants, general-purpose RAG",
+  },
 ];
 
 const sorted = {

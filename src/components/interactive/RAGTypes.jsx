@@ -370,6 +370,56 @@ response = agent.chat(
     general: "A developer support chatbot is essentially this — it reasons over errors, retrieves docs, suggests fixes."
   },
   {
+    id: "adaptive",
+    tier: "Generation 3",
+    tierColor: "#f59e0b",
+    name: "Adaptive RAG",
+    aka: "Query-Routing RAG (Jeong et al., 2024)",
+    emoji: "🧭",
+    color: "#22d3ee",
+    tagline: "Route the query — don't always retrieve",
+    complexity: 4,
+    accuracy: 5,
+    speed: 4,
+    when: "Mixed workloads: some queries need no retrieval, some need one hop, some need multi-hop",
+    weaknesses: ["Classifier adds latency", "Misclassification wastes steps"],
+    pipeline: ["Classify Query (LLM)", "Simple → LLM Direct", "Single-hop → Standard RAG", "Multi-hop → Iterative RAG", "Merged Answer"],
+    pipelineColors: ["#22d3ee", "#22d3ee", "#22d3ee", "#22d3ee", "#22d3ee"],
+    description: "A meta-RAG layer that classifies each incoming query into one of three tiers — No Retrieval, Single-hop RAG, or Multi-hop RAG — and routes accordingly. Achieves the accuracy of complex retrieval pipelines while keeping simple queries fast and cheap. Published by Jeong et al. (2024).",
+    example: "'What is 2+2?' → No Retrieval (LLM answers directly). 'What is the theft limit?' → Single-hop RAG. 'Compare P-200 vs P-300 theft AND property limits for APAC vehicles.' → Multi-hop RAG.",
+    code: `# Adaptive RAG — classify then route
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_anthropic import ChatAnthropic
+
+llm = ChatAnthropic(model="claude-opus-4-5")
+
+CLASSIFIER_PROMPT = ChatPromptTemplate.from_template("""
+Classify this query into one of three tiers:
+- NO_RETRIEVAL: General knowledge, math, simple facts the LLM knows
+- SINGLE_HOP: Needs one specific lookup from documents
+- MULTI_HOP: Requires multiple retrievals or comparisons across docs
+
+Query: {query}
+Tier (output only the label):""")
+
+classifier = CLASSIFIER_PROMPT | llm
+
+async def adaptive_rag(query: str) -> str:
+    tier = (await classifier.ainvoke({"query": query})).content.strip()
+
+    if tier == "NO_RETRIEVAL":
+        return await llm.ainvoke(query)
+
+    elif tier == "SINGLE_HOP":
+        docs = await vector_store.asimilarity_search(query, k=4)
+        docs = await reranker.acompress_documents(docs, query)
+        return await generate_with_context(query, docs)
+
+    else:  # MULTI_HOP
+        return await agentic_retrieval_loop(query, max_hops=4)`,
+    general: "Ideal when query mix is diverse — saves 40–60% on retrieval cost for simple queries while hitting full accuracy on hard ones."
+  },
+  {
     id: "speculative",
     tier: "Generation 3",
     tierColor: "#f59e0b",
