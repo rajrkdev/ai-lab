@@ -1,10 +1,13 @@
 ---
-title: "Domain 2: Tool Design & MCP"
+title: "Domain 2: Tool Design & MCP Integration"
+description: "18% of the exam. Covers tool descriptions, MCP error handling, tool distribution, tool_choice, and built-in tools."
+sidebar:
+  order: 2
 ---
 
 # Domain 2: Tool Design & MCP Integration
 
-## Weight: 18% of Exam
+## Weight: 18% (~11 questions)
 
 **Appears in Scenarios:** 1 (Customer Support), 3 (Multi-Agent Research), 4 (Developer Productivity)
 
@@ -12,49 +15,69 @@ title: "Domain 2: Tool Design & MCP"
 
 ## What This Domain Tests
 
-This domain tests your ability to design tools that Claude can reliably select, implement structured error handling in MCP tools, distribute tools appropriately across agents, configure MCP servers, and choose the right built-in tool for each task.
+- Write tool descriptions that enable reliable tool selection
+- Implement structured MCP error responses (isError flag, error categories)
+- Distribute tools across specialized agents (4–5 tools per agent)
+- Configure tool_choice for guaranteed structured output
+- Configure MCP servers at project and user scope
+- Choose the right built-in tool (Grep vs Glob vs Read vs Edit vs Write vs Bash)
 
 ---
 
-## Task Statement 2.1: Design Effective Tool Interfaces
+## Task Statement 2.1: Tool Descriptions Drive Selection
 
-### Tool Descriptions Are Everything
+### Why Descriptions Are Everything
 
-Tool descriptions are the **primary mechanism** Claude uses to decide which tool to call. When descriptions are minimal or ambiguous, Claude picks the wrong tool.
+The Claude API constructs a special system prompt from your tool definitions, injected before user messages. **Claude reads tool descriptions to decide which tool to call.** Minimal or ambiguous descriptions = wrong tool selected.
 
-### The Problem: Minimal Descriptions
+> **Anthropic's guidance:** "Provide extremely detailed descriptions. This is by far the most important factor in tool performance." Aim for at least 3–4 sentences per tool.
+
+### The Problem: Vague Descriptions
 
 ```python
-# ❌ MINIMAL DESCRIPTIONS — Claude can't differentiate these
+# ❌ VAGUE — Claude cannot differentiate these tools
 tools = [
     {
         "name": "analyze_content",
-        "description": "Analyzes content",  # Too vague!
+        "description": "Analyzes content",          # Too vague!
         "input_schema": {"type": "object", "properties": {"text": {"type": "string"}}}
     },
     {
         "name": "analyze_document",
-        "description": "Analyzes a document",  # Nearly identical!
+        "description": "Analyzes a document",       # Nearly identical!
         "input_schema": {"type": "object", "properties": {"text": {"type": "string"}}}
     }
 ]
-# Result: Claude randomly picks between them. 50% misrouting.
+# Result: Claude randomly picks between them → 50% misrouting
 ```
 
 ### The Fix: Detailed, Differentiated Descriptions
 
+Every tool description must answer six questions:
+
+```
+1. WHAT does it do?           → One clear sentence
+2. WHAT INPUT does it expect? → Format, required fields, examples
+3. WHAT does it RETURN?       → Output format, fields, types
+4. WHEN should you USE it?    → Specific triggering scenarios
+5. When should you NOT use it?→ Explicit boundaries with similar tools
+6. EXAMPLE queries?           → Concrete phrases that trigger this tool
+```
+
 ```python
-# ✅ DETAILED DESCRIPTIONS — Claude knows exactly when to use each
+# ✅ DETAILED — Claude knows exactly when to use each
 tools = [
     {
         "name": "extract_web_results",
         "description": (
             "Extract and summarize key findings from web search results. "
-            "Input: raw HTML or text from a web page. "
-            "Output: structured findings with titles, key quotes, and relevance scores. "
-            "Use this for: processing web search output, summarizing articles. "
+            "Input: raw HTML or text scraped from a web page. "
+            "Output: structured findings with title, key quotes, source URL, "
+            "and relevance score (1–5). "
+            "Use this for: processing web search output, summarizing news articles, "
+            "extracting claims from online sources. "
             "Do NOT use for: analyzing uploaded PDFs, processing local files, "
-            "or verifying claims against source material."
+            "verifying claims against pre-loaded documents, or database queries."
         ),
         "input_schema": {
             "type": "object",
@@ -75,12 +98,13 @@ tools = [
         "name": "extract_document_data",
         "description": (
             "Extract structured data points from uploaded documents (PDFs, reports, "
-            "spreadsheets). Input: document text or file path. "
+            "spreadsheets, contracts). Input: document text or file path. "
             "Output: structured data with field names, values, page numbers, and "
-            "confidence scores. "
+            "confidence scores (0.0–1.0). "
             "Use this for: processing uploaded PDFs, extracting tables from reports, "
-            "pulling specific data points from contracts. "
-            "Do NOT use for: web search results, HTML content, or claim verification."
+            "pulling specific data points from contracts, analyzing local files. "
+            "Do NOT use for: web search results, HTML content, real-time data lookup, "
+            "or claim verification."
         ),
         "input_schema": {
             "type": "object",
@@ -89,7 +113,7 @@ tools = [
                 "fields_to_extract": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Specific fields to extract (e.g., 'total_amount', 'date', 'parties')"
+                    "description": "Fields to extract e.g. ['total_amount', 'date', 'vendor']"
                 }
             },
             "required": ["document_text"]
@@ -98,213 +122,240 @@ tools = [
 ]
 ```
 
-### What Good Tool Descriptions Include
-
-Every tool description should cover:
-
-1. **What it does** — One clear sentence
-2. **Input format** — What data it expects
-3. **Output format** — What it returns
-4. **When to use it** — Specific scenarios
-5. **When NOT to use it** — Boundaries with similar tools
-6. **Example queries** — Concrete examples that trigger this tool
-
-### Splitting Generic Tools
-
-When a tool is too generic, split it into purpose-specific tools:
+### Tool Misrouting Diagnosis Flow
 
 ```
-BEFORE (one generic tool):
-  analyze_document → Does everything (extraction, summarization, verification)
+Agent calls wrong tool repeatedly?
+           │
+           ▼
+┌──────────────────────────────────────┐
+│ STEP 1: Check tool descriptions      │ ← START HERE (lowest effort, highest impact)
+│ Are they vague? Do they overlap?     │
+│ Do they specify "when NOT to use"?   │
+└──────────────────┬───────────────────┘
+                   │ Still wrong?
+                   ▼
+┌──────────────────────────────────────┐
+│ STEP 2: Check system prompt          │
+│ Are there keyword-sensitive rules    │
+│ that override tool descriptions?     │
+│ "When user says 'order', always..."  │
+└──────────────────┬───────────────────┘
+                   │ Still wrong?
+                   ▼
+┌──────────────────────────────────────┐
+│ STEP 3: Add few-shot examples        │
+│ Show correct tool choice in context  │
+└──────────────────┬───────────────────┘
+                   │ Still wrong?
+                   ▼
+┌──────────────────────────────────────┐
+│ STEP 4: Consider splitting or        │
+│ renaming tools with unambiguous names│
+└──────────────────────────────────────┘
 
-AFTER (three specific tools):
-  extract_data_points    → Pulls structured data from documents
-  summarize_content      → Creates concise summaries
-  verify_claim_against_source → Checks if a claim matches source material
+❌ DO NOT jump to: routing classifiers, consolidating tools,
+   or adding more instructions without trying descriptions first
 ```
 
-### System Prompt Keyword Traps
+### Consolidation vs. Splitting — Updated Guidance
 
-Keyword-sensitive instructions in the system prompt can override well-written tool descriptions:
+> **Important:** Official guidance recommends **consolidating related operations** into fewer tools with an `action` parameter, rather than creating a separate tool per action. Use meaningful namespacing.
 
 ```python
-# ❌ PROBLEM: System prompt says "always search" for certain keywords
-system_prompt = """
-When the user mentions 'order' or 'customer', always use the search tool first.
-"""
-# This causes Claude to call search_tool even when get_customer is the right choice,
-# because "customer" triggers the keyword rule.
+# ✅ PREFERRED: One tool, multiple actions (fewer tools = less decision overhead)
+{
+    "name": "github_pr",
+    "description": "Manage GitHub pull requests. Actions: create (opens new PR), "
+                   "review (fetches diff and adds review comments), merge (merges an "
+                   "approved PR). Each action has different required fields — see "
+                   "input_schema for details.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": ["create", "review", "merge"]},
+            "pr_number": {"type": "integer", "description": "Required for review and merge"},
+            "title": {"type": "string", "description": "Required for create"},
+            "body": {"type": "string", "description": "Required for create"},
+        },
+        "required": ["action"]
+    }
+}
 
-# ✅ FIX: Review system prompts for keyword-sensitive instructions
-# that might create unintended tool associations
-system_prompt = """
-Use the most appropriate tool based on what the user needs:
-- For customer identity verification: get_customer
-- For order details: lookup_order  
-- For general information: search_tool
-"""
+# ❌ AVOID: Separate tool for every action (creates decision overhead)
+# github_create_pr, github_review_pr, github_merge_pr  ← Three nearly identical tools
 ```
 
 ---
 
 ## Task Statement 2.2: Structured Error Responses for MCP Tools
 
+### Two Types of MCP Errors — Know the Difference
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              MCP ERROR MECHANISMS                               │
+│                                                                 │
+│  TYPE 1: PROTOCOL ERRORS (JSON-RPC errors)                     │
+│  ────────────────────────────────────────                       │
+│  Triggered by: Unknown tool name, invalid JSON-RPC              │
+│  Who handles it: MCP client captures and DISCARDS it            │
+│  Model sees: NOTHING — these never reach Claude's context       │
+│                                                                 │
+│  TYPE 2: TOOL EXECUTION ERRORS (isError flag)                  │
+│  ──────────────────────────────────────────────                 │
+│  Triggered by: Tool logic failure (timeout, bad input, etc.)    │
+│  Who handles it: Injected INTO the LLM context window           │
+│  Model sees: FULL ERROR — Claude can use it for recovery        │
+│                                                                 │
+│  ← The exam tests TYPE 2. Always use isError:true for           │
+│    tool failures you want Claude to reason about.               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
 ### The isError Flag Pattern
 
-MCP tool results can signal errors using the `isError` flag. This is critical because it tells Claude "something went wrong" rather than "here's an empty/unexpected result."
-
 ```python
-# MCP tool returning a successful result
-def handle_tool_call(name, arguments):
-    if name == "get_customer":
-        customer = db.find_customer(arguments["email"])
-        if customer:
-            return {
-                "content": [{"type": "text", "text": json.dumps(customer)}],
-                "isError": False  # Success
-            }
-        else:
-            # Valid empty result — no customer found (NOT an error)
-            return {
-                "content": [{"type": "text", "text": json.dumps({
-                    "result": "no_match",
-                    "message": "No customer found with that email",
-                    "suggestion": "Try searching by phone number instead"
-                })}],
-                "isError": False  # This is NOT an error — it's a valid empty result
-            }
-
-# MCP tool returning an error
-def handle_tool_call_with_error(name, arguments):
+# MCP tool handler — complete pattern
+def handle_tool_call(name: str, arguments: dict) -> dict:
+    
     if name == "get_customer":
         try:
             customer = db.find_customer(arguments["email"])
-            return {"content": [{"type": "text", "text": json.dumps(customer)}]}
+            
+            if customer:
+                # ✅ SUCCESS — found the customer
+                return {
+                    "content": [{"type": "text", "text": json.dumps(customer)}],
+                    "isError": False
+                }
+            else:
+                # ✅ VALID EMPTY RESULT — search worked, no match found
+                return {
+                    "content": [{"type": "text", "text": json.dumps({
+                        "result": "no_match",
+                        "message": "No customer found with that email address.",
+                        "records_searched": 150000,
+                        "suggestion": "Try searching by phone number instead."
+                    })}],
+                    "isError": False   # NOT an error — search completed successfully
+                }
+
         except DatabaseTimeout:
+            # ❌ TRANSIENT FAILURE — search did NOT complete
             return {
                 "content": [{"type": "text", "text": json.dumps({
                     "errorCategory": "transient",
                     "isRetryable": True,
-                    "message": "Database timeout. The customer database is temporarily "
-                               "unavailable. This is usually resolved within 30 seconds.",
-                    "attempted_query": arguments["email"]
+                    "message": "Database timeout. Usually resolves within 30 seconds.",
+                    "attempted_query": arguments["email"],
+                    "partial_results": None,
+                    "alternative": "Try phone number lookup via lookup_by_phone tool"
                 })}],
-                "isError": True  # This IS an error
+                "isError": True   # IS an error — search failed entirely
             }
-        except InvalidEmailFormat:
+
+        except InvalidEmailFormat as e:
+            # ❌ VALIDATION FAILURE — bad input
             return {
                 "content": [{"type": "text", "text": json.dumps({
                     "errorCategory": "validation",
+                    "isRetryable": False,   # Won't succeed with same input
+                    "message": f"Invalid email format: {str(e)}",
+                    "expected_format": "user@domain.com",
+                    "received": arguments["email"]
+                })}],
+                "isError": True
+            }
+
+        except PermissionError:
+            # ❌ PERMISSION FAILURE — cannot access
+            return {
+                "content": [{"type": "text", "text": json.dumps({
+                    "errorCategory": "permission",
                     "isRetryable": False,
-                    "message": "Invalid email format. Expected: user@domain.com",
-                    "received_input": arguments["email"]
+                    "message": "Access denied to customer database. "
+                               "Request requires elevated privileges.",
+                    "escalation": "Contact database admin for access"
                 })}],
                 "isError": True
             }
 ```
 
-### Error Categories
+### Access Failure vs. Valid Empty Result — Critical Distinction
 
-| Category | Examples | Retryable? | Agent Action |
-|---|---|---|---|
-| **Transient** | Timeout, service unavailable, rate limit | Yes | Retry after delay |
-| **Validation** | Invalid input format, missing required field | No (fix input) | Fix input and retry |
-| **Business** | Policy violation, refund exceeds limit | No | Explain to user or escalate |
-| **Permission** | Unauthorized access, insufficient privileges | No | Escalate or use alternative |
+```
+SCENARIO A: Database timeout (GET request never completed)
+  isError: TRUE
+  Why: Claude needs to know the search FAILED — it may retry,
+       try an alternative, or inform the user of a system issue.
 
-### Structured Error Response Format
+SCENARIO B: Search succeeded, no matching customer found
+  isError: FALSE
+  Why: Claude needs to know the search SUCCEEDED with zero results —
+       it should report "no customer found" (a valid business outcome).
 
-```json
-{
-  "errorCategory": "transient",
-  "isRetryable": true,
-  "message": "Human-readable description of what went wrong",
-  "attempted_query": "What was tried",
-  "partial_results": "Any data retrieved before failure",
-  "alternative_approaches": "What the agent could try instead"
-}
+❌ ANTI-PATTERN: Returning both as the same empty result
+  return {"content": [{"type": "text", "text": "[]"}], "isError": False}
+  ↑ This lies to Claude in scenario A — it thinks the search worked!
 ```
 
-### Critical Distinction: Access Failures vs Valid Empty Results
+### Error Categories Reference
+
+| Category | Examples | `isRetryable` | Agent Action |
+|---|---|---|---|
+| **transient** | DB timeout, rate limit hit, service unavailable | `true` | Retry with exponential backoff |
+| **validation** | Invalid email format, missing required field | `false` | Fix the input, then retry |
+| **business** | Refund exceeds policy limit, date in the past | `false` | Explain to user or escalate |
+| **permission** | Unauthorized, insufficient privileges | `false` | Escalate or use alternative tool |
+
+### Local Recovery Before Propagation
+
+Subagents should handle transient errors locally first, only escalating what they can't resolve:
 
 ```python
-# ❌ WRONG — These two situations are handled identically
-# (Both return empty result as "success")
-
-# Access failure (database timeout) — THIS IS AN ERROR
-return {"content": [{"type": "text", "text": "[]"}], "isError": False}  # ❌
-
-# Valid empty result (no matching customer) — THIS IS SUCCESS
-return {"content": [{"type": "text", "text": "[]"}], "isError": False}  # Correct here
-
-# ✅ CORRECT — Distinguish between them
-# Access failure:
-return {
-    "content": [{"type": "text", "text": json.dumps({
-        "errorCategory": "transient",
-        "isRetryable": True,
-        "message": "Database timeout — could not complete search"
-    })}],
-    "isError": True  # Tells Claude: "This failed, you may want to retry"
-}
-
-# Valid empty result:
-return {
-    "content": [{"type": "text", "text": json.dumps({
-        "result": "no_match",
-        "message": "Search completed successfully. No customers match that criteria.",
-        "records_searched": 15000
-    })}],
-    "isError": False  # Tells Claude: "Search worked, just no matches"
-}
+async def search_with_retry(query: str) -> dict:
+    """Subagent-level recovery — 3 attempts with exponential backoff."""
+    
+    for attempt in range(3):
+        try:
+            results = await web_search(query)
+            return {"success": True, "findings": results}
+            
+        except Timeout:
+            if attempt < 2:
+                wait = 2 ** attempt      # 1s, 2s, 4s
+                await asyncio.sleep(wait)
+                continue
+            
+            # All 3 attempts failed — propagate with full context
+            return {
+                "success": False,
+                "errorCategory": "transient",
+                "message": f"Web search timed out after 3 attempts",
+                "attempted_query": query,
+                "partial_results": [],
+                "alternative": "Try more specific query or document analysis agent",
+                "retry_recommended": True
+            }
 ```
 
 ### Anti-Patterns in Error Handling
 
-**Anti-pattern 1: Generic "Operation failed" errors**
-```python
-# ❌ Hides what happened — agent can't make recovery decisions
-return {"content": [{"type": "text", "text": "Operation failed"}], "isError": True}
 ```
+❌ ANTI-PATTERN 1: Generic error message
+   return {"content": [{"text": "Operation failed"}], "isError": True}
+   Problem: Hides what failed — agent cannot make recovery decisions
 
-**Anti-pattern 2: Silently suppressing errors (returning empty as success)**
-```python
-# ❌ Pretends the search succeeded when it didn't
-except DatabaseTimeout:
-    return {"content": [{"type": "text", "text": "[]"}], "isError": False}
-```
+❌ ANTI-PATTERN 2: Suppress error as success (return empty as success)
+   except Timeout:
+       return {"content": [{"text": "[]"}], "isError": False}
+   Problem: Agent thinks search found nothing, not that it crashed
 
-**Anti-pattern 3: Terminating entire workflow on single failure**
-```python
-# ❌ One subagent failure shouldn't kill the whole pipeline
-if search_agent_failed:
-    raise SystemError("Search failed — aborting research")
-```
-
-### Local Recovery Before Propagation
-
-Subagents should handle transient errors locally, only propagating what they can't resolve:
-
-```python
-# Inside the web search subagent:
-async def search(query):
-    for attempt in range(3):  # Local retry for transient errors
-        try:
-            results = await web_search(query)
-            return results
-        except Timeout:
-            if attempt < 2:
-                await asyncio.sleep(2 ** attempt)  # Exponential backoff
-                continue
-            # After 3 attempts, propagate to coordinator with context
-            return {
-                "error": True,
-                "errorCategory": "transient",
-                "message": "Web search timed out after 3 attempts",
-                "attempted_query": query,
-                "partial_results": [],  # Nothing retrieved
-                "alternative": "Try a more specific query or different source"
-            }
+❌ ANTI-PATTERN 3: Terminate entire workflow on single failure
+   if search_agent_failed:
+       raise SystemError("Search failed — aborting pipeline")
+   Problem: Wastes all partial results from other subagents
 ```
 
 ---
@@ -313,103 +364,119 @@ async def search(query):
 
 ### The Too-Many-Tools Problem
 
-Giving an agent access to 18 tools degrades selection reliability compared to 4-5 focused tools. More tools = more decision complexity = more errors.
-
 ```
 ❌ ONE AGENT WITH 18 TOOLS:
-  Coordinator agent: [web_search, fetch_url, read_doc, extract_data,
-    summarize, verify_claim, translate, format_report, send_email,
-    create_chart, query_database, update_record, schedule_meeting,
-    generate_image, compress_file, validate_json, convert_format, notify]
-  
-  Result: Agent frequently picks wrong tool. 
-  "summarize" vs "extract_data" confusion is constant.
+┌────────────────────────────────────────────────────────────┐
+│ Coordinator: [web_search, fetch_url, read_doc, extract_data│
+│  summarize, verify_claim, translate, format_report,        │
+│  send_email, create_chart, query_database, update_record,  │
+│  schedule_meeting, generate_image, compress_file,          │
+│  validate_json, convert_format, notify_slack]              │
+└────────────────────────────────────────────────────────────┘
+Problems:
+  • Claude frequently picks wrong tool (summarize vs extract_data)
+  • Parameter hallucination increases
+  • ~55K tokens consumed BEFORE conversation starts
+  • Response latency grows
 
 ✅ DISTRIBUTED ACROSS SPECIALIZED AGENTS:
-  Search agent:    [web_search, fetch_url]           (2 tools)
-  Analysis agent:  [read_doc, extract_data]          (2 tools)
-  Synthesis agent: [summarize, verify_claim, format_report]  (3 tools)
-  Coordinator:     [Agent]                           (1 tool)
-  
-  Result: Each agent has focused, non-overlapping tools.
+┌──────────────────────────────────────────────────────────┐
+│ Search agent:    [web_search, fetch_url]           2 tools│
+│ Analysis agent:  [read_doc, extract_data]          2 tools│
+│ Synthesis agent: [summarize, verify_fact, format]  3 tools│
+│ Coordinator:     [Agent]                           1 tool │
+└──────────────────────────────────────────────────────────┘
+Result: Each agent has focused, non-overlapping tools → high accuracy
+```
+
+### Tool Search — New Capability
+
+When tool definitions exceed ~10K tokens, Claude Code auto-defers loading with `defer_loading: true`. The **Tool Search** tool (available to Claude) mitigates large tool sets:
+
+```
+WITHOUT Tool Search (18 tools loaded upfront):
+  Accuracy: ~49%
+  Token overhead: ~77K tokens before conversation
+
+WITH Tool Search (tools loaded on demand):
+  Accuracy: ~74%   (+25 percentage points)
+  Token overhead: ~8.7K tokens   (85% reduction)
 ```
 
 ### Scoped Cross-Role Tools
 
-Sometimes a subagent needs occasional access to a tool outside its specialization. Rather than giving it the full tool, provide a scoped version:
+Synthesis agents occasionally need fact verification. Give them a scoped version, not the full web search:
 
 ```python
-# ❌ WRONG — Giving synthesis agent full web_search access
-synthesis_agent = AgentDefinition(
-    tools=["summarize", "verify_claim", "web_search"],  # ❌ Web search is not its role
-)
+# ❌ WRONG — Full web_search in synthesis agent
+synthesis_agent = {
+    "tools": ["summarize", "verify_claim", "web_search"],  # Too broad
+}
 
-# ✅ CORRECT — Scoped verify_fact tool for quick lookups
-synthesis_agent = AgentDefinition(
-    tools=["summarize", "verify_claim", "verify_fact"],  # ✅ Scoped tool
-    # verify_fact does simple fact-checking (dates, names, statistics)
+# ✅ CORRECT — Scoped verify_fact tool (limited to quick fact checks)
+synthesis_agent = {
+    "tools": ["summarize", "verify_claim", "verify_fact"],
+    # verify_fact: checks simple facts (dates, names, statistics)
     # Complex verifications still go through coordinator → search agent
-)
+}
 ```
 
-### tool_choice Options
+### tool_choice — Control Structured Output
 
-`tool_choice` controls whether and how Claude uses tools:
+```
+tool_choice DECISION FLOW:
+
+ Do you need structured output (not freeform text)?
+          │
+    YES   │    NO
+          │
+          ▼    ▼
+  Do you know         Use tool_choice: "auto"
+  which schema        (Claude decides freely)
+  to use?
+     │
+  NO │    YES
+     │
+     ▼    ▼
+  "any"   forced: {"type":"tool","name":"X"}
+  (Claude picks   (Must use this specific tool)
+   one of the     Use when a specific step
+   defined tools) must happen first
+```
 
 ```python
-# "auto" (default) — Claude decides freely
-# May return text without calling any tool
+# "auto" (default) — Claude decides whether to use any tool
 response = client.messages.create(
     tools=tools,
-    tool_choice={"type": "auto"},   # Claude might or might not use tools
+    tool_choice={"type": "auto"},  # May return text without calling tools
     messages=messages,
 )
 
-# "any" — Claude MUST call a tool, but can choose which one
-# Guarantees structured output when document type is unknown
+# "any" — Claude MUST call a tool, Claude chooses which one
+# ← Use this when document type is unknown but structured output required
 response = client.messages.create(
     tools=[extract_invoice, extract_receipt, extract_contract],
-    tool_choice={"type": "any"},    # Must call one of these tools
+    tool_choice={"type": "any"},   # Guarantees structured output
     messages=messages,
 )
 
-# Forced — Claude MUST call this specific tool
-# Use to ensure a specific step happens first
+# Forced — Claude MUST call THIS specific tool
+# ← Use to ensure a specific step happens first
 response = client.messages.create(
     tools=[extract_metadata, enrich_data, validate],
-    tool_choice={"type": "tool", "name": "extract_metadata"},  # Must call this one
+    tool_choice={"type": "tool", "name": "extract_metadata"},
     messages=messages,
 )
-# Then in the NEXT turn, use "auto" for subsequent steps
+# Next API call uses "auto" to let Claude decide the next step
 ```
 
-### When to Use Each
+### tool_choice Quick Reference
 
-| tool_choice | When to Use | Exam Scenario |
+| Value | Claude Does | When to Use |
 |---|---|---|
-| `"auto"` | General agentic loop — Claude decides freely | Default for most agents |
-| `"any"` | Must get structured output, document type unknown | Structured data extraction with multiple schemas |
-| `{"type": "tool", "name": "..."}` | Must run a specific tool first | Extract metadata before enrichment |
-
-### TypeScript Examples
-
-```typescript
-// Force a specific tool first
-const metadataResponse = await client.messages.create({
-  model: "claude-sonnet-4-20250514",
-  tools: [extractMetadata, enrichData, validate],
-  tool_choice: { type: "tool", name: "extract_metadata" },
-  messages,
-});
-
-// Then allow free choice for subsequent steps
-const enrichResponse = await client.messages.create({
-  model: "claude-sonnet-4-20250514",
-  tools: [enrichData, validate],
-  tool_choice: { type: "auto" },
-  messages: updatedMessages,
-});
-```
+| `"auto"` | Freely decides (may skip tools entirely) | General agentic loops |
+| `"any"` | Must call a tool — picks which one | Unknown doc type, need structured output guaranteed |
+| `{"type":"tool","name":"X"}` | Must call tool X specifically | Required pipeline step (extract before enrich) |
 
 ---
 
@@ -417,7 +484,18 @@ const enrichResponse = await client.messages.create({
 
 ### Configuration Scopes
 
-**Project-level** (`.mcp.json` in repository root) — shared with team via version control:
+```
+SCOPE HIERARCHY:
+  User-level  → ~/.claude.json or ~/.claude/settings.local.json
+  Project-level → .mcp.json in repository root (shared via git)
+
+WHICH TO USE:
+  Project-level: Team integrations (GitHub, Jira, Postgres, Slack)
+  User-level: Personal/experimental servers, dev credentials
+```
+
+**Project-level `.mcp.json`** — shared with entire team via version control:
+
 ```json
 {
   "mcpServers": {
@@ -435,12 +513,20 @@ const enrichResponse = await client.messages.create({
         "JIRA_API_TOKEN": "${JIRA_API_TOKEN}",
         "JIRA_BASE_URL": "${JIRA_BASE_URL:-https://mycompany.atlassian.net}"
       }
+    },
+    "postgres": {
+      "command": "npx",
+      "args": ["mcp-server-postgres"],
+      "env": {
+        "DATABASE_URL": "${DATABASE_URL}"
+      }
     }
   }
 }
 ```
 
-**User-level** (`~/.claude.json` or `~/.claude/settings.local.json`) — personal/experimental:
+**User-level** — personal, not committed to git:
+
 ```json
 {
   "mcpServers": {
@@ -457,231 +543,211 @@ const enrichResponse = await client.messages.create({
 
 ### Environment Variable Expansion
 
-The `${VAR}` syntax keeps secrets out of version control:
-
 ```json
-{
-  "mcpServers": {
-    "database": {
-      "command": "npx",
-      "args": ["mcp-server-postgres"],
-      "env": {
-        "DATABASE_URL": "${DATABASE_URL}",
-        "DB_PASSWORD": "${DB_PASSWORD:-default_dev_password}"
-      }
-    }
-  }
+"env": {
+  "API_KEY": "${API_KEY}",              // Must be set — fails if missing
+  "BASE_URL": "${BASE_URL:-https://api.default.com}",  // Uses default if not set
+  "TIMEOUT": "${TIMEOUT:-30}"          // Default 30 seconds
 }
 ```
 
-- `${VAR}` — Uses environment variable `VAR`. Fails if unset.
-- `${VAR:-default}` — Uses `VAR` if set, otherwise uses `default`.
+- `${VAR}` — Reads environment variable. **Fails if unset.** Keeps secrets out of version control.
+- `${VAR:-default}` — Uses `VAR` if set, otherwise uses `default`. Safe fallback.
 
-### MCP Resources vs Tools
+### MCP Resources vs. Tools
 
-| | MCP Tools | MCP Resources |
-|---|---|---|
-| **Purpose** | Execute actions | Expose read-only data |
-| **Control** | Model-controlled (Claude decides when to call) | Application-controlled |
-| **Examples** | `create_ticket`, `send_email`, `query_db` | Issue summaries, documentation hierarchies, database schemas |
-| **Use case** | Performing operations | Giving agents visibility into available data without exploratory tool calls |
-
-**MCP Resources reduce exploratory calls:**
 ```
-WITHOUT resources:
-  Agent: "What tables exist?" → calls list_tables()
-  Agent: "What columns in users?" → calls describe_table("users")
-  Agent: "What columns in orders?" → calls describe_table("orders")
-  (3 tool calls just to understand the schema)
+MCP TOOLS                          MCP RESOURCES
+─────────────────────────────────  ──────────────────────────────────
+Execute actions                    Expose read-only context data
+Model-controlled                   Application-controlled
+Claude decides when to call        Loaded automatically into context
+Examples:                          Examples:
+  create_ticket                      Database schema catalog
+  send_email                         API documentation hierarchy
+  query_database                     Issue summary templates
+  update_record
 
-WITH resources:
-  Resource "database://schema" automatically loaded into context
-  Agent already knows all tables and columns
-  (0 exploratory calls)
-```
-
-### Community vs Custom MCP Servers
-
-**Use community servers** for standard integrations (GitHub, Jira, Slack, Postgres):
-```json
-{
-  "mcpServers": {
-    "github": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"]
-    }
-  }
-}
-```
-
-**Build custom servers** only for team-specific workflows:
-```json
-{
-  "mcpServers": {
-    "insurance-claims": {
-      "command": "python",
-      "args": ["./tools/claims-mcp-server.py"]
-    }
-  }
-}
+WITHOUT resources:                 WITH resources:
+  Agent: "What tables exist?"        Agent already knows schema
+  → calls list_tables()              → 0 exploratory calls needed
+  Agent: "What columns?"
+  → calls describe_table("users")
+  (3 tool calls just to understand
+   the schema before real work)
 ```
 
 ### Enhancing MCP Tool Descriptions
 
-If Claude prefers built-in tools (like Grep) over more capable MCP tools, enhance the MCP tool descriptions:
+If Claude prefers built-in tools (Grep) over a more capable MCP tool, the MCP tool description isn't detailed enough:
 
 ```python
 # ❌ MINIMAL — Claude ignores this and uses Grep instead
 @mcp.tool()
 def search_codebase(query: str):
-    """Search the codebase."""  # Too vague!
-    
+    """Search the codebase."""
+
 # ✅ DETAILED — Claude understands this is superior to Grep
 @mcp.tool()
 def search_codebase(query: str):
     """Search the codebase using semantic code search with AST-aware indexing.
     
-    Unlike basic grep, this tool:
-    - Understands code structure (finds implementations, not just string matches)
-    - Ranks results by relevance to the query
-    - Returns surrounding context (function signatures, class hierarchy)
-    - Supports natural language queries ("find all error handlers")
+    Unlike Grep (which does text pattern matching), this tool:
+    - Understands code structure: finds function implementations, not just strings
+    - Supports natural language: 'find all error handlers for database timeouts'
+    - Returns ranked results with surrounding context (function signatures, class hierarchy)
+    - Handles renamed symbols (finds usages even after refactoring)
     
-    Input: Natural language query or code pattern
-    Output: Ranked list of code locations with context
+    Input: Natural language description or code pattern
+    Output: Ranked list of code locations with full context
     
-    Use INSTEAD OF Grep when you need to understand code semantics,
-    not just find text patterns."""
+    Use INSTEAD OF Grep when: understanding code semantics, not just finding strings.
+    Use Grep when: searching for exact string patterns in files."""
 ```
 
 ---
 
-## Task Statement 2.5: Built-in Tools (Read, Write, Edit, Bash, Grep, Glob)
+## Task Statement 2.5: Built-in Tools Reference
 
-### Tool Selection Guide
+### Tool Selection Decision Tree
 
 ```
-"I need to find where function X is called across the codebase"
-  → Grep (searches file CONTENTS for patterns)
-
-"I need to find all test files in the project"
-  → Glob (finds files by NAME/EXTENSION patterns)
-
-"I need to read the entire contents of config.py"
-  → Read (loads full file contents)
-
-"I need to change line 42 of config.py from X to Y"
-  → Edit (targeted modification using unique text matching)
-
-"I need to rewrite config.py entirely"
-  → Write (full file replacement)
-
-"I need to run the test suite"
-  → Bash (execute shell commands)
+What do I need to do?
+│
+├─► FIND FILES by name or extension pattern
+│   Example: "All test files in the project"
+│   → Use GLOB  (searches file names/paths)
+│   → Glob("**/*.test.tsx")
+│
+├─► FIND CODE inside files by content
+│   Example: "Where is processRefund called?"
+│   → Use GREP  (searches file contents)
+│   → Grep("processRefund")
+│
+├─► READ a file's full contents
+│   Example: "What's in config.py?"
+│   → Use READ
+│
+├─► CHANGE specific lines in a file
+│   Example: "Change MAX_RETRIES from 3 to 5"
+│   → Use EDIT  (targeted change via unique text match)
+│   → If text not unique → fall back to READ + WRITE
+│
+├─► COMPLETELY REWRITE a file
+│   Example: "Replace this entire config file"
+│   → Use WRITE
+│
+└─► RUN a shell command
+    Example: "Run the test suite"
+    → Use BASH
 ```
 
-### Grep vs Glob — Know the Difference
+### Grep vs. Glob — The Most Common Confusion
 
-```bash
-# GREP — Search file CONTENTS for patterns
-# "Find all files that CONTAIN the text 'processRefund'"
+```
+GREP — Searches INSIDE files for content patterns
+─────────────────────────────────────────────────
 Grep("processRefund")
-# Returns: matching lines with file paths and line numbers
+→ Returns: Lines that CONTAIN "processRefund" with file paths + line numbers
+→ Use when: "Where is this function/variable used?"
 
-# GLOB — Find files by NAME patterns
-# "Find all files NAMED *.test.tsx"
+GLOB — Searches for files by NAME/PATH pattern
+───────────────────────────────────────────────
 Glob("**/*.test.tsx")
-# Returns: file paths matching the pattern
+→ Returns: File paths that MATCH the name pattern
+→ Use when: "Find all test files" or "Find files named X"
+
+EXAM TRAP: "Search for all usages of calculateTax function"
+→ Answer: GREP (searching file contents, not file names)
+
+EXAM TRAP: "Find all TypeScript configuration files"
+→ Answer: GLOB (searching by file name pattern *.tsconfig.json)
 ```
 
 ### Edit Tool Failure → Read + Write Fallback
 
-The Edit tool works by matching a unique text string in the file and replacing it. If the text isn't unique (appears multiple times), Edit fails.
-
 ```python
-# Edit tool: targeted modification
+# Edit tool works by matching a UNIQUE string in the file
 Edit(
     file="config.py",
-    old_str="MAX_RETRIES = 3",    # Must be unique in the file
+    old_str="MAX_RETRIES = 3",   # Must be unique in the file
     new_str="MAX_RETRIES = 5"
 )
 
-# If "MAX_RETRIES = 3" appears in multiple places, Edit fails.
-# Fallback: Read the full file, modify in memory, Write the result.
+# ❌ Edit FAILS if "MAX_RETRIES = 3" appears multiple times
+# → Edit requires uniqueness to know which occurrence to change
+
+# ✅ FALLBACK: Read → modify in memory → Write
 content = Read("config.py")
-content = content.replace("MAX_RETRIES = 3", "MAX_RETRIES = 5", 1)  # Replace first occurrence
-Write("config.py", content)
+# Modify the specific occurrence you need
+modified = content.replace("MAX_RETRIES = 3", "MAX_RETRIES = 5", 1)
+Write("config.py", modified)
 ```
 
 ### Incremental Codebase Understanding
 
-Don't read all files upfront. Build understanding step by step:
-
 ```
-Step 1: Grep to find entry points
-  Grep("def main") → finds src/app.py, src/cli.py
+❌ WRONG: Read all 50 files upfront
+   → Overwhelms context window immediately
+   → Most content never relevant to the actual task
 
-Step 2: Read entry points to understand structure
-  Read("src/app.py") → sees imports from auth, database, api
+✅ CORRECT: Build understanding step by step
 
-Step 3: Grep to trace specific flows
-  Grep("from auth import") → finds all files using auth module
+  Step 1: GREP for entry points
+    Grep("def main") → finds src/app.py, src/cli.py
 
-Step 4: Read specific files to follow the flow
-  Read("src/auth/middleware.py") → understands auth flow
+  Step 2: READ entry points to understand structure
+    Read("src/app.py") → sees imports from auth, database, api
 
-This is BETTER than: Read all 50 files → overwhelm context window
-```
+  Step 3: GREP to trace specific flows
+    Grep("from auth import") → finds all files using auth module
 
-### Tracing Function Usage Across Wrapper Modules
+  Step 4: READ specific files to follow the flow
+    Read("src/auth/middleware.py") → understands auth flow
 
-```
-Step 1: Identify all exported names from the module
-  Grep("export function" OR "def.*:" in utils/index.ts)
-  → finds: processOrder, validateInput, formatResponse
-
-Step 2: Search for each name across the codebase
-  Grep("processOrder") → found in: api/orders.ts, tests/orders.test.ts
-  Grep("validateInput") → found in: api/middleware.ts, api/users.ts
-  Grep("formatResponse") → found in: api/responses.ts
+  This builds a targeted mental model without wasting context.
 ```
 
 ---
 
 ## Practice Questions — Domain 2
 
-### Question 1 (Difficulty: Medium)
-Your agent has tools `get_customer` ("Retrieves customer information") and `lookup_order` ("Retrieves order details"). Production logs show the agent frequently calls `get_customer` when users ask "check my order #12345." Both tools accept similar identifier formats. What's the most effective first step?
+### Question 1
+Your agent has tools `get_customer` (description: "Retrieves customer information") and `lookup_order` (description: "Retrieves order details"). Logs show `get_customer` called when user asks "check my order #12345." What is the most effective first step?
 
-**A)** Add few-shot examples showing correct tool selection.
-**B)** Expand each tool's description to include input formats, example queries, edge cases, and boundaries explaining when to use it versus the other tool.
-**C)** Implement a routing layer that parses input and pre-selects the appropriate tool.
-**D)** Consolidate both tools into a single `lookup_entity` tool.
+**A)** Add few-shot examples showing correct tool selection  
+**B)** Expand each tool's description to include input format, example queries, edge cases, and explicit "when NOT to use" boundaries  
+**C)** Build a routing layer that parses user input and pre-selects the correct tool  
+**D)** Consolidate both tools into a single `lookup_entity` tool  
 
-**Correct Answer: B**
-Tool descriptions are the primary mechanism for tool selection. Expanding them is the lowest-effort, highest-leverage fix. A adds token overhead without fixing the root cause. C is over-engineered. D requires more effort than a "first step" warrants.
+**Correct Answer: B**  
+Tool descriptions are the primary mechanism for tool selection. Expanding descriptions is the lowest-effort, highest-leverage fix. A adds token overhead without fixing root cause. C is over-engineered for what's a description problem. D requires more work than a "first step" and hides the original issue.
 
-### Question 2 (Difficulty: Hard)
-Your web search subagent times out. You need to design how this failure flows back to the coordinator. Which approach enables the best recovery?
+---
 
-**A)** Return structured error context including failure type, attempted query, partial results, and alternative approaches.
-**B)** Retry with exponential backoff, returning generic "search unavailable" after all retries fail.
-**C)** Return an empty result set marked as successful.
-**D)** Propagate the timeout exception to terminate the entire workflow.
+### Question 2
+Your web search subagent times out during a research pipeline. You need to design how this failure flows back to the coordinator. Which approach enables the best recovery?
 
-**Correct Answer: A**
-Structured error context gives the coordinator the information it needs for intelligent recovery — retry with a modified query, try alternatives, or proceed with partial results. B hides context. C suppresses the error. D kills the whole workflow unnecessarily.
+**A)** Return structured error context including failure type, attempted query, partial results, and alternative approaches  
+**B)** Retry with exponential backoff, returning generic "search unavailable" after all retries fail  
+**C)** Return an empty result set marked as successful (`isError: false`)  
+**D)** Propagate the timeout exception to terminate the entire workflow  
 
-### Question 3 (Difficulty: Medium)
-You need Claude to extract data from an unknown document type (could be invoice, receipt, or contract). Each type has a different extraction schema. How should you configure tool_choice?
+**Correct Answer: A**  
+Structured error context gives the coordinator everything needed for intelligent recovery — retry with different query, use alternative tool, or synthesize with partial results. B hides context after retries. C lies to the coordinator (claims success on failure). D kills the entire pipeline, discarding all partial results.
 
-**A)** `tool_choice: "auto"` — let Claude decide which extraction schema to use.
-**B)** `tool_choice: "any"` — guarantee Claude calls an extraction tool rather than returning text.
-**C)** `tool_choice: {"type": "tool", "name": "extract_invoice"}` — always extract as invoice first.
-**D)** Don't set tool_choice and add instructions in the system prompt.
+---
 
-**Correct Answer: B**
-`"any"` guarantees Claude calls a tool (structured output) but lets it choose which extraction schema matches the document. `"auto"` might return text instead. Forced selection assumes invoice format. D is probabilistic.
+### Question 3
+You need Claude to extract data from an unknown document type (invoice, receipt, or contract — each with a different schema). How should you configure tool_choice?
+
+**A)** `"auto"` — let Claude decide which schema to use  
+**B)** `"any"` — guarantee Claude calls an extraction tool, let it pick the matching schema  
+**C)** `{"type": "tool", "name": "extract_invoice"}` — always extract as invoice first  
+**D)** Don't set tool_choice — add instructions in the system prompt  
+
+**Correct Answer: B**  
+`"any"` guarantees Claude calls a tool (structured output guaranteed) but lets it choose which extraction schema fits the document. `"auto"` might return freeform text instead of structured data. C assumes invoice format regardless of actual document type. D is probabilistic.
 
 ---
 
@@ -689,23 +755,30 @@ You need Claude to extract data from an unknown document type (could be invoice,
 
 | Concept | Key Fact |
 |---|---|
-| **Tool descriptions** | Primary mechanism for tool selection. Minimal = unreliable. |
-| **Good descriptions include** | Purpose, input format, output format, when to use, when NOT to use |
-| **Tool misrouting fix** | Expand descriptions first (not few-shot, not routing layer) |
-| **isError flag** | MCP pattern for signaling tool failures to the agent |
-| **Error categories** | transient, validation, business, permission |
-| **Structured error fields** | errorCategory, isRetryable, message, partial_results |
-| **Access failure vs empty result** | Timeout = isError:true. No matches = isError:false. |
-| **Too many tools** | 18 tools degrades selection vs 4-5 focused tools |
-| **tool_choice "auto"** | Claude decides freely (may skip tools) |
-| **tool_choice "any"** | Must call a tool, choose which |
-| **tool_choice forced** | Must call specific named tool |
+| **Tool descriptions** | Primary mechanism for tool selection. Detailed > minimal. |
+| **Description components** | Purpose, input, output, when to use, when NOT to use |
+| **Misrouting fix order** | Descriptions first → system prompt → few-shot → rename |
+| **Consolidation guidance** | Prefer fewer tools with action parameters (github_pr + action) |
+| **Protocol errors** | JSON-RPC errors — discarded, model never sees them |
+| **Tool execution errors** | `isError: true` — injected into context, Claude reasons about them |
+| **isError: true** | Failure — search/action did NOT complete |
+| **isError: false** | Success (even if result is empty — e.g., "no match found") |
+| **Error categories** | transient (retry), validation (fix input), business, permission |
+| **isRetryable field** | `true` for transient, `false` for validation/business/permission |
+| **Local recovery** | Subagents retry transient errors internally before propagating |
+| **Too many tools** | >20 tools degrades accuracy — distribute across specialized agents |
+| **Tool Search** | Auto-defers loading >10K tokens. 49% → 74% accuracy improvement. |
+| **tool_choice: "auto"** | Claude decides freely, may skip tools |
+| **tool_choice: "any"** | Must call a tool, Claude picks which |
+| **tool_choice: forced** | Must call named specific tool |
 | **MCP project scope** | `.mcp.json` — shared via version control |
-| **MCP user scope** | `~/.claude.json` — personal/experimental |
-| **${VAR} expansion** | Environment variables in .mcp.json |
-| **MCP resources** | Content catalogs to reduce exploratory tool calls |
-| **Community vs custom** | Community for standard (GitHub, Jira). Custom for team-specific. |
+| **MCP user scope** | `~/.claude.json` — personal, not committed |
+| **${VAR} expansion** | Reads env var. Fails if unset. |
+| **${VAR:-default}** | Reads env var with fallback default value |
+| **MCP resources** | Read-only context data — reduces exploratory tool calls |
+| **Community servers** | Use for: GitHub, Jira, Slack, Postgres |
+| **Custom servers** | Build for team-specific workflows only |
 | **Grep** | Search file CONTENTS for patterns |
-| **Glob** | Find files by NAME/EXTENSION patterns |
-| **Edit failure** | Fallback to Read + Write when text match isn't unique |
-| **Codebase exploration** | Incremental: Grep → Read → trace. Not read-all-upfront. |
+| **Glob** | Find files by NAME/extension patterns |
+| **Edit failure** | Text not unique → fall back to Read + Write |
+| **Incremental exploration** | Grep → Read → Grep → Read. Not read-all-upfront. |
