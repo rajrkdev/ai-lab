@@ -1,0 +1,863 @@
+<!DOCTYPE html><html lang="en" dir="ltr" data-theme="dark" data-has-toc data-has-sidebar class="astro-bguv2lll"> <head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Claude Code: Context, Cost & Token Efficiency — Reference | AI Lab</title><link rel="canonical" href="https://rajrkdev.github.io/ai-lab/claude-code/claude-code-efficiency-reference/"/><link rel="sitemap" href="/ai-lab/sitemap-index.xml"/><script>
+(function() {
+  var NAV_KEY = 'sl-nav-collapsed';
+  var TOC_KEY = 'sl-toc-collapsed';
+
+  // SVG icons — chevron panel icons
+  var ICON_PANEL_CLOSE = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><polyline points="16 15 13 12 16 9"/></svg>';
+  var ICON_PANEL_OPEN  = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><polyline points="13 9 16 12 13 15"/></svg>';
+  var ICON_RPANEL_CLOSE = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18"/><polyline points="8 9 11 12 8 15"/></svg>';
+  var ICON_RPANEL_OPEN  = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18"/><polyline points="11 15 8 12 11 9"/></svg>';
+
+  function setNavCssVar(collapsed) {
+    if (collapsed) {
+      document.body.style.setProperty('--sl-content-inline-start', '0rem');
+    } else {
+      document.body.style.removeProperty('--sl-content-inline-start');
+    }
+  }
+
+  function dispatchResize() {
+    // Let React components (and any resize listeners) reflow after sidebar change
+    setTimeout(function() { window.dispatchEvent(new Event('resize')); }, 260);
+  }
+
+  function applyState() {
+    var navCollapsed = localStorage.getItem(NAV_KEY) === '1';
+    var tocCollapsed = localStorage.getItem(TOC_KEY) === '1';
+    if (navCollapsed) document.documentElement.setAttribute('data-nav-collapsed', '');
+    else document.documentElement.removeAttribute('data-nav-collapsed');
+    if (tocCollapsed) document.documentElement.setAttribute('data-toc-collapsed', '');
+    else document.documentElement.removeAttribute('data-toc-collapsed');
+    setNavCssVar(navCollapsed);
+  }
+
+  function injectToggles() {
+    // Left nav toggle
+    var navToggle = document.createElement('button');
+    navToggle.id = 'sl-nav-toggle';
+    navToggle.setAttribute('aria-label', 'Toggle navigation sidebar');
+    navToggle.setAttribute('title', 'Toggle navigation sidebar');
+    var navCollapsed = document.documentElement.hasAttribute('data-nav-collapsed');
+    navToggle.innerHTML = navCollapsed ? ICON_PANEL_OPEN : ICON_PANEL_CLOSE;
+    navToggle.addEventListener('click', function() {
+      var collapsed = document.documentElement.toggleAttribute('data-nav-collapsed');
+      navToggle.innerHTML = collapsed ? ICON_PANEL_OPEN : ICON_PANEL_CLOSE;
+      setNavCssVar(collapsed);
+      localStorage.setItem(NAV_KEY, collapsed ? '1' : '0');
+      dispatchResize();
+    });
+    document.body.appendChild(navToggle);
+
+    // Right TOC toggle — always inject; CSS hides it when no right sidebar
+    var tocToggle = document.createElement('button');
+    tocToggle.id = 'sl-toc-toggle';
+    tocToggle.setAttribute('aria-label', 'Toggle table of contents');
+    tocToggle.setAttribute('title', 'Toggle table of contents');
+    var tocCollapsed = document.documentElement.hasAttribute('data-toc-collapsed');
+    tocToggle.innerHTML = tocCollapsed ? ICON_RPANEL_OPEN : ICON_RPANEL_CLOSE;
+    tocToggle.addEventListener('click', function() {
+      var collapsed = document.documentElement.toggleAttribute('data-toc-collapsed');
+      tocToggle.innerHTML = collapsed ? ICON_RPANEL_OPEN : ICON_RPANEL_CLOSE;
+      localStorage.setItem(TOC_KEY, collapsed ? '1' : '0');
+      dispatchResize();
+    });
+    document.body.appendChild(tocToggle);
+  }
+
+  // ── TOC scroll sync ──────────────────────────────────────────
+  // Starlight's IntersectionObserver updates aria-current on TOC links but never
+  // calls scrollIntoView, so active items below the visible TOC area are invisible.
+  // This MutationObserver scrolls the active link into view whenever it changes.
+  var tocSyncObserver = null;
+  function setupTocScrollSync() {
+    if (tocSyncObserver) { tocSyncObserver.disconnect(); tocSyncObserver = null; }
+    var tocEl = document.querySelector('starlight-toc');
+    if (!tocEl) return;
+    var tocContainer = tocEl.closest('.right-sidebar-container');
+    tocSyncObserver = new MutationObserver(function() {
+      var active = tocEl.querySelector('a[aria-current="true"]');
+      if (!active) return;
+      if (tocContainer) {
+        // Scroll the sticky container so the active link stays in view
+        var cRect = tocContainer.getBoundingClientRect();
+        var aRect = active.getBoundingClientRect();
+        var visible = aRect.top >= cRect.top && aRect.bottom <= cRect.bottom;
+        if (!visible) {
+          active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+      } else {
+        active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    });
+    tocSyncObserver.observe(tocEl, {
+      subtree: true, attributes: true, attributeFilter: ['aria-current']
+    });
+  }
+
+  // ── Left nav scroll sync ─────────────────────────────────────
+  // Scroll the left sidebar so the active page link is visible.
+  // Starlight marks the current page link with aria-current="page".
+  // We manually adjust scrollTop so only the sidebar pane scrolls, not the page.
+  function scrollNavToActive() {
+    var pane = document.querySelector('.sidebar-pane');
+    if (!pane) return;
+    var active = pane.querySelector('a[aria-current="page"]');
+    if (!active) return;
+    var paneRect = pane.getBoundingClientRect();
+    var activeRect = active.getBoundingClientRect();
+    var isVisible = activeRect.top >= paneRect.top && activeRect.bottom <= paneRect.bottom;
+    if (!isVisible) {
+      // Center the active link within the pane's visible scroll area
+      var relativeTop = activeRect.top - paneRect.top + pane.scrollTop;
+      pane.scrollTop = Math.max(0, relativeTop - pane.clientHeight / 2 + active.offsetHeight / 2);
+    }
+  }
+
+  function setup() {
+    ['sl-nav-toggle','sl-toc-toggle'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.remove();
+    });
+    applyState();
+    injectToggles();
+    // Scroll left nav to show active page link (run immediately + after short delay)
+    scrollNavToActive();
+    setTimeout(scrollNavToActive, 200);
+    // Delay slightly so starlight-toc custom element can finish its own init
+    setTimeout(setupTocScrollSync, 300);
+  }
+
+  // Apply state immediately to prevent flash before DOM ready
+  if (localStorage.getItem(NAV_KEY) === '1') document.documentElement.setAttribute('data-nav-collapsed', '');
+  if (localStorage.getItem(TOC_KEY) === '1') document.documentElement.setAttribute('data-toc-collapsed', '');
+
+  document.addEventListener('DOMContentLoaded', setup);
+  document.addEventListener('astro:page-load', setup);
+})();
+					</script><link rel="shortcut icon" href="/ai-lab/favicon.svg" type="image/svg+xml"/><meta name="generator" content="Astro v6.1.3"/><meta name="generator" content="Starlight v0.38.2"/><meta property="og:title" content="Claude Code: Context, Cost &#38; Token Efficiency — Reference"/><meta property="og:type" content="article"/><meta property="og:url" content="https://rajrkdev.github.io/ai-lab/claude-code/claude-code-efficiency-reference/"/><meta property="og:locale" content="en"/><meta property="og:description" content="Complete reference for context management, prompt caching, token budgets, model selection, and effort controls in Claude Code v2.1.92+. Covers all five CCA-F exam domains."/><meta property="og:site_name" content="AI Lab"/><meta name="twitter:card" content="summary_large_image"/><meta name="description" content="Complete reference for context management, prompt caching, token budgets, model selection, and effort controls in Claude Code v2.1.92+. Covers all five CCA-F exam domains."/><script>
+	window.StarlightThemeProvider = (() => {
+		const storedTheme =
+			typeof localStorage !== 'undefined' && localStorage.getItem('starlight-theme');
+		const theme =
+			storedTheme ||
+			(window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+		document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
+		return {
+			updatePickers(theme = storedTheme || 'auto') {
+				document.querySelectorAll('starlight-theme-select').forEach((picker) => {
+					const select = picker.querySelector('select');
+					if (select) select.value = theme;
+					/** @type {HTMLTemplateElement | null} */
+					const tmpl = document.querySelector(`#theme-icons`);
+					const newIcon = tmpl && tmpl.content.querySelector('.' + theme);
+					if (newIcon) {
+						const oldIcon = picker.querySelector('svg.label-icon');
+						if (oldIcon) {
+							oldIcon.replaceChildren(...newIcon.cloneNode(true).childNodes);
+						}
+					}
+				});
+			},
+		};
+	})();
+</script><template id="theme-icons"><svg aria-hidden="true" class="light astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M5 12a1 1 0 0 0-1-1H3a1 1 0 0 0 0 2h1a1 1 0 0 0 1-1Zm.64 5-.71.71a1 1 0 0 0 0 1.41 1 1 0 0 0 1.41 0l.71-.71A1 1 0 0 0 5.64 17ZM12 5a1 1 0 0 0 1-1V3a1 1 0 0 0-2 0v1a1 1 0 0 0 1 1Zm5.66 2.34a1 1 0 0 0 .7-.29l.71-.71a1 1 0 1 0-1.41-1.41l-.66.71a1 1 0 0 0 0 1.41 1 1 0 0 0 .66.29Zm-12-.29a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.71-.71a1.004 1.004 0 1 0-1.43 1.41l.73.71ZM21 11h-1a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2Zm-2.64 6A1 1 0 0 0 17 18.36l.71.71a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.76-.66ZM12 6.5a5.5 5.5 0 1 0 5.5 5.5A5.51 5.51 0 0 0 12 6.5Zm0 9a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm0 3.5a1 1 0 0 0-1 1v1a1 1 0 0 0 2 0v-1a1 1 0 0 0-1-1Z"/></svg><svg aria-hidden="true" class="dark astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.64 13a1 1 0 0 0-1.05-.14 8.049 8.049 0 0 1-3.37.73 8.15 8.15 0 0 1-8.14-8.1 8.59 8.59 0 0 1 .25-2A1 1 0 0 0 8 2.36a10.14 10.14 0 1 0 14 11.69 1 1 0 0 0-.36-1.05Zm-9.5 6.69A8.14 8.14 0 0 1 7.08 5.22v.27a10.15 10.15 0 0 0 10.14 10.14 9.784 9.784 0 0 0 2.1-.22 8.11 8.11 0 0 1-7.18 4.32v-.04Z"/></svg><svg aria-hidden="true" class="auto astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg></template><link rel="stylesheet" href="/ai-lab/_astro/print.DNXP8c50.css" media="print"><link rel="stylesheet" href="/ai-lab/_astro/common.BQrrW_vP.css"><script type="module" src="/ai-lab/_astro/page.BIhdncjw.js"></script></head> <body class="astro-bguv2lll"> <a href="#_top" class="astro-7q3lir66">Skip to content</a> <div class="page sl-flex astro-vrdttmbt"> <header class="header astro-vrdttmbt"><div class="header astro-kmkmnagf"> <div class="title-wrapper sl-flex astro-kmkmnagf"> <a href="/ai-lab/" class="site-title sl-flex astro-m46x6ez3">  <span class="astro-m46x6ez3" translate="no"> AI Lab </span> </a> </div> <div class="sl-flex print:hidden astro-kmkmnagf"> <site-search class="astro-kmkmnagf astro-v37mnknz" data-translations="{&#34;placeholder&#34;:&#34;Search&#34;}"> <button data-open-modal disabled aria-label="Search" aria-keyshortcuts="Control+K" class="astro-v37mnknz"> <svg aria-hidden="true" class="astro-v37mnknz astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21.71 20.29 18 16.61A9 9 0 1 0 16.61 18l3.68 3.68a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.39ZM11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z"/></svg> <span class="sl-hidden md:sl-block astro-v37mnknz" aria-hidden="true">Search</span> <kbd class="sl-hidden md:sl-flex astro-v37mnknz" style="display: none;"> <kbd class="astro-v37mnknz">Ctrl</kbd><kbd class="astro-v37mnknz">K</kbd> </kbd> </button> <dialog style="padding:0" aria-label="Search" class="astro-v37mnknz"> <div class="dialog-frame sl-flex astro-v37mnknz">  <button data-close-modal class="sl-flex md:sl-hidden astro-v37mnknz"> Cancel </button> <div class="search-container astro-v37mnknz"> <div id="starlight__search" class="astro-v37mnknz"></div> </div> </div> </dialog> </site-search>  <script>
+	(() => {
+		const openBtn = document.querySelector('button[data-open-modal]');
+		const shortcut = openBtn?.querySelector('kbd');
+		if (!openBtn || !(shortcut instanceof HTMLElement)) return;
+		const platformKey = shortcut.querySelector('kbd');
+		if (platformKey && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) {
+			platformKey.textContent = '⌘';
+			openBtn.setAttribute('aria-keyshortcuts', 'Meta+K');
+		}
+		shortcut.style.display = '';
+	})();
+</script> <script type="module" src="/ai-lab/_astro/Search.astro_astro_type_script_index_0_lang.5I8Mqpy2.js"></script>  </div> <div class="sl-hidden md:sl-flex print:hidden right-group astro-kmkmnagf"> <div class="sl-flex social-icons astro-kmkmnagf">  </div> <starlight-theme-select>  <label style="--sl-select-width: 6.25em" class="astro-4yphtoen"> <span class="sr-only astro-4yphtoen">Select theme</span> <svg aria-hidden="true" class="icon label-icon astro-4yphtoen astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg> <select autocomplete="off" class="astro-4yphtoen"> <option value="dark" class="astro-4yphtoen">Dark</option><option value="light" class="astro-4yphtoen">Light</option><option value="auto" selected class="astro-4yphtoen">Auto</option> </select> <svg aria-hidden="true" class="icon caret astro-4yphtoen astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg> </label> </starlight-theme-select>  <script>
+	StarlightThemeProvider.updatePickers();
+</script> <script type="module">const r="starlight-theme",o=e=>e==="auto"||e==="dark"||e==="light"?e:"auto",c=()=>o(typeof localStorage<"u"&&localStorage.getItem(r));function n(e){typeof localStorage<"u"&&localStorage.setItem(r,e==="light"||e==="dark"?e:"")}const l=()=>matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";function t(e){StarlightThemeProvider.updatePickers(e),document.documentElement.dataset.theme=e==="auto"?l():e,n(e)}matchMedia("(prefers-color-scheme: light)").addEventListener("change",()=>{c()==="auto"&&t("auto")});class s extends HTMLElement{constructor(){super(),t(c()),this.querySelector("select")?.addEventListener("change",a=>{a.currentTarget instanceof HTMLSelectElement&&t(o(a.currentTarget.value))})}}customElements.define("starlight-theme-select",s);</script> <script type="module">class s extends HTMLElement{constructor(){super();const e=this.querySelector("select");e&&(e.addEventListener("change",t=>{t.currentTarget instanceof HTMLSelectElement&&(window.location.pathname=t.currentTarget.value)}),window.addEventListener("pageshow",t=>{if(!t.persisted)return;const n=e.querySelector("option[selected]")?.index;n!==e.selectedIndex&&(e.selectedIndex=n??0)}))}}customElements.define("starlight-lang-select",s);</script> </div> </div></header> <nav class="sidebar print:hidden astro-vrdttmbt" aria-label="Main"> <starlight-menu-button class="print:hidden astro-jif73yzw"> <button aria-expanded="false" aria-label="Menu" aria-controls="starlight__sidebar" class="sl-flex md:sl-hidden astro-jif73yzw"> <svg aria-hidden="true" class="open-menu astro-jif73yzw astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M3 8h18a1 1 0 1 0 0-2H3a1 1 0 0 0 0 2Zm18 8H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Zm0-5H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Z"/></svg> <svg aria-hidden="true" class="close-menu astro-jif73yzw astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="m13.41 12 6.3-6.29a1.004 1.004 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1.004 1.004 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 0 1.42.998.998 0 0 0 1.42 0l6.29-6.3 6.29 6.3a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.42L13.41 12Z"/></svg> </button> </starlight-menu-button> <script type="module">class s extends HTMLElement{constructor(){super(),this.btn=this.querySelector("button"),this.btn.addEventListener("click",()=>this.toggleExpanded());const t=this.closest("nav");t&&t.addEventListener("keyup",e=>this.closeOnEscape(e))}setExpanded(t){this.setAttribute("aria-expanded",String(t)),document.body.toggleAttribute("data-mobile-menu-expanded",t)}toggleExpanded(){this.setExpanded(this.getAttribute("aria-expanded")!=="true")}closeOnEscape(t){t.code==="Escape"&&(this.setExpanded(!1),this.btn.focus())}}customElements.define("starlight-menu-button",s);</script>  <div id="starlight__sidebar" class="sidebar-pane astro-vrdttmbt"> <div class="sidebar-content sl-flex astro-vrdttmbt"> <sl-sidebar-state-persist data-hash="0budmsa" class="astro-kku4brbg"> <script aria-hidden="true">
+		(() => {
+			try {
+				if (!matchMedia('(min-width: 50em)').matches) return;
+				/** @type {HTMLElement | null} */
+				const target = document.querySelector('sl-sidebar-state-persist');
+				const state = JSON.parse(sessionStorage.getItem('sl-sidebar-state') || '0');
+				if (!target || !state || target.dataset.hash !== state.hash) return;
+				window._starlightScrollRestore = state.scroll;
+				customElements.define(
+					'sl-sidebar-restore',
+					class SidebarRestore extends HTMLElement {
+						connectedCallback() {
+							try {
+								const idx = parseInt(this.dataset.index || '');
+								const details = this.closest('details');
+								if (details && typeof state.open[idx] === 'boolean') details.open = state.open[idx];
+							} catch {}
+						}
+					}
+				);
+			} catch {}
+		})();
+	</script>  <ul class="top-level astro-3ii7xxms"> <li class="astro-3ii7xxms"> <details open class="astro-3ii7xxms"> <summary class="astro-3ii7xxms"> <span class="group-label astro-3ii7xxms"> <span class="large astro-3ii7xxms">Claude Code</span>  </span> <svg aria-hidden="true" class="caret astro-3ii7xxms astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg> </summary> <sl-sidebar-restore data-index="0"></sl-sidebar-restore> <ul class="astro-3ii7xxms"> <li class="astro-3ii7xxms"> <a href="/ai-lab/claude-code/architecture/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Architecture Diagram — Full Lifecycle</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/claude-code/claude-code-all-markdown-files-catalog/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Every Markdown File Claude Code Recognizes — Complete Catalog</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/claude-code/claude-code-config-guide/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">CLAUDE.md vs Skills vs Rules — Architecture Guide</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/claude-code/claude-code-efficiency-guide/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Claude Code — Context, Cost &amp; Token Efficiency Guide</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/claude-code/claude-code-efficiency-reference/" aria-current="page" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Claude Code: Context, Cost &amp; Token Efficiency — Reference</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/claude-code/claude-code-reference/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">The Definitive Claude Code Reference Guide</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/claude-code/claude-training/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Elite Claude Code Mastery — Training Program</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/claude-code/compass-research-notes/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Compass Research Notes</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/claude-code/file-catalog/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">File Catalog — Interactive</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/claude-code/override-test-lab/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Override Test Lab</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/claude-code/precedence/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Precedence Diagram — Full Hierarchy Guide</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/claude-code/validation-report/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Concept Validation Report</span>  </a> </li> </ul> </details> </li><li class="astro-3ii7xxms"> <details open class="astro-3ii7xxms"> <summary class="astro-3ii7xxms"> <span class="group-label astro-3ii7xxms"> <span class="large astro-3ii7xxms">RAG Guides</span>  </span> <svg aria-hidden="true" class="caret astro-3ii7xxms astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg> </summary> <sl-sidebar-restore data-index="1"></sl-sidebar-restore> <ul class="astro-3ii7xxms"> <li class="astro-3ii7xxms"> <a href="/ai-lab/rag/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">RAG Guides</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/rag/rag-academy/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">RAG Academy</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/rag/naive-rag/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Naive RAG Explainer</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/rag/chunking/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Chunking Strategies</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/rag/embedding-models/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Embedding Models</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/rag/vector-stores/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Vector Stores</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/rag/retrieval-strategies/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Retrieval Strategies</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/rag/rag-types/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">RAG Types Comparison</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/rag/advanced-rag/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Advanced RAG</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/rag/agentic-rag/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Agentic RAG</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/rag/evaluation/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">RAG Evaluation</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/rag/memory-rag/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Memory-Augmented RAG</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/rag/production-rag/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Production RAG</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/rag/pageindex-vectorless-rag/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Vectorless RAG — Complete Guide</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/rag/contextual-retrieval/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Contextual Retrieval</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/rag/rag-speed-quality/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">RAG Speed vs Quality</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/rag/bm25-sparse-retrieval/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">BM25 &amp; Sparse Retrieval</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/rag/graph-rag/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">GraphRAG &amp; Knowledge Graphs</span>  </a> </li> </ul> </details> </li><li class="astro-3ii7xxms"> <details open class="astro-3ii7xxms"> <summary class="astro-3ii7xxms"> <span class="group-label astro-3ii7xxms"> <span class="large astro-3ii7xxms">BERT Architectures</span>  </span> <svg aria-hidden="true" class="caret astro-3ii7xxms astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg> </summary> <sl-sidebar-restore data-index="2"></sl-sidebar-restore> <ul class="astro-3ii7xxms"> <li class="astro-3ii7xxms"> <a href="/ai-lab/bert/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">BERT Architectures</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/bert/architecture/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">BERT Architecture</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/bert/tokenization/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">WordPiece Tokenization</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/bert/pretraining/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">BERT Pre-training</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/bert/finetuning/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Fine-tuning BERT</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/bert/variants/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">BERT Variants</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/bert/sbert/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Sentence-BERT (SBERT)</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/bert/bert-in-rag/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">BERT in RAG Pipelines</span>  </a> </li> </ul> </details> </li><li class="astro-3ii7xxms"> <details open class="astro-3ii7xxms"> <summary class="astro-3ii7xxms"> <span class="group-label astro-3ii7xxms"> <span class="large astro-3ii7xxms">LangChain Reference</span>  </span> <svg aria-hidden="true" class="caret astro-3ii7xxms astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg> </summary> <sl-sidebar-restore data-index="3"></sl-sidebar-restore> <ul class="astro-3ii7xxms"> <li class="astro-3ii7xxms"> <a href="/ai-lab/langchain/langchain-reference/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">LangChain: Deep Reference Guide</span>  </a> </li> </ul> </details> </li><li class="astro-3ii7xxms"> <details open class="astro-3ii7xxms"> <summary class="astro-3ii7xxms"> <span class="group-label astro-3ii7xxms"> <span class="large astro-3ii7xxms">Cert Prep</span>  </span> <svg aria-hidden="true" class="caret astro-3ii7xxms astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg> </summary> <sl-sidebar-restore data-index="4"></sl-sidebar-restore> <ul class="astro-3ii7xxms"> <li class="astro-3ii7xxms"> <a href="/ai-lab/cert/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Cert Prep — Claude Certified Architect: Foundations</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/domain-1-agentic-architecture/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Domain 1: Agentic Architecture &amp; Orchestration</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/domain-2-tool-design-mcp/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Domain 2: Tool Design &amp; MCP Integration</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/domain-3-claude-code-config/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Domain 3: Claude Code Config &amp; Workflows</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/domain-4-prompt-engineering/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Domain 4: Prompt Engineering &amp; Structured Output</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/domain-5-context-reliability/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Domain 5: Context Management &amp; Reliability</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/master-study-guide/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Master Study Guide</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/cert-study-roadmap/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">21-Day Study Roadmap</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/cert-complete-study-guide/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Complete Study Guide</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/cert-gap-fill-reference/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Gap-Fill Study Reference</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/cert-quiz/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Domain Quiz — All Domains</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/cert-visual/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Visual Learning — All Domains</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/d1-visual/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Domain 1 — Agentic Architecture Visual Guide</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/ai-lab/cert/d2-d5-visual/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Domains 2–5 Visual Learning Guide</span>  </a> </li> </ul> </details> </li> </ul>  <script aria-hidden="true">
+		(() => {
+			const scroller = document.getElementById('starlight__sidebar');
+			if (!window._starlightScrollRestore || !scroller) return;
+			scroller.scrollTop = window._starlightScrollRestore;
+			delete window._starlightScrollRestore;
+		})();
+	</script> </sl-sidebar-state-persist> <div class="md:sl-hidden"> <div class="mobile-preferences sl-flex astro-wu23bvmt"> <div class="social-icons astro-wu23bvmt">  </div> <starlight-theme-select>  <label style="--sl-select-width: 6.25em" class="astro-4yphtoen"> <span class="sr-only astro-4yphtoen">Select theme</span> <svg aria-hidden="true" class="icon label-icon astro-4yphtoen astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg> <select autocomplete="off" class="astro-4yphtoen"> <option value="dark" class="astro-4yphtoen">Dark</option><option value="light" class="astro-4yphtoen">Light</option><option value="auto" selected class="astro-4yphtoen">Auto</option> </select> <svg aria-hidden="true" class="icon caret astro-4yphtoen astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg> </label> </starlight-theme-select>  <script>
+	StarlightThemeProvider.updatePickers();
+</script>   </div> </div> </div> </div> </nav> <div class="main-frame astro-vrdttmbt">  <script type="module">const a=document.getElementById("starlight__sidebar"),n=a?.querySelector("sl-sidebar-state-persist"),o="sl-sidebar-state",i=()=>{let t=[];const e=n?.dataset.hash||"";try{const s=sessionStorage.getItem(o),r=JSON.parse(s||"{}");Array.isArray(r.open)&&r.hash===e&&(t=r.open)}catch{}return{hash:e,open:t,scroll:a?.scrollTop||0}},c=t=>{try{sessionStorage.setItem(o,JSON.stringify(t))}catch{}},d=()=>c(i()),l=(t,e)=>{const s=i();s.open[e]=t,c(s)};n?.addEventListener("click",t=>{if(!(t.target instanceof Element))return;const e=t.target.closest("summary")?.closest("details");if(!e)return;const s=e.querySelector("sl-sidebar-restore"),r=parseInt(s?.dataset.index||"");isNaN(r)||l(!e.open,r)});addEventListener("visibilitychange",()=>{document.visibilityState==="hidden"&&d()});addEventListener("pageHide",d);</script> <div class="lg:sl-flex astro-67yu43on"> <aside class="right-sidebar-container print:hidden astro-67yu43on"> <div class="right-sidebar astro-67yu43on"> <script type="module" src="/ai-lab/_astro/MobileTableOfContents.astro_astro_type_script_index_0_lang.hwBsy0Mo.js"></script><script type="module" src="/ai-lab/_astro/TableOfContents.astro_astro_type_script_index_0_lang.FuRcXuRY.js"></script><div class="lg:sl-hidden astro-pb3aqygn"><mobile-starlight-toc data-min-h="2" data-max-h="3" class="astro-doynk5tl"><nav aria-labelledby="starlight__on-this-page--mobile" class="astro-doynk5tl"><details id="starlight__mobile-toc" class="astro-doynk5tl"><summary id="starlight__on-this-page--mobile" class="sl-flex astro-doynk5tl"><span class="toggle sl-flex astro-doynk5tl">On this page<svg aria-hidden="true" class="caret astro-doynk5tl astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></span><span class="display-current astro-doynk5tl"></span></summary><div class="dropdown astro-doynk5tl"><ul class="isMobile astro-gnoq344e" style="--depth: 0;"> <li class="astro-gnoq344e" style="--depth: 0;"> <a href="#_top" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">Overview</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#1-context-window-architecture" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">1. Context Window Architecture</span> </a> <ul class="isMobile astro-gnoq344e" style="--depth: 1;"> <li class="astro-gnoq344e" style="--depth: 1;"> <a href="#11-the-stateless-reconstruction-model" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">1.1 The Stateless Reconstruction Model</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#12-hidden-token-costs" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">1.2 Hidden Token Costs</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#13-monitoring-commands" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">1.3 Monitoring Commands</span> </a>  </li> </ul> </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#2-prompt-caching-economics" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">2. Prompt Caching Economics</span> </a> <ul class="isMobile astro-gnoq344e" style="--depth: 1;"> <li class="astro-gnoq344e" style="--depth: 1;"> <a href="#21-how-prompt-caching-works" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">2.1 How Prompt Caching Works</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#22-pricing-multipliers-april-2026" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">2.2 Pricing Multipliers (April 2026)</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#23-the---resume-cache-regression-v2169--v2190" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">2.3 The --resume Cache Regression (v2.1.69 → v2.1.90)</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#24-rules-for-maximizing-cache-hits" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">2.4 Rules for Maximizing Cache Hits</span> </a>  </li> </ul> </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#3-toolsearch-lazy-tool-loading" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">3. ToolSearch (Lazy Tool Loading)</span> </a> <ul class="isMobile astro-gnoq344e" style="--depth: 1;"> <li class="astro-gnoq344e" style="--depth: 1;"> <a href="#31-architecture" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">3.1 Architecture</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#32-configuration" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">3.2 Configuration</span> </a>  </li> </ul> </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#4-model-selection-for-cost-optimization" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">4. Model Selection for Cost Optimization</span> </a> <ul class="isMobile astro-gnoq344e" style="--depth: 1;"> <li class="astro-gnoq344e" style="--depth: 1;"> <a href="#41-model-comparison-april-2026" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">4.1 Model Comparison (April 2026)</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#42-the-opusplan-alias" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">4.2 The opusplan Alias</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#43-subagent-model-routing" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">4.3 Subagent Model Routing</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#44-output-tokens-and-hidden-thinking-costs" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">4.4 Output Tokens and Hidden Thinking Costs</span> </a>  </li> </ul> </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#5-effort-frontmatter" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">5. Effort Frontmatter</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#6---bare-mode-for-ci-and-scripted-calls" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">6. --bare Mode for CI and Scripted Calls</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#7-claudemd-best-practices" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">7. CLAUDE.md Best Practices</span> </a> <ul class="isMobile astro-gnoq344e" style="--depth: 1;"> <li class="astro-gnoq344e" style="--depth: 1;"> <a href="#71-token-impact" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">7.1 Token Impact</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#72-optimization-techniques" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">7.2 Optimization Techniques</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#73-recommended-structure-anthropics-scientific-computing-guide" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">7.3 Recommended Structure (Anthropic’s Scientific Computing Guide)</span> </a>  </li> </ul> </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#8-subagents-vs-agent-teams" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">8. Subagents vs. Agent Teams</span> </a> <ul class="isMobile astro-gnoq344e" style="--depth: 1;"> <li class="astro-gnoq344e" style="--depth: 1;"> <a href="#cost-efficient-agent-architecture" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">Cost-Efficient Agent Architecture</span> </a>  </li> </ul> </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#9-compaction-system" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">9. Compaction System</span> </a> <ul class="isMobile astro-gnoq344e" style="--depth: 1;"> <li class="astro-gnoq344e" style="--depth: 1;"> <a href="#91-three-layer-architecture" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">9.1 Three-Layer Architecture</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#92-idle-return-clear-hint" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">9.2 Idle-Return /clear Hint</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#93-critical-compactionmemory-fixes-marchapril-2026" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">9.3 Critical Compaction/Memory Fixes (March–April 2026)</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#94-long-running-sessions" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">9.4 Long-Running Sessions</span> </a>  </li> </ul> </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#10-batch-processing--scheduled-tasks" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">10. Batch Processing &amp; Scheduled Tasks</span> </a> <ul class="isMobile astro-gnoq344e" style="--depth: 1;"> <li class="astro-gnoq344e" style="--depth: 1;"> <a href="#101-the-batch-skill" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">10.1 The /batch Skill</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#102-cloud-scheduled-tasks" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">10.2 Cloud Scheduled Tasks</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#103-cloud-auto-fix" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">10.3 Cloud Auto-Fix</span> </a>  </li> </ul> </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#11-top-10-cost-optimizations-ranked-by-impact" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">11. Top 10 Cost Optimizations (Ranked by Impact)</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#12-cca-f-exam-relevance" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">12. CCA-F Exam Relevance</span> </a>  </li> </ul></div></details></nav></mobile-starlight-toc></div><div class="right-sidebar-panel sl-hidden lg:sl-block astro-pb3aqygn"><div class="sl-container astro-pb3aqygn"><starlight-toc data-min-h="2" data-max-h="3"><nav aria-labelledby="starlight__on-this-page"><h2 id="starlight__on-this-page">On this page</h2><ul class="astro-gnoq344e" style="--depth: 0;"> <li class="astro-gnoq344e" style="--depth: 0;"> <a href="#_top" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">Overview</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#1-context-window-architecture" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">1. Context Window Architecture</span> </a> <ul class="astro-gnoq344e" style="--depth: 1;"> <li class="astro-gnoq344e" style="--depth: 1;"> <a href="#11-the-stateless-reconstruction-model" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">1.1 The Stateless Reconstruction Model</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#12-hidden-token-costs" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">1.2 Hidden Token Costs</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#13-monitoring-commands" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">1.3 Monitoring Commands</span> </a>  </li> </ul> </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#2-prompt-caching-economics" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">2. Prompt Caching Economics</span> </a> <ul class="astro-gnoq344e" style="--depth: 1;"> <li class="astro-gnoq344e" style="--depth: 1;"> <a href="#21-how-prompt-caching-works" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">2.1 How Prompt Caching Works</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#22-pricing-multipliers-april-2026" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">2.2 Pricing Multipliers (April 2026)</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#23-the---resume-cache-regression-v2169--v2190" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">2.3 The --resume Cache Regression (v2.1.69 → v2.1.90)</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#24-rules-for-maximizing-cache-hits" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">2.4 Rules for Maximizing Cache Hits</span> </a>  </li> </ul> </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#3-toolsearch-lazy-tool-loading" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">3. ToolSearch (Lazy Tool Loading)</span> </a> <ul class="astro-gnoq344e" style="--depth: 1;"> <li class="astro-gnoq344e" style="--depth: 1;"> <a href="#31-architecture" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">3.1 Architecture</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#32-configuration" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">3.2 Configuration</span> </a>  </li> </ul> </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#4-model-selection-for-cost-optimization" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">4. Model Selection for Cost Optimization</span> </a> <ul class="astro-gnoq344e" style="--depth: 1;"> <li class="astro-gnoq344e" style="--depth: 1;"> <a href="#41-model-comparison-april-2026" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">4.1 Model Comparison (April 2026)</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#42-the-opusplan-alias" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">4.2 The opusplan Alias</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#43-subagent-model-routing" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">4.3 Subagent Model Routing</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#44-output-tokens-and-hidden-thinking-costs" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">4.4 Output Tokens and Hidden Thinking Costs</span> </a>  </li> </ul> </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#5-effort-frontmatter" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">5. Effort Frontmatter</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#6---bare-mode-for-ci-and-scripted-calls" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">6. --bare Mode for CI and Scripted Calls</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#7-claudemd-best-practices" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">7. CLAUDE.md Best Practices</span> </a> <ul class="astro-gnoq344e" style="--depth: 1;"> <li class="astro-gnoq344e" style="--depth: 1;"> <a href="#71-token-impact" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">7.1 Token Impact</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#72-optimization-techniques" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">7.2 Optimization Techniques</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#73-recommended-structure-anthropics-scientific-computing-guide" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">7.3 Recommended Structure (Anthropic’s Scientific Computing Guide)</span> </a>  </li> </ul> </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#8-subagents-vs-agent-teams" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">8. Subagents vs. Agent Teams</span> </a> <ul class="astro-gnoq344e" style="--depth: 1;"> <li class="astro-gnoq344e" style="--depth: 1;"> <a href="#cost-efficient-agent-architecture" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">Cost-Efficient Agent Architecture</span> </a>  </li> </ul> </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#9-compaction-system" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">9. Compaction System</span> </a> <ul class="astro-gnoq344e" style="--depth: 1;"> <li class="astro-gnoq344e" style="--depth: 1;"> <a href="#91-three-layer-architecture" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">9.1 Three-Layer Architecture</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#92-idle-return-clear-hint" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">9.2 Idle-Return /clear Hint</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#93-critical-compactionmemory-fixes-marchapril-2026" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">9.3 Critical Compaction/Memory Fixes (March–April 2026)</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#94-long-running-sessions" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">9.4 Long-Running Sessions</span> </a>  </li> </ul> </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#10-batch-processing--scheduled-tasks" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">10. Batch Processing &amp; Scheduled Tasks</span> </a> <ul class="astro-gnoq344e" style="--depth: 1;"> <li class="astro-gnoq344e" style="--depth: 1;"> <a href="#101-the-batch-skill" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">10.1 The /batch Skill</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#102-cloud-scheduled-tasks" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">10.2 Cloud Scheduled Tasks</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#103-cloud-auto-fix" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">10.3 Cloud Auto-Fix</span> </a>  </li> </ul> </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#11-top-10-cost-optimizations-ranked-by-impact" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">11. Top 10 Cost Optimizations (Ranked by Impact)</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#12-cca-f-exam-relevance" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">12. CCA-F Exam Relevance</span> </a>  </li> </ul></nav></starlight-toc></div></div> </div> </aside> <div class="main-pane astro-67yu43on">  <main data-pagefind-body class="astro-bguv2lll" lang="en" dir="ltr">    <div class="content-panel astro-7nkwcw3z"> <div class="sl-container astro-7nkwcw3z"> <h1 id="_top" class="astro-j6tvhyss">Claude Code: Context, Cost &amp; Token Efficiency — Reference</h1> </div> </div> <div class="content-panel astro-7nkwcw3z"> <div class="sl-container astro-7nkwcw3z"> <div class="sl-markdown-content"> <div class="sl-heading-wrapper level-h1"><h1 id="claude-code-context-cost--token-efficiency--complete-reference">Claude Code: Context, Cost &#x26; Token Efficiency — Complete Reference</h1><a class="sl-anchor-link" href="#claude-code-context-cost--token-efficiency--complete-reference"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Claude Code: Context, Cost &#x26; Token Efficiency — Complete Reference”</span></a></div>
+<blockquote>
+<p><strong>Version:</strong> April 2026 · Claude Code v2.1.92+<br>
+<strong>CCA-F Domains:</strong> D1 (Agentic Architecture), D2 (Claude Code Config), D3 (Prompt Engineering), D4 (Tool Design &#x26; MCP), D5 (Context Management &#x26; Reliability)<br>
+<strong>Target audience:</strong> Developers optimizing Claude Code usage for cost and token efficiency</p>
+</blockquote>
+<hr>
+<div class="sl-heading-wrapper level-h2"><h2 id="1-context-window-architecture">1. Context Window Architecture</h2><a class="sl-anchor-link" href="#1-context-window-architecture"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “1. Context Window Architecture”</span></a></div>
+<div class="sl-heading-wrapper level-h3"><h3 id="11-the-stateless-reconstruction-model">1.1 The Stateless Reconstruction Model</h3><a class="sl-anchor-link" href="#11-the-stateless-reconstruction-model"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “1.1 The Stateless Reconstruction Model”</span></a></div>
+<p>Claude Code is <strong>stateless between turns</strong>. Every API call reconstructs the entire payload from scratch — there is no persistent server-side conversation state. The full context is assembled in a deliberate order designed to maximize prompt cache prefix matching (most stable content first, most volatile last):</p>
+<div class="expressive-code"><link rel="stylesheet" href="/ai-lab/_astro/ec.v4551.css"><script type="module" src="/ai-lab/_astro/ec.0vx5m.js"></script><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="plaintext"><code><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">┌─────────────────────────────────────────────────────────────┐</span></div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">│ 1. Tool definitions         (all built-in + MCP tools)      │ ← Shared across ALL users (best cache)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">│ 2. System prompt            (Anthropic internal instructions)│ ← Shared across all users</span></div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">│ 3. CLAUDE.md content        (full project hierarchy)        │ ← Shared per-project</span></div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">│ 4. Auto-memory              (MEMORY.md, ≤200 lines / 25KB) │ ← Per-project</span></div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">│ 5. Loaded skill descriptions (from .claude/commands/)       │ ← On-demand (when invoked)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">│ 6. MCP server instructions  (per-server guidance text)      │ ← Per-session config</span></div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">│ 7. Conversation history     (all messages + tool results)   │ ← Unique per-session, grows each turn</span></div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">│ 8. Path-scoped rules        (.claude/rules/ with paths)     │ ← On-demand per directory</span></div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">└─────────────────────────────────────────────────────────────┘</span></div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">Reserved buffer: 33K–45K tokens for system overhead</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="┌─────────────────────────────────────────────────────────────┐│ 1. Tool definitions         (all built-in + MCP tools)      │ ← Shared across ALL users (best cache)│ 2. System prompt            (Anthropic internal instructions)│ ← Shared across all users│ 3. CLAUDE.md content        (full project hierarchy)        │ ← Shared per-project│ 4. Auto-memory              (MEMORY.md, ≤200 lines / 25KB) │ ← Per-project│ 5. Loaded skill descriptions (from .claude/commands/)       │ ← On-demand (when invoked)│ 6. MCP server instructions  (per-server guidance text)      │ ← Per-session config│ 7. Conversation history     (all messages + tool results)   │ ← Unique per-session, grows each turn│ 8. Path-scoped rules        (.claude/rules/ with paths)     │ ← On-demand per directory└─────────────────────────────────────────────────────────────┘Reserved buffer: 33K–45K tokens for system overhead"><div></div></button></div></figure></div>
+<p><strong>Key metrics:</strong></p>
+<ul>
+<li>Standard context window: <strong>200K tokens</strong></li>
+<li>Extended context window: <strong>1M tokens</strong> (Opus 4.6 and Sonnet 4.6, at standard pricing since March 14, 2026 — no surcharge)</li>
+<li>Average API cost: <strong>~$6/developer/day</strong> (90th percentile under $12)</li>
+<li>Input tokens account for <strong>85–92%</strong> of total API costs in typical coding sessions</li>
+</ul>
+<div class="sl-heading-wrapper level-h3"><h3 id="12-hidden-token-costs">1.2 Hidden Token Costs</h3><a class="sl-anchor-link" href="#12-hidden-token-costs"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “1.2 Hidden Token Costs”</span></a></div>
+<p>These are the costs developers most frequently underestimate:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Source</th><th>Token cost</th><th>Impact</th></tr></thead><tbody><tr><td>GitHub MCP server (91 tools)</td><td>~46,000 tokens</td><td>23% of 200K window consumed before any work</td></tr><tr><td>A 5,000-token CLAUDE.md</td><td>5,000 tokens × every turn</td><td>Compounds across entire session</td></tr><tr><td>Redundant file re-reads</td><td>40–60% of all Read tokens</td><td>Studies show most Read tokens are re-reads</td></tr><tr><td>System overhead buffer</td><td>33K–45K tokens</td><td>Effective usable space is smaller than raw window</td></tr></tbody></table>
+<div class="sl-heading-wrapper level-h3"><h3 id="13-monitoring-commands">1.3 Monitoring Commands</h3><a class="sl-anchor-link" href="#13-monitoring-commands"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “1.3 Monitoring Commands”</span></a></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Command</th><th>What it shows</th><th>Scope</th></tr></thead><tbody><tr><td><code dir="auto">/context</code></td><td>Live breakdown: system prompt, system tools, MCP tools, custom agents, skills, messages, free space, autocompact buffer</td><td>Current snapshot</td></tr><tr><td><code dir="auto">/cost</code></td><td>Per-model input/output/cache-read/cache-write tokens + dollar cost (v2.1.92: per-model breakdown with cache-hit accounting)</td><td>Cumulative session</td></tr><tr><td><code dir="auto">/clear</code></td><td>Resets conversation; preserves tools, CLAUDE.md, and memory</td><td>Destructive reset</td></tr><tr><td><code dir="auto">/compact [focus]</code></td><td>Summarizes conversation with optional focus topic</td><td>Lossy compression</td></tr><tr><td><code dir="auto">Esc+Esc</code> or <code dir="auto">/rewind</code></td><td>Partial compaction — select a message checkpoint and summarize from there</td><td>Selective compression</td></tr></tbody></table>
+<hr>
+<div class="sl-heading-wrapper level-h2"><h2 id="2-prompt-caching-economics">2. Prompt Caching Economics</h2><a class="sl-anchor-link" href="#2-prompt-caching-economics"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “2. Prompt Caching Economics”</span></a></div>
+<div class="sl-heading-wrapper level-h3"><h3 id="21-how-prompt-caching-works">2.1 How Prompt Caching Works</h3><a class="sl-anchor-link" href="#21-how-prompt-caching-works"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “2.1 How Prompt Caching Works”</span></a></div>
+<p>Per Thariq Shihipar (Claude Code engineering team): <em>“We build our entire harness around prompt caching. A high prompt cache hit rate decreases costs and helps us create more generous rate limits for our subscription plans, so we run alerts on our prompt cache hit rate and declare SEVs if they’re too low.”</em></p>
+<p>The system stores <strong>KV (key-value) attention cache tensors</strong> server-side. When a new request shares the same byte-level prefix as a cached request, the model skips recomputation for that prefix. The context reconstruction order (Section 1.1) is deliberately arranged to maximize the length of the shared prefix — tool definitions and system prompts (shared by all users) come first, while per-session conversation history (unique and growing) comes last.</p>
+<p>Each cache entry has a <strong>5-minute TTL</strong> that refreshes on every hit. Active sessions with turns less than 5 minutes apart keep the cache warm indefinitely. The cache is <strong>per-model</strong> — switching models mid-session means a complete cache miss where the entire context must be re-cached at write cost.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="22-pricing-multipliers-april-2026">2.2 Pricing Multipliers (April 2026)</h3><a class="sl-anchor-link" href="#22-pricing-multipliers-april-2026"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “2.2 Pricing Multipliers (April 2026)”</span></a></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Token type</th><th>Multiplier vs base</th><th>Sonnet 4.6</th><th>Opus 4.6</th><th>Haiku 4.5</th></tr></thead><tbody><tr><td>Standard input (no cache)</td><td>1.0×</td><td>$3.00/MTok</td><td>$15.00/MTok</td><td>$1.00/MTok</td></tr><tr><td>5-minute cache write</td><td>1.25×</td><td>$3.75/MTok</td><td>$18.75/MTok</td><td>$1.25/MTok</td></tr><tr><td>1-hour cache write</td><td>2.0×</td><td>$6.00/MTok</td><td>$30.00/MTok</td><td>$2.00/MTok</td></tr><tr><td><strong>Cache read (hit)</strong></td><td><strong>0.1×</strong></td><td><strong>$0.30/MTok</strong></td><td><strong>$1.50/MTok</strong></td><td><strong>$0.08/MTok</strong></td></tr><tr><td>Output tokens</td><td>—</td><td>$15.00/MTok</td><td>$75.00/MTok</td><td>$5.00/MTok</td></tr></tbody></table>
+<p><strong>CCA-F formula:</strong> Effective input cost = <code dir="auto">(miss_tokens × write_rate) + (hit_tokens × 0.1 × base_rate)</code>. At 90% hit rate over a 20-turn session with 100K context on Sonnet, caching delivers <strong>~84% savings</strong> ($0.945 vs $6.00 without caching).</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="23-the---resume-cache-regression-v2169--v2190">2.3 The <code dir="auto">--resume</code> Cache Regression (v2.1.69 → v2.1.90)</h3><a class="sl-anchor-link" href="#23-the---resume-cache-regression-v2169--v2190"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “2.3 The --resume Cache Regression (v2.1.69 → v2.1.90)”</span></a></div>
+<p>Between v2.1.69 and v2.1.90, <code dir="auto">--resume</code> sessions suffered a critical bug causing a <strong>~20× cost increase</strong> per message. Only the internal system prompt (~14.5K tokens) was cached; all conversation history rebuilt from scratch on every turn.</p>
+<p><strong>Root cause:</strong> The session resume function maintained an allowlist of attachment types to preserve across serialization. Two critical types were missing: <code dir="auto">deferred_tools_delta</code> (tracks which ToolSearch tools have been announced to the model) and <code dir="auto">mcp_instructions_delta</code> (MCP server instructions). When stripped during resume, tools got re-announced on the next turn — inserting new messages that shifted the byte-level prefix hash and broke cache matching for the entire conversation history.</p>
+<p><strong>Fixed in v2.1.90 (April 1, 2026).</strong> This bug connects three CCA-F domains: D4 (ToolSearch’s deferred_tools_delta), D5 (prompt caching prefix sensitivity), and D2 (session management with —resume).</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="24-rules-for-maximizing-cache-hits">2.4 Rules for Maximizing Cache Hits</h3><a class="sl-anchor-link" href="#24-rules-for-maximizing-cache-hits"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “2.4 Rules for Maximizing Cache Hits”</span></a></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Rule</th><th>Why it matters</th><th>Cost of violation</th></tr></thead><tbody><tr><td>Never modify system prompt mid-session</td><td>Shifts byte-level prefix hash</td><td>1.25× write cost on entire context</td></tr><tr><td>Never switch models mid-session</td><td>Caches are per-model; new model = cold start</td><td>Full context rebuild + 1.25× write</td></tr><tr><td>Never add/remove tools mid-session</td><td>Tool definitions are in the cached prefix</td><td>Prefix invalidation → full re-cache</td></tr><tr><td>Keep messages within 5-min TTL</td><td>Cache expires after 5 min of inactivity</td><td>Full cold start on next turn</td></tr><tr><td>Disable unused MCP servers via <code dir="auto">/mcp</code></td><td>Each server adds tool schemas to prefix</td><td>Wasted prefix tokens every turn</td></tr><tr><td>Prefer CLI tools (gh, aws, gcloud)</td><td>No per-tool definition overhead in prefix</td><td>MCP tools add schema tokens</td></tr><tr><td>Use subagents for different-model tasks</td><td>Subagent uses separate API call — parent cache stays warm</td><td>Switching main model kills parent cache</td></tr></tbody></table>
+<hr>
+<div class="sl-heading-wrapper level-h2"><h2 id="3-toolsearch-lazy-tool-loading">3. ToolSearch (Lazy Tool Loading)</h2><a class="sl-anchor-link" href="#3-toolsearch-lazy-tool-loading"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “3. ToolSearch (Lazy Tool Loading)”</span></a></div>
+<div class="sl-heading-wrapper level-h3"><h3 id="31-architecture">3.1 Architecture</h3><a class="sl-anchor-link" href="#31-architecture"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “3.1 Architecture”</span></a></div>
+<p>ToolSearch (shipped v2.1.7, January 2026) solves the “startup tax” problem where MCP tool definitions consumed tens of thousands of tokens before any work began. It activates automatically when total MCP tool descriptions exceed <strong>10K tokens</strong> (~10% of 200K context).</p>
+<p><strong>Step-by-step flow:</strong></p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="plaintext"><code><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">STARTUP:</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#d6deeb;--1:#403f53">  </span></span><span style="--0:#d6deeb;--1:#403f53">1. Build lightweight index: tool name + 1-line description per tool</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#d6deeb;--1:#403f53">  </span></span><span style="--0:#d6deeb;--1:#403f53">2. MCP tools marked defer_loading: true</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#d6deeb;--1:#403f53">  </span></span><span style="--0:#d6deeb;--1:#403f53">3. Sent to API as lightweight stubs (name + desc, no schema)</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#d6deeb;--1:#403f53">  </span></span><span style="--0:#d6deeb;--1:#403f53">4. Token cost: ~100 tokens/tool (vs ~500–2000 for full schema)</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">RUNTIME (when Claude needs a tool):</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#d6deeb;--1:#403f53">  </span></span><span style="--0:#d6deeb;--1:#403f53">5. Claude calls ToolSearch tool (regex or BM25 search variant)</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#d6deeb;--1:#403f53">  </span></span><span style="--0:#d6deeb;--1:#403f53">6. ToolSearch searches the catalog index</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#d6deeb;--1:#403f53">  </span></span><span style="--0:#d6deeb;--1:#403f53">7. Returns 3–5 most relevant tool matches</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#d6deeb;--1:#403f53">  </span></span><span style="--0:#d6deeb;--1:#403f53">8. Full definitions injected as tool_reference blocks</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">CRITICAL PLACEMENT:</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#d6deeb;--1:#403f53">  </span></span><span style="--0:#d6deeb;--1:#403f53">9. tool_reference blocks go into CONVERSATION HISTORY</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#d6deeb;--1:#403f53">     </span></span><span style="--0:#d6deeb;--1:#403f53">├── NOT into the tool definitions prefix</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#d6deeb;--1:#403f53">     </span></span><span style="--0:#d6deeb;--1:#403f53">├── Cached prefix hash stays UNTOUCHED</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#d6deeb;--1:#403f53">     </span></span><span style="--0:#d6deeb;--1:#403f53">└── ToolSearch + prompt caching work TOGETHER ✓</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="STARTUP:  1. Build lightweight index: tool name + 1-line description per tool  2. MCP tools marked defer_loading: true  3. Sent to API as lightweight stubs (name + desc, no schema)  4. Token cost: ~100 tokens/tool (vs ~500–2000 for full schema)RUNTIME (when Claude needs a tool):  5. Claude calls ToolSearch tool (regex or BM25 search variant)  6. ToolSearch searches the catalog index  7. Returns 3–5 most relevant tool matches  8. Full definitions injected as tool_reference blocksCRITICAL PLACEMENT:  9. tool_reference blocks go into CONVERSATION HISTORY     ├── NOT into the tool definitions prefix     ├── Cached prefix hash stays UNTOUCHED     └── ToolSearch + prompt caching work TOGETHER ✓"><div></div></button></div></figure></div>
+<p><strong>Impact:</strong> Token reduction of <strong>85%+</strong> in tool definition tokens. Tool selection accuracy actually <em>improved</em> (Opus 4.5: 79.5% → 88.1%) because Claude selects from a focused, relevant set rather than a massive list. The system supports up to <strong>10,000 tools</strong> in the catalog.</p>
+<p><strong>CCA-F key point (frequently tested):</strong> Discovered tool definitions go into conversation history, NOT the tool definitions prefix. This architectural choice means ToolSearch never invalidates the prompt cache. This is the most elegant design tradeoff in the system.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="32-configuration">3.2 Configuration</h3><a class="sl-anchor-link" href="#32-configuration"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “3.2 Configuration”</span></a></div>
+<p>ToolSearch is automatic by default — zero configuration needed. For servers where you always need tools immediately:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="json"><code><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">{</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#7FDBCA;--1:#096E72">"mcpServers"</span><span style="--0:#D6DEEB;--1:#403F53">: {</span></div></div><div class="ec-line"><div class="code"><span class="indent">    </span><span style="--0:#7FDBCA;--1:#096E72">"critical-server"</span><span style="--0:#D6DEEB;--1:#403F53">: {</span></div></div><div class="ec-line"><div class="code"><span class="indent">      </span><span style="--0:#7FDBCA;--1:#096E72">"command"</span><span style="--0:#D6DEEB;--1:#403F53">: </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#C789D6;--1:#7C5686">...</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53">,</span></div></div><div class="ec-line"><div class="code"><span class="indent">      </span><span style="--0:#7FDBCA;--1:#096E72">"enableToolSearch"</span><span style="--0:#D6DEEB;--1:#403F53">: </span><span style="--0:#FF6A83;--1:#A24848">false</span><span style="--0:#D6DEEB;--1:#403F53">    </span><span style="--0:#919F9F;--1:#5D6376">// tools loaded eagerly</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">    </span></span><span style="--0:#D6DEEB;--1:#403F53">}</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#D6DEEB;--1:#403F53">  </span></span><span style="--0:#D6DEEB;--1:#403F53">}</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">}</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="{  &#x22;mcpServers&#x22;: {    &#x22;critical-server&#x22;: {      &#x22;command&#x22;: &#x22;...&#x22;,      &#x22;enableToolSearch&#x22;: false    // tools loaded eagerly    }  }}"><div></div></button></div></figure></div>
+<p>Additional details: only MCP tools (<code dir="auto">mcp__</code> prefix) are eligible for deferral; built-in tools (Read, Edit, Bash, Write, Glob, Grep, WebSearch, WebFetch) are never deferred. Tool descriptions and server instructions are capped at <strong>2KB</strong> (v2.1.84) to prevent OpenAPI-generated servers from bloating context.</p>
+<hr>
+<div class="sl-heading-wrapper level-h2"><h2 id="4-model-selection-for-cost-optimization">4. Model Selection for Cost Optimization</h2><a class="sl-anchor-link" href="#4-model-selection-for-cost-optimization"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “4. Model Selection for Cost Optimization”</span></a></div>
+<div class="sl-heading-wrapper level-h3"><h3 id="41-model-comparison-april-2026">4.1 Model Comparison (April 2026)</h3><a class="sl-anchor-link" href="#41-model-comparison-april-2026"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “4.1 Model Comparison (April 2026)”</span></a></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Dimension</th><th>Opus 4.6</th><th>Sonnet 4.6</th><th>Haiku 4.5</th></tr></thead><tbody><tr><td>Input $/MTok</td><td>$15</td><td>$3</td><td>$1</td></tr><tr><td>Output $/MTok</td><td>$75</td><td>$15</td><td>$5</td></tr><tr><td>Cache read $/MTok</td><td>$1.50</td><td>$0.30</td><td>$0.08</td></tr><tr><td>Context window</td><td>1M (standard pricing)</td><td>1M (standard pricing)</td><td>200K</td></tr><tr><td>Max output (default / upper)</td><td>64K / 128K</td><td>64K / 128K</td><td>64K</td></tr><tr><td>SWE-bench Verified</td><td>80.8%</td><td>79.6%</td><td>—</td></tr><tr><td>Extended thinking</td><td>low / med / high / max</td><td>low / med / high</td><td>Not supported</td></tr><tr><td>Cost relative to Opus</td><td>1×</td><td>0.2× (80% cheaper)</td><td>0.07× (93% cheaper)</td></tr></tbody></table>
+<p><strong>Sonnet handles ~90% of coding tasks</strong> at 80% lower cost than Opus. The SWE-bench delta is only 1.2 percentage points.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="42-the-opusplan-alias">4.2 The <code dir="auto">opusplan</code> Alias</h3><a class="sl-anchor-link" href="#42-the-opusplan-alias"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “4.2 The opusplan Alias”</span></a></div>
+<p>The single highest-ROI model strategy. It uses Opus only during Plan mode (design and architecture) and Sonnet for all implementation, managing cache implications internally:</p>
+<div class="expressive-code"><figure class="frame is-terminal not-content"><figcaption class="header"><span class="title"></span><span class="sr-only">Terminal window</span></figcaption><pre data-language="bash"><code><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">claude</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">--model</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">opusplan</span></div></div><div class="ec-line"><div class="code"><span style="--0:#919F9F;--1:#5F636F"># In-session: /model opusplan</span></div></div><div class="ec-line"><div class="code"><span style="--0:#919F9F;--1:#5F636F"># Plan mode toggle: Shift+Tab×2 or /plan</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="claude --model opusplan"><div></div></button></div></figure></div>
+<p>This avoids the cache invalidation problem of manual model switching — <code dir="auto">opusplan</code> routes specific turns to Opus while keeping the main session on Sonnet.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="43-subagent-model-routing">4.3 Subagent Model Routing</h3><a class="sl-anchor-link" href="#43-subagent-model-routing"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “4.3 Subagent Model Routing”</span></a></div>
+<div class="expressive-code"><figure class="frame is-terminal not-content"><figcaption class="header"><span class="title"></span><span class="sr-only">Terminal window</span></figcaption><pre data-language="bash"><code><div class="ec-line"><div class="code"><span style="--0:#919F9F;--1:#5F636F"># Global default: all subagents use Haiku (~93% cheaper)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#C792EA;--1:#8844AE">export</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C5E478;--1:#3B61B0">CLAUDE_CODE_SUBAGENT_MODEL</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#C5E478;--1:#3B61B0">haiku</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#919F9F;--1:#5F636F"># Main session on Opus for coordination</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">claude</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">--model</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">opus</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#919F9F;--1:#5F636F"># Per-subagent override in frontmatter:</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">---</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">name:</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">security-scan</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">model:</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">opus</span><span style="--0:#D6DEEB;--1:#403F53">           </span><span style="--0:#919F9F;--1:#5F636F"># override for complex tasks</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">effort:</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">high</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">---</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#919F9F;--1:#5F636F"># Priority: frontmatter > CLAUDE_CODE_SUBAGENT_MODEL > "inherit"</span></div></div><div class="ec-line"><div class="code"><span style="--0:#919F9F;--1:#5F636F"># Built-in Explore subagent uses Haiku by default</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="export CLAUDE_CODE_SUBAGENT_MODEL=haikuclaude --model opus---name: security-scanmodel: opus           # override for complex taskseffort: high---"><div></div></button></div></figure></div>
+<div class="sl-heading-wrapper level-h3"><h3 id="44-output-tokens-and-hidden-thinking-costs">4.4 Output Tokens and Hidden Thinking Costs</h3><a class="sl-anchor-link" href="#44-output-tokens-and-hidden-thinking-costs"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “4.4 Output Tokens and Hidden Thinking Costs”</span></a></div>
+<p>Extended thinking tokens are allocated from the <strong>output budget</strong> and billed at <strong>output rates</strong> ($15–75/MTok). With <code dir="auto">MAX_THINKING_TOKENS</code> defaulting to ~32K, a single complex turn on Opus costs $2.40 in thinking alone.</p>
+<div class="expressive-code"><figure class="frame is-terminal not-content"><figcaption class="header"><span class="title"></span><span class="sr-only">Terminal window</span></figcaption><pre data-language="bash"><code><div class="ec-line"><div class="code"><span style="--0:#919F9F;--1:#5F636F"># Default: ~32K thinking → ~32K for code on 64K limit</span></div></div><div class="ec-line"><div class="code"><span style="--0:#919F9F;--1:#5F636F"># Optimized: 10K thinking → ~54K for code, ~70% less thinking cost</span></div></div><div class="ec-line"><div class="code"><span style="--0:#C792EA;--1:#8844AE">export</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#C5E478;--1:#3B61B0">MAX_THINKING_TOKENS</span><span style="--0:#C792EA;--1:#8844AE">=</span><span style="--0:#F78C6C;--1:#AA0982">10000</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#919F9F;--1:#5F636F"># This is arguably the single highest-ROI environment variable.</span></div></div><div class="ec-line"><div class="code"><span style="--0:#919F9F;--1:#5F636F"># For one-off deep reasoning, include "ultrathink" in the prompt.</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="export MAX_THINKING_TOKENS=10000"><div></div></button></div></figure></div>
+<hr>
+<div class="sl-heading-wrapper level-h2"><h2 id="5-effort-frontmatter">5. Effort Frontmatter</h2><a class="sl-anchor-link" href="#5-effort-frontmatter"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “5. Effort Frontmatter”</span></a></div>
+<p>Effort levels control adaptive reasoning — dynamically allocating thinking tokens based on task complexity.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Level</th><th>Thinking tokens</th><th>Use cases</th><th>Token impact</th></tr></thead><tbody><tr><td>low</td><td>0–500 (may skip entirely)</td><td>Formatting, linting, lookups, file moves</td><td>Saves thousands of output tokens per turn</td></tr><tr><td>medium</td><td>Balanced (default)</td><td>Most coding: features, tests, docs, refactoring</td><td>Standard allocation</td></tr><tr><td>high</td><td>Deep reasoning (2–4× more)</td><td>Complex debugging, architecture decisions</td><td>Expensive but justified</td></tr><tr><td>max</td><td>Unconstrained (Opus 4.6 only)</td><td>Novel algorithms, research-grade problems</td><td>Maximum possible cost</td></tr></tbody></table>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="yaml"><code><div class="ec-line"><div class="code"><span style="--0:#919F9F;--1:#5F636F"># In skill frontmatter: .claude/commands/quick-format.md</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">---</span></div></div><div class="ec-line"><div class="code"><span style="--0:#7FDBCA;--1:#111111">name</span><span style="--0:#D6DEEB;--1:#403F53">: </span><span style="--0:#ECC48D;--1:#3B61B0">quick-format</span></div></div><div class="ec-line"><div class="code"><span style="--0:#7FDBCA;--1:#111111">description</span><span style="--0:#D6DEEB;--1:#403F53">: </span><span style="--0:#ECC48D;--1:#3B61B0">Quick code formatting check</span></div></div><div class="ec-line"><div class="code"><span style="--0:#7FDBCA;--1:#111111">effort</span><span style="--0:#D6DEEB;--1:#403F53">: </span><span style="--0:#ECC48D;--1:#3B61B0">low</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">---</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#919F9F;--1:#5F636F"># In subagent frontmatter: .claude/agents/reviewer.md</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">---</span></div></div><div class="ec-line"><div class="code"><span style="--0:#7FDBCA;--1:#111111">name</span><span style="--0:#D6DEEB;--1:#403F53">: </span><span style="--0:#ECC48D;--1:#3B61B0">code-reviewer</span></div></div><div class="ec-line"><div class="code"><span style="--0:#7FDBCA;--1:#111111">model</span><span style="--0:#D6DEEB;--1:#403F53">: </span><span style="--0:#ECC48D;--1:#3B61B0">sonnet</span></div></div><div class="ec-line"><div class="code"><span style="--0:#7FDBCA;--1:#111111">effort</span><span style="--0:#D6DEEB;--1:#403F53">: </span><span style="--0:#ECC48D;--1:#3B61B0">low</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">---</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="# In skill frontmatter: .claude/commands/quick-format.md---name: quick-formatdescription: Quick code formatting checkeffort: low---# In subagent frontmatter: .claude/agents/reviewer.md---name: code-reviewermodel: sonneteffort: low---"><div></div></button></div></figure></div>
+<p><strong>Priority order:</strong> <code dir="auto">CLAUDE_CODE_EFFORT_LEVEL</code> env var (highest) → skill/subagent frontmatter → session <code dir="auto">/effort</code> command → model default (medium). Including “ultrathink” in a prompt triggers high effort for that single turn only.</p>
+<hr>
+<div class="sl-heading-wrapper level-h2"><h2 id="6---bare-mode-for-ci-and-scripted-calls">6. <code dir="auto">--bare</code> Mode for CI and Scripted Calls</h2><a class="sl-anchor-link" href="#6---bare-mode-for-ci-and-scripted-calls"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “6. --bare Mode for CI and Scripted Calls”</span></a></div>
+<p>The <code dir="auto">--bare</code> flag (v2.1.81, March 2026) creates a minimal, deterministic execution environment by skipping:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Skipped</th><th>Why it matters</th></tr></thead><tbody><tr><td>Hooks (PreToolUse/PostToolUse)</td><td>No hook execution overhead</td></tr><tr><td>LSP connections</td><td>No language server startup (~200-500ms)</td></tr><tr><td>Plugin sync</td><td>No marketplace git pull (~1-3s)</td></tr><tr><td>Skill directory walks</td><td>No .claude/commands/ scanning</td></tr><tr><td>MCP servers</td><td>No tool schema tokens in context</td></tr><tr><td>Auto-memory (MEMORY.md)</td><td>No memory file injection</td></tr><tr><td>CLAUDE.md files (entire hierarchy)</td><td>No per-turn CLAUDE.md cost</td></tr><tr><td>OAuth / keychain reads</td><td>No auth token refresh</td></tr></tbody></table>
+<p>Available tools in bare mode: <strong>only Bash, Read, and Edit</strong>. Performance: <strong>~14% faster to first API request</strong> (official); community reports up to 10× faster. Will become the default for <code dir="auto">-p</code> mode in a future release.</p>
+<div class="expressive-code"><figure class="frame is-terminal not-content"><figcaption class="header"><span class="title"></span><span class="sr-only">Terminal window</span></figcaption><pre data-language="bash"><code><div class="ec-line"><div class="code"><span style="--0:#919F9F;--1:#5F636F"># Minimal CI diff review</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">git</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">diff</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">origin/main...HEAD</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#7FDBCA;--1:#096E72">|</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">claude</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">-p</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">Review this diff</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#F78C6C;--1:#AA0982">\</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#82AAFF;--1:#3B61B0">--bare</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">--allowedTools</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">Bash(git:*),Read</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">--output-format</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">json</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#919F9F;--1:#5F636F"># Add specific context when needed</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">claude</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">-p</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">Fix lint errors</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">--bare</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#F78C6C;--1:#AA0982">\</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#82AAFF;--1:#3B61B0">--append-system-prompt</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#ECC48D;--1:#984E4D">Use ESLint from .eslintrc</span><span style="--0:#D9F5DD;--1:#111111">"</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#F78C6C;--1:#AA0982">\</span></div></div><div class="ec-line"><div class="code"><span class="indent">  </span><span style="--0:#82AAFF;--1:#3B61B0">--mcp-config</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">./ci-mcp.json</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="git diff origin/main...HEAD | claude -p &#x22;Review this diff&#x22; \  --bare --allowedTools &#x22;Bash(git:*),Read&#x22; --output-format jsonclaude -p &#x22;Fix lint errors&#x22; --bare \  --append-system-prompt &#x22;Use ESLint from .eslintrc&#x22; \  --mcp-config ./ci-mcp.json"><div></div></button></div></figure></div>
+<hr>
+<div class="sl-heading-wrapper level-h2"><h2 id="7-claudemd-best-practices">7. CLAUDE.md Best Practices</h2><a class="sl-anchor-link" href="#7-claudemd-best-practices"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “7. CLAUDE.md Best Practices”</span></a></div>
+<div class="sl-heading-wrapper level-h3"><h3 id="71-token-impact">7.1 Token Impact</h3><a class="sl-anchor-link" href="#71-token-impact"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “7.1 Token Impact”</span></a></div>
+<p>CLAUDE.md files are injected into <strong>every single API call</strong> as input tokens. A 100-token unnecessary paragraph costs 5,000 tokens over a 50-turn session. The loading hierarchy:</p>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="plaintext"><code><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">1. Managed policy              ← IT-administered (cannot exclude)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">2. Project ./CLAUDE.md          ← Repository root</span></div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">3. User ~/.claude/CLAUDE.md     ← Personal global</span></div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">4. Local ./CLAUDE.local.md      ← git-ignored overrides</span></div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">5. Subdirectory CLAUDE.md       ← ON-DEMAND when files accessed</span></div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">6. .claude/rules/ with paths    ← ON-DEMAND, scoped to directories</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="1. Managed policy              ← IT-administered (cannot exclude)2. Project ./CLAUDE.md          ← Repository root3. User ~/.claude/CLAUDE.md     ← Personal global4. Local ./CLAUDE.local.md      ← git-ignored overrides5. Subdirectory CLAUDE.md       ← ON-DEMAND when files accessed6. .claude/rules/ with paths    ← ON-DEMAND, scoped to directories"><div></div></button></div></figure></div>
+<p><strong>Target: under 200 lines per file.</strong> For each line, ask: “Would removing this cause Claude to make mistakes?” If not, cut it.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="72-optimization-techniques">7.2 Optimization Techniques</h3><a class="sl-anchor-link" href="#72-optimization-techniques"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “7.2 Optimization Techniques”</span></a></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Technique</th><th>How</th><th>Impact</th></tr></thead><tbody><tr><td>Move workflows to skills</td><td><code dir="auto">.claude/commands/</code> files load only when invoked</td><td>Saves tokens every non-skill turn</td></tr><tr><td>Use <code dir="auto">.claude/rules/</code> with paths</td><td>Topic-specific rules load only for matching files</td><td>Scoped injection vs global</td></tr><tr><td><code dir="auto">@import</code> for modularity</td><td>Reference external files (max depth: 5 hops)</td><td>Keep root CLAUDE.md lean</td></tr><tr><td>HTML comments <code dir="auto">&#x3C;!-- --></code></td><td>Stripped before injection into API calls</td><td>Zero token cost — free human notes</td></tr><tr><td><code dir="auto">claudeMdExcludes</code> setting</td><td>Skip irrelevant CLAUDE.md in monorepos</td><td>Avoid unrelated project instructions</td></tr><tr><td><code dir="auto">.claudeignore</code></td><td>Like <code dir="auto">.gitignore</code> — block build artifacts, lock files</td><td>Prevent accidental large file reads</td></tr></tbody></table>
+<div class="sl-heading-wrapper level-h3"><h3 id="73-recommended-structure-anthropics-scientific-computing-guide">7.3 Recommended Structure (Anthropic’s Scientific Computing Guide)</h3><a class="sl-anchor-link" href="#73-recommended-structure-anthropics-scientific-computing-guide"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “7.3 Recommended Structure (Anthropic’s Scientific Computing Guide)”</span></a></div>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="markdown"><code><div class="ec-line"><div class="code"><span style="--0:#82B1FF;--1:#3B61B0"># Project: MyProject</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#82B1FF;--1:#3B61B0">## Architecture</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D9F5DD;--1:#111111">-</span><span style="--0:#D6DEEB;--1:#403F53"> FastAPI + ChromaDB + Voyage AI voyage-3.5 embeddings</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D9F5DD;--1:#111111">-</span><span style="--0:#D6DEEB;--1:#403F53"> Claude Sonnet for generation, Haiku for intent classification</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D9F5DD;--1:#111111">-</span><span style="--0:#D6DEEB;--1:#403F53"> Microsoft Presidio for PII detection</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#82B1FF;--1:#3B61B0">## Conventions</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D9F5DD;--1:#111111">-</span><span style="--0:#D6DEEB;--1:#403F53"> API routes: /src/api/ | Tests: /tests/ | Lint: ruff check src/</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D9F5DD;--1:#111111">-</span><span style="--0:#D6DEEB;--1:#403F53"> Run tests: pytest tests/ -x --tb=short</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#82B1FF;--1:#3B61B0">## Current Focus</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D9F5DD;--1:#111111">-</span><span style="--0:#D6DEEB;--1:#403F53"> [</span><span style="--0:#D6DEEB;--0td:underline;--1:#403F53;--1td:underline">ACTIVE</span><span style="--0:#D6DEEB;--1:#403F53">] Hybrid search: BM25 + semantic + RRF</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D9F5DD;--1:#111111">-</span><span style="--0:#D6DEEB;--1:#403F53"> [</span><span style="--0:#D6DEEB;--0td:underline;--1:#403F53;--1td:underline">DONE</span><span style="--0:#D6DEEB;--1:#403F53">] PII detection pipeline</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#82B1FF;--1:#3B61B0">## Known Failures (DO NOT RE-ATTEMPT)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D9F5DD;--1:#111111">-</span><span style="--0:#D6DEEB;--1:#403F53"> sentence-transformers: incompatible with Python 3.12</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D9F5DD;--1:#111111">-</span><span style="--0:#D6DEEB;--1:#403F53"> rank_bm25 BM25Okapi: OOM on docs > 50K tokens</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D9F5DD;--1:#111111">-</span><span style="--0:#D6DEEB;--1:#403F53"> ChromaDB batch upsert > 5000: silent data loss</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#82B1FF;--1:#3B61B0"># Compact Instructions</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">Preserve: API schema decisions, test commands, known failures</span></div></div><div class="ec-line"><div class="code"><span style="--0:#D6DEEB;--1:#403F53">Discard: verbose debugging output, exploratory file reads</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="# Project: MyProject## Architecture- FastAPI + ChromaDB + Voyage AI voyage-3.5 embeddings- Claude Sonnet for generation, Haiku for intent classification- Microsoft Presidio for PII detection## Conventions- API routes: /src/api/ | Tests: /tests/ | Lint: ruff check src/- Run tests: pytest tests/ -x --tb=short## Current Focus- [ACTIVE] Hybrid search: BM25 + semantic + RRF- [DONE] PII detection pipeline## Known Failures (DO NOT RE-ATTEMPT)- sentence-transformers: incompatible with Python 3.12- rank_bm25 BM25Okapi: OOM on docs > 50K tokens- ChromaDB batch upsert > 5000: silent data loss# Compact InstructionsPreserve: API schema decisions, test commands, known failuresDiscard: verbose debugging output, exploratory file reads"><div></div></button></div></figure></div>
+<p>The <strong>“Known Failures”</strong> section prevents successive sessions from re-attempting dead ends. A separate CHANGELOG.md serves as portable long-term memory including failed approaches and why they didn’t work.</p>
+<hr>
+<div class="sl-heading-wrapper level-h2"><h2 id="8-subagents-vs-agent-teams">8. Subagents vs. Agent Teams</h2><a class="sl-anchor-link" href="#8-subagents-vs-agent-teams"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “8. Subagents vs. Agent Teams”</span></a></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Dimension</th><th>Subagents (Task tool)</th><th>Agent Teams (Teammates)</th></tr></thead><tbody><tr><td>Process model</td><td>Within parent session’s process</td><td>Separate instances (2–16)</td></tr><tr><td>Context window</td><td>Scoped subset of parent</td><td>Own full 1M window each</td></tr><tr><td>Communication</td><td>Vertical only (→ parent)</td><td>Lateral (mailbox + shared task list)</td></tr><tr><td>Cost multiplier</td><td>~1× (efficient)</td><td>~3–7× (commonly ~5×)</td></tr><tr><td>Context inheritance</td><td><strong>NONE</strong> — must explicitly pass all info</td><td><strong>NONE</strong> — each independent</td></tr><tr><td>Best for</td><td>Focused subtasks, exploration, linting</td><td>Multi-file refactors, cross-layer features</td></tr></tbody></table>
+<p><strong>CCA-F exam trap:</strong> “Subagent inherits parent context” is <strong>WRONG</strong>. All information must be explicitly passed in the task description.</p>
+<p><strong>CCA-F design principle:</strong> Tool descriptions are the primary routing mechanism (not function names). Keep tools to 4–5 per agent for optimal selection accuracy.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="cost-efficient-agent-architecture">Cost-Efficient Agent Architecture</h3><a class="sl-anchor-link" href="#cost-efficient-agent-architecture"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Cost-Efficient Agent Architecture”</span></a></div>
+<div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="plaintext"><code><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">TIER 1 — Main session (opusplan or Sonnet)</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#d6deeb;--1:#403f53">  </span></span><span style="--0:#d6deeb;--1:#403f53">└── Coordination, architecture, task decomposition</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">TIER 2 — Subagents (Haiku or Sonnet per frontmatter)</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#d6deeb;--1:#403f53">  </span></span><span style="--0:#d6deeb;--1:#403f53">└── CLAUDE_CODE_SUBAGENT_MODEL=haiku (global default)</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#d6deeb;--1:#403f53">  </span></span><span style="--0:#d6deeb;--1:#403f53">└── ~1× cost (same process, scoped context)</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">TIER 3 — Agent Teams (only when lateral comms needed)</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#d6deeb;--1:#403f53">  </span></span><span style="--0:#d6deeb;--1:#403f53">└── 2–4 teammates max, ~5× cost</span></div></div><div class="ec-line"><div class="code"><span class="indent"><span style="--0:#d6deeb;--1:#403f53">  </span></span><span style="--0:#d6deeb;--1:#403f53">└── Use isolation: "worktree" for parallel changes</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="TIER 1 — Main session (opusplan or Sonnet)  └── Coordination, architecture, task decompositionTIER 2 — Subagents (Haiku or Sonnet per frontmatter)  └── CLAUDE_CODE_SUBAGENT_MODEL=haiku (global default)  └── ~1× cost (same process, scoped context)TIER 3 — Agent Teams (only when lateral comms needed)  └── 2–4 teammates max, ~5× cost  └── Use isolation: &#x22;worktree&#x22; for parallel changes"><div></div></button></div></figure></div>
+<hr>
+<div class="sl-heading-wrapper level-h2"><h2 id="9-compaction-system">9. Compaction System</h2><a class="sl-anchor-link" href="#9-compaction-system"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “9. Compaction System”</span></a></div>
+<div class="sl-heading-wrapper level-h3"><h3 id="91-three-layer-architecture">9.1 Three-Layer Architecture</h3><a class="sl-anchor-link" href="#91-three-layer-architecture"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “9.1 Three-Layer Architecture”</span></a></div>
+<p><strong>Layer 1 — Microcompaction (automatic):</strong> Large tool outputs are saved to disk; recent results stay inline (“hot tail”), older ones become disk references. Applies to Read, Bash, Grep, Glob, WebSearch, WebFetch, Edit, Write.</p>
+<p><strong>Layer 2 — Auto-compaction:</strong> Triggers at ~83.5% of window limit (configurable via <code dir="auto">CLAUDE_AUTOCOMPACT_PCT_OVERRIDE</code>, values 1–100). Clears older tool outputs first, then summarizes conversation if still over threshold. Preserves user requests, key code, recent files, task state. After summary: re-reads recent files, restores todo list, re-injects CLAUDE.md from disk. <strong>Circuit breaker</strong> (v2.1.89): stops after 3 consecutive immediate-refill cycles.</p>
+<p><strong>Layer 3 — Manual (<code dir="auto">/compact</code>):</strong> <code dir="auto">/compact Focus on API changes</code> for guided preservation. <code dir="auto">Esc+Esc</code> or <code dir="auto">/rewind</code> for partial compaction. Customizable via <code dir="auto"># Compact Instructions</code> in CLAUDE.md.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="92-idle-return-clear-hint">9.2 Idle-Return <code dir="auto">/clear</code> Hint</h3><a class="sl-anchor-link" href="#92-idle-return-clear-hint"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “9.2 Idle-Return /clear Hint”</span></a></div>
+<p>After 75+ minutes idle, Claude Code suggests <code dir="auto">/clear</code> with token savings displayed. Addresses the anti-pattern of resuming stale sessions where the 5-min cache TTL has expired. Bug fix in v2.1.92: now shows current context size (not cumulative session tokens).</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="93-critical-compactionmemory-fixes-marchapril-2026">9.3 Critical Compaction/Memory Fixes (March–April 2026)</h3><a class="sl-anchor-link" href="#93-critical-compactionmemory-fixes-marchapril-2026"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “9.3 Critical Compaction/Memory Fixes (March–April 2026)”</span></a></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Bug</th><th>Impact</th><th>Fixed in</th></tr></thead><tbody><tr><td>Nested CLAUDE.md re-injected dozens of times</td><td>Massive token waste</td><td>v2.1.89</td></tr><tr><td>Progress messages surviving compaction</td><td>Context bloat</td><td>v2.1.89</td></tr><tr><td>Background subagents invisible after compaction</td><td>Duplicate agent spawning</td><td>v2.1.89</td></tr><tr><td>Deferred tools losing input schemas</td><td>Unusable tools until re-discovery</td><td>v2.1.89</td></tr><tr><td>Autocompact thrash loop</td><td>Infinite token burn</td><td>v2.1.89 (circuit breaker)</td></tr><tr><td><code dir="auto">--resume</code> truncating recent history</td><td>Lost context + cache miss</td><td>v2.1.92</td></tr></tbody></table>
+<div class="sl-heading-wrapper level-h3"><h3 id="94-long-running-sessions">9.4 Long-Running Sessions</h3><a class="sl-anchor-link" href="#94-long-running-sessions"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “9.4 Long-Running Sessions”</span></a></div>
+<p>Anthropic’s scientific computing guide recommends tmux on a compute node for multi-day sessions:</p>
+<div class="expressive-code"><figure class="frame is-terminal not-content"><figcaption class="header"><span class="title"></span><span class="sr-only">Terminal window</span></figcaption><pre data-language="bash"><code><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">tmux</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">new-session</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">-s</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">claude-research</span></div></div><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">claude</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">--model</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">opus</span></div></div><div class="ec-line"><div class="code"><span style="--0:#919F9F;--1:#5F636F"># Detach: Ctrl+B, D | Reattach: tmux attach -t claude-research</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#919F9F;--1:#5F636F"># Best practices:</span></div></div><div class="ec-line"><div class="code"><span style="--0:#919F9F;--1:#5F636F"># 1. Commit after every meaningful unit of work</span></div></div><div class="ec-line"><div class="code"><span style="--0:#919F9F;--1:#5F636F"># 2. CHANGELOG.md = portable memory (including failed approaches)</span></div></div><div class="ec-line"><div class="code"><span style="--0:#919F9F;--1:#5F636F"># 3. Tests = continuous verification oracle</span></div></div><div class="ec-line"><div class="code"><span style="--0:#919F9F;--1:#5F636F"># 4. /compact with focus when context fills</span></div></div><div class="ec-line"><div class="code"><span style="--0:#919F9F;--1:#5F636F"># 5. /loop N for iterative tasks</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="tmux new-session -s claude-researchclaude --model opus"><div></div></button></div></figure></div>
+<p><strong>Auto-memory:</strong> Stored in <code dir="auto">~/.claude/projects/&#x3C;project>/memory/MEMORY.md</code>. Truncated at 200 lines / 25KB at session start. Memory timestamps (March 2026) enable freshness reasoning.</p>
+<hr>
+<div class="sl-heading-wrapper level-h2"><h2 id="10-batch-processing--scheduled-tasks">10. Batch Processing &#x26; Scheduled Tasks</h2><a class="sl-anchor-link" href="#10-batch-processing--scheduled-tasks"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “10. Batch Processing &#x26; Scheduled Tasks”</span></a></div>
+<div class="sl-heading-wrapper level-h3"><h3 id="101-the-batch-skill">10.1 The <code dir="auto">/batch</code> Skill</h3><a class="sl-anchor-link" href="#101-the-batch-skill"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “10.1 The /batch Skill”</span></a></div>
+<p>Orchestrates large-scale codebase changes through three phases:</p>
+<p><strong>Phase 1 — Research &#x26; Plan:</strong> Explore agents research scope → decompose into 5–30 units → present plan for approval.</p>
+<p><strong>Phase 2 — Parallel Execution:</strong> 1 background agent per unit in isolated git worktrees → implement → test → commit → push → open PR. Up to 10 parallel agents.</p>
+<p><strong>Phase 3 — Tracking:</strong> Live status table. Failed units don’t affect others.</p>
+<p>Runs <strong>up to 10× faster</strong> than sequential prompts. Best for migrations, convention enforcement, dependency swaps, test generation.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="102-cloud-scheduled-tasks">10.2 Cloud Scheduled Tasks</h3><a class="sl-anchor-link" href="#102-cloud-scheduled-tasks"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “10.2 Cloud Scheduled Tasks”</span></a></div>
+<p>Created via <code dir="auto">claude.ai/code/scheduled</code> or <code dir="auto">/schedule</code>. Clones repo fresh each run, creates own session, operates from default branch. Minimum interval: 1 hour. CLI task expiry: 3 days. Each run = full session cost.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="103-cloud-auto-fix">10.3 Cloud Auto-Fix</h3><a class="sl-anchor-link" href="#103-cloud-auto-fix"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “10.3 Cloud Auto-Fix”</span></a></div>
+<p>Subscribes to GitHub PR events. CI failure → investigate → fix → push → explain. Clear review comment → implement. Ambiguous → asks clarification. Each cycle = full API call.</p>
+<hr>
+<div class="sl-heading-wrapper level-h2"><h2 id="11-top-10-cost-optimizations-ranked-by-impact">11. Top 10 Cost Optimizations (Ranked by Impact)</h2><a class="sl-anchor-link" href="#11-top-10-cost-optimizations-ranked-by-impact"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “11. Top 10 Cost Optimizations (Ranked by Impact)”</span></a></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Rank</th><th>Optimization</th><th>Impact</th><th>Command</th><th>CCA-F Domain</th></tr></thead><tbody><tr><td>1</td><td>Default to Sonnet 4.6</td><td>80% input cost reduction vs Opus</td><td><code dir="auto">/model sonnet</code></td><td>D2</td></tr><tr><td>2</td><td>Set MAX_THINKING_TOKENS=10000</td><td>~70% reduction in thinking costs</td><td><code dir="auto">export MAX_THINKING_TOKENS=10000</code></td><td>D2</td></tr><tr><td>3</td><td><code dir="auto">/clear</code> between unrelated tasks</td><td>Prevents stale context compounding</td><td><code dir="auto">/clear</code></td><td>D5</td></tr><tr><td>4</td><td>Write specific prompts naming files</td><td>3-turn vs 12-turn = 50K+ tokens</td><td>Name exact files + outcomes</td><td>D3</td></tr><tr><td>5</td><td>Use opusplan alias</td><td>Opus design + Sonnet implementation</td><td><code dir="auto">/model opusplan</code></td><td>D2</td></tr><tr><td>6</td><td>Subagent model → Haiku globally</td><td>~93% cheaper exploration</td><td><code dir="auto">export CLAUDE_CODE_SUBAGENT_MODEL=haiku</code></td><td>D1</td></tr><tr><td>7</td><td>CLAUDE.md under 200 lines</td><td>Saves tokens every turn</td><td>Move to <code dir="auto">.claude/commands/</code></td><td>D2</td></tr><tr><td>8</td><td>ToolSearch (automatic)</td><td>85%+ reduction in tool tokens</td><td>Auto when MCP > 10K tokens</td><td>D4</td></tr><tr><td>9</td><td>Effort: low for simple tasks</td><td>Skips thinking entirely</td><td>Frontmatter: <code dir="auto">effort: low</code></td><td>D2</td></tr><tr><td>10</td><td><code dir="auto">--bare</code> for CI/scripts</td><td>~14% faster, minimal overhead</td><td><code dir="auto">claude -p '...' --bare</code></td><td>D2</td></tr></tbody></table>
+<hr>
+<div class="sl-heading-wrapper level-h2"><h2 id="12-cca-f-exam-relevance">12. CCA-F Exam Relevance</h2><a class="sl-anchor-link" href="#12-cca-f-exam-relevance"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “12. CCA-F Exam Relevance”</span></a></div>
+<p><strong>Structure:</strong> 60 questions in 120 minutes. 6 scenarios available, 4 randomly selected per sitting.</p>
+<p><strong>Domain weights:</strong> D1 Agentic Architecture (25%), D2 Claude Code Config (20%), D3 Prompt Engineering (20%), D4 Tool Design &#x26; MCP (20%), D5 Context Management (15%).</p>
+<p><strong>Key exam principles:</strong></p>
+<p>The exam rewards <strong>programmatic enforcement over prompt-based guidance</strong> — hooks, gates, and interceptors are deterministic while prompts are probabilistic.</p>
+<p><strong>Frequently tested concepts from this guide:</strong></p>
+<ol>
+<li>Subagents do NOT inherit context — all information must be explicitly passed</li>
+<li>Tool descriptions are the primary routing mechanism, not function names</li>
+<li>Keep tools to 4–5 per agent for optimal selection accuracy</li>
+<li>ToolSearch places tool_reference blocks in conversation history (not prefix)</li>
+<li>The Batch API is a latency trade with 50% savings but no SLA</li>
+<li>Prompt caching is per-model — switching models invalidates the cache</li>
+<li>CLAUDE.md loads into every API call — bloated files compound cost</li>
+<li>The <code dir="auto">--resume</code> bug connected ToolSearch, caching, and session management</li>
+<li>Auto-compaction triggers at ~83.5% with a circuit breaker after 3 thrash loops</li>
+<li><code dir="auto">opusplan</code> routes Plan-mode turns to Opus while keeping main session on Sonnet</li>
+</ol>
+<hr>
+<p><em>Sources: <a href="https://code.claude.com/docs/en/">Claude Code Docs</a>, <a href="https://platform.claude.com/docs/en/about-claude/pricing">Claude API Pricing</a>, <a href="https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md">Claude Code Changelog</a>, <a href="https://www.anthropic.com/research/long-running-Claude">Anthropic Scientific Computing Guide</a>, Claude Code Camp, community analysis.</em></p> </div> <footer class="sl-flex astro-3yyafb3n"> <div class="meta sl-flex astro-3yyafb3n">   </div> <div class="pagination-links print:hidden astro-u2l5gyhi" dir="ltr"> <a href="/ai-lab/claude-code/claude-code-efficiency-guide/" rel="prev" class="astro-u2l5gyhi"> <svg aria-hidden="true" class="astro-u2l5gyhi astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17 11H9.41l3.3-3.29a1.004 1.004 0 1 0-1.42-1.42l-5 5a1 1 0 0 0-.21.33 1 1 0 0 0 0 .76 1 1 0 0 0 .21.33l5 5a1.002 1.002 0 0 0 1.639-.325 1 1 0 0 0-.219-1.095L9.41 13H17a1 1 0 0 0 0-2Z"/></svg> <span class="astro-u2l5gyhi"> Previous <br class="astro-u2l5gyhi"> <span class="link-title astro-u2l5gyhi">Claude Code — Context, Cost &amp; Token Efficiency Guide</span> </span> </a> <a href="/ai-lab/claude-code/claude-code-reference/" rel="next" class="astro-u2l5gyhi"> <svg aria-hidden="true" class="astro-u2l5gyhi astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg> <span class="astro-u2l5gyhi"> Next <br class="astro-u2l5gyhi"> <span class="link-title astro-u2l5gyhi">The Definitive Claude Code Reference Guide</span> </span> </a> </div>  </footer> </div> </div>  </main> </div> </div> </div> </div> </body></html>
