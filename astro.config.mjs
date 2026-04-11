@@ -112,6 +112,22 @@ export default defineConfig({
     });
   }
 
+  // ── Left nav scroll sync ─────────────────────────────────────
+  // When navigating to a page, ensure the active sidebar link is scrolled into view.
+  // Starlight marks the current page link with aria-current="page".
+  function scrollNavToActive() {
+    var nav = document.querySelector('.sidebar-pane');
+    if (!nav) return;
+    var active = nav.querySelector('a[aria-current="page"]');
+    if (!active) return;
+    var navRect = nav.getBoundingClientRect();
+    var aRect = active.getBoundingClientRect();
+    var visible = aRect.top >= navRect.top && aRect.bottom <= navRect.bottom;
+    if (!visible) {
+      active.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }
+
   function setup() {
     ['sl-nav-toggle','sl-toc-toggle'].forEach(function(id) {
       var el = document.getElementById(id);
@@ -119,6 +135,8 @@ export default defineConfig({
     });
     applyState();
     injectToggles();
+    // Scroll left nav to active page link
+    setTimeout(scrollNavToActive, 100);
     // Delay slightly so starlight-toc custom element can finish its own init
     setTimeout(setupTocScrollSync, 300);
   }
