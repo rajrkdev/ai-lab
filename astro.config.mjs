@@ -137,7 +137,13 @@ export default defineConfig({
 				{ label: 'Claude Code', autogenerate: { directory: 'claude-code' } },
 				{ label: 'RAG Guides', autogenerate: { directory: 'rag' } },
 				{ label: 'BERT Architectures', autogenerate: { directory: 'bert' } },
-				{ label: 'LangChain Reference', autogenerate: { directory: 'langchain' } },
+				{
+					label: 'LangChain Reference',
+					items: [
+						{ label: 'Deep Reference Guide', link: '/ai-lab/langchain/langchain-reference/' },
+						{ label: 'Mastery General Guide', link: '/ai-lab/langchain/langchain_mastery_general.html', attrs: { target: '_blank' } },
+					],
+				},
 				{ label: 'Cert Prep', autogenerate: { directory: 'cert' } },
 			],
 		}),
