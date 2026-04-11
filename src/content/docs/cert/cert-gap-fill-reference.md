@@ -1,5 +1,7 @@
 ---
 title: "Gap-Fill Study Reference"
+sidebar:
+  order: 9
 ---
 
 # Claude Certified Architect — Complete Gap-Fill Study Reference

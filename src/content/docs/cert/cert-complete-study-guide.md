@@ -1,5 +1,7 @@
 ---
 title: "Complete Study Guide"
+sidebar:
+  order: 8
 ---
 
 # Claude Certified Architect – Foundations: Complete Study Guide
