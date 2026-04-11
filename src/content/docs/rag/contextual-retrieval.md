@@ -721,7 +721,7 @@ Without caching, generating context for 100 chunks from a 100-page document send
 
 ## See Also
 
-- [Vectorless RAG Hub](./pageindex-vectorless-rag) — overview of all vectorless approaches
-- [BM25 & Sparse Retrieval](./bm25-sparse-retrieval) — how BM25 scoring works under the hood
-- [Retrieval Strategies](./retrieval-strategies) — hybrid, HyDE, MMR, reranking pipelines
-- [Advanced RAG](./advanced-rag) — FLARE, RAPTOR, CRAG, query decomposition
+- [Vectorless RAG Hub](../pageindex-vectorless-rag) — overview of all vectorless approaches
+- [BM25 & Sparse Retrieval](../bm25-sparse-retrieval) — how BM25 scoring works under the hood
+- [Retrieval Strategies](../retrieval-strategies) — hybrid, HyDE, MMR, reranking pipelines
+- [Advanced RAG](../advanced-rag) — FLARE, RAPTOR, CRAG, query decomposition

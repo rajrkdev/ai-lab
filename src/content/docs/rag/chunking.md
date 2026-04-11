@@ -294,6 +294,6 @@ chunk = Document(
 
 ## See Also
 
-- [Embedding Models](./embedding-models) — the model receiving your chunks
-- [Retrieval Strategies](./retrieval-strategies) — how chunks are retrieved once embedded
-- [Naive RAG Explainer](./naive-rag) — see chunking and retrieval in an interactive walkthrough
+- [Embedding Models](../embedding-models) — the model receiving your chunks
+- [Retrieval Strategies](../retrieval-strategies) — how chunks are retrieved once embedded
+- [Naive RAG Explainer](../naive-rag) — see chunking and retrieval in an interactive walkthrough

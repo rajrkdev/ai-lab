@@ -335,7 +335,7 @@ answer = llm.invoke(build_prompt(user_question, final_docs))
 
 ## See Also
 
-- [Embedding Models](./embedding-models) — choosing the bi-encoder
-- [Vector Stores](./vector-stores) — FAISS, Weaviate, Qdrant implementations
-- [Advanced RAG](./advanced-rag) — query rewriting, FLARE, step-back prompting
+- [Embedding Models](../embedding-models) — choosing the bi-encoder
+- [Vector Stores](../vector-stores) — FAISS, Weaviate, Qdrant implementations
+- [Advanced RAG](../advanced-rag) — query rewriting, FLARE, step-back prompting
 - [BERT in RAG](../bert/bert-in-rag) — bi-encoder vs cross-encoder architecture details

@@ -222,5 +222,5 @@ print(enc.offset_mapping)  # [(0,5), (6,11)] — character spans
 
 ## See Also
 
-- [BERT Architecture](./architecture) — how token IDs flow through the encoder
-- [Pre-training Objectives](./pretraining) — the \[MASK\] token's role in MLM
+- [BERT Architecture](../architecture) — how token IDs flow through the encoder
+- [Pre-training Objectives](../pretraining) — the \[MASK\] token's role in MLM

@@ -333,6 +333,6 @@ def get_optimizer_grouped_parameters(model, learning_rate=2e-5, weight_decay=0.0
 
 ## See Also
 
-- [BERT Architecture](./architecture) — understanding the encoder that produces `h_[CLS]` and per-token vectors
-- [BERT Variants](./variants) — RoBERTa, DistilBERT, ALBERT, DeBERTa as drop-in alternatives
-- [BERT in RAG](./bert-in-rag) — using BERT-family models for retrieval and reranking
+- [BERT Architecture](../architecture) — understanding the encoder that produces `h_[CLS]` and per-token vectors
+- [BERT Variants](../variants) — RoBERTa, DistilBERT, ALBERT, DeBERTa as drop-in alternatives
+- [BERT in RAG](../bert-in-rag) — using BERT-family models for retrieval and reranking

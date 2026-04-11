@@ -235,6 +235,6 @@ In production RAG, the standard pattern is: **SBERT bi-encoder retrieval → cro
 
 ## See Also
 
-- [BERT in RAG](./bert-in-rag) — bi-encoder + cross-encoder reranking pipeline in detail
-- [BERT Variants](./variants) — which base model to use for SBERT fine-tuning
+- [BERT in RAG](../bert-in-rag) — bi-encoder + cross-encoder reranking pipeline in detail
+- [BERT Variants](../variants) — which base model to use for SBERT fine-tuning
 - [Embedding Models Comparison](../rag/embedding-models) — SBERT vs. dedicated embedding APIs

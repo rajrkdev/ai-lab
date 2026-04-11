@@ -347,6 +347,6 @@ response = rag_chain.invoke("What is RAG?")
 
 ## See Also
 
-- [Advanced RAG](./advanced-rag) — improvements likely to raise context precision and recall
-- [Retrieval Strategies](./retrieval-strategies) — targeting specific retrieval failures
-- [Production RAG](./production-rag) — evaluation in CI/CD pipelines and monitoring in production
+- [Advanced RAG](../advanced-rag) — improvements likely to raise context precision and recall
+- [Retrieval Strategies](../retrieval-strategies) — targeting specific retrieval failures
+- [Production RAG](../production-rag) — evaluation in CI/CD pipelines and monitoring in production

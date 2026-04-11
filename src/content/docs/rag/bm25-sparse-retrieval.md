@@ -803,7 +803,7 @@ def postgres_fts_rag(
 
 ## See Also
 
-- [Vectorless RAG Hub](./pageindex-vectorless-rag) — all vectorless approaches overview
-- [Contextual Retrieval](./contextual-retrieval) — adding context to chunks, BM25 + contextual hybrid
-- [Retrieval Strategies](./retrieval-strategies) — dense, hybrid, HyDE, reranking
-- [GraphRAG](./graph-rag) — entity graph retrieval
+- [Vectorless RAG Hub](../pageindex-vectorless-rag) — all vectorless approaches overview
+- [Contextual Retrieval](../contextual-retrieval) — adding context to chunks, BM25 + contextual hybrid
+- [Retrieval Strategies](../retrieval-strategies) — dense, hybrid, HyDE, reranking
+- [GraphRAG](../graph-rag) — entity graph retrieval

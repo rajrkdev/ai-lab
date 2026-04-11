@@ -130,7 +130,7 @@ docs = multi_retriever.invoke("How does BERT's attention mechanism work?")
 
 ### 5. Reranking
 
-Retrieve a broad set (top-50) with a fast method, then score each candidate with a cross-encoder and return only top-5. See [Retrieval Strategies — Reranking](./retrieval-strategies#7-cross-encoder-reranking) for full implementation.
+Retrieve a broad set (top-50) with a fast method, then score each candidate with a cross-encoder and return only top-5. See [Retrieval Strategies — Reranking](../retrieval-strategies#7-cross-encoder-reranking) for full implementation.
 
 ```
 Hybrid retrieval → top-50 candidates (fast)
@@ -333,7 +333,7 @@ User Query
 
 ## See Also
 
-- [Retrieval Strategies](./retrieval-strategies) — dense, sparse, hybrid, MMR, HyDE
-- [Agentic RAG](./agentic-rag) — Self-RAG, CRAG, tool-calling, and routing
-- [Evaluation](./evaluation) — how to measure if advanced optimizations actually help
-- [RAG Types](./rag-types) — interactive comparison of naive vs advanced vs agentic
+- [Retrieval Strategies](../retrieval-strategies) — dense, sparse, hybrid, MMR, HyDE
+- [Agentic RAG](../agentic-rag) — Self-RAG, CRAG, tool-calling, and routing
+- [Evaluation](../evaluation) — how to measure if advanced optimizations actually help
+- [RAG Types](../rag-types) — interactive comparison of naive vs advanced vs agentic

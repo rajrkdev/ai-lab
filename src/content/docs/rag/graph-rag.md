@@ -898,8 +898,8 @@ def leiden_communities(G: nx.DiGraph, resolution: float = 1.0) -> list[list[str]
 
 ## See Also
 
-- [Vectorless RAG Hub](./pageindex-vectorless-rag) — all vectorless approaches overview
-- [BM25 & Sparse Retrieval](./bm25-sparse-retrieval) — keyword retrieval for exact term matching
-- [Contextual Retrieval](./contextual-retrieval) — Anthropic's hybrid chunk contextualization
-- [Agentic RAG](./agentic-rag) — multi-step retrieval agents that can combine graph + vector
-- [Advanced RAG](./advanced-rag) — RAPTOR (hierarchical summaries, similar to GraphRAG communities)
+- [Vectorless RAG Hub](../pageindex-vectorless-rag) — all vectorless approaches overview
+- [BM25 & Sparse Retrieval](../bm25-sparse-retrieval) — keyword retrieval for exact term matching
+- [Contextual Retrieval](../contextual-retrieval) — Anthropic's hybrid chunk contextualization
+- [Agentic RAG](../agentic-rag) — multi-step retrieval agents that can combine graph + vector
+- [Advanced RAG](../advanced-rag) — RAPTOR (hierarchical summaries, similar to GraphRAG communities)

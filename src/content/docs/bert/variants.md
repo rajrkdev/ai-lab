@@ -255,6 +255,6 @@ Domain-specific tasks?
 
 ## See Also
 
-- [BERT Architecture](./architecture) — baseline architecture all variants build on
-- [Sentence-BERT](./sbert) — variants optimized for semantic similarity and embeddings
-- [BERT in RAG](./bert-in-rag) — which BERT family model to use for retrieval vs. reranking
+- [BERT Architecture](../architecture) — baseline architecture all variants build on
+- [Sentence-BERT](../sbert) — variants optimized for semantic similarity and embeddings
+- [BERT in RAG](../bert-in-rag) — which BERT family model to use for retrieval vs. reranking

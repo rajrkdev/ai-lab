@@ -259,6 +259,6 @@ Highest-accuracy domain-specific:
 
 ## See Also
 
-- [Sentence-BERT](./sbert) — bi-encoder architecture and training in detail
+- [Sentence-BERT](../sbert) — bi-encoder architecture and training in detail
 - [Retrieval Strategies](../rag/retrieval-strategies) — dense, sparse, hybrid retrieval patterns
 - [Advanced RAG](../rag/advanced-rag) — how reranking fits into the full advanced pipeline

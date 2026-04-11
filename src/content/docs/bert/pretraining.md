@@ -263,6 +263,6 @@ trainer.train()
 
 ## See Also
 
-- [BERT Architecture](./architecture) — how the encoder produces `[CLS]` and token representations
-- [WordPiece Tokenization](./tokenization) — how raw text is converted to input IDs
-- [Fine-tuning BERT](./finetuning) — adapting the pre-trained model to downstream tasks
+- [BERT Architecture](../architecture) — how the encoder produces `[CLS]` and token representations
+- [WordPiece Tokenization](../tokenization) — how raw text is converted to input IDs
+- [Fine-tuning BERT](../finetuning) — adapting the pre-trained model to downstream tasks

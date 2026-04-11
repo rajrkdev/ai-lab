@@ -444,6 +444,6 @@ jobs:
 
 ## See Also
 
-- [Evaluation](./evaluation) — RAGAS metrics and testing patterns
-- [Retrieval Strategies](./retrieval-strategies) — the retrieval optimizations that most affect latency
-- [Agentic RAG](./agentic-rag) — when latency trade-offs of agentic approaches are acceptable
+- [Evaluation](../evaluation) — RAGAS metrics and testing patterns
+- [Retrieval Strategies](../retrieval-strategies) — the retrieval optimizations that most affect latency
+- [Agentic RAG](../agentic-rag) — when latency trade-offs of agentic approaches are acceptable

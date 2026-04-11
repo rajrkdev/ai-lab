@@ -1047,9 +1047,9 @@ def load_index(pdf_path: str) -> tuple[list[Page], str] | None:
 
 ## See Also
 
-- [Contextual Retrieval](./contextual-retrieval) — Anthropic's Nov 2024 research: add context to chunks, 67% fewer retrieval failures
-- [BM25 & Sparse Retrieval](./bm25-sparse-retrieval) — keyword scoring, SPLADE, Elasticsearch, hybrid RRF
-- [GraphRAG](./graph-rag) — Microsoft GraphRAG (2024), LightRAG, entity relationship retrieval
-- [Retrieval Strategies](./retrieval-strategies) — dense, hybrid, HyDE, MMR, cross-encoder reranking
-- [Advanced RAG](./advanced-rag) — RAPTOR, FLARE, CRAG, query decomposition
-- [Agentic RAG](./agentic-rag) — multi-step retrieval agents
+- [Contextual Retrieval](../contextual-retrieval) — Anthropic's Nov 2024 research: add context to chunks, 67% fewer retrieval failures
+- [BM25 & Sparse Retrieval](../bm25-sparse-retrieval) — keyword scoring, SPLADE, Elasticsearch, hybrid RRF
+- [GraphRAG](../graph-rag) — Microsoft GraphRAG (2024), LightRAG, entity relationship retrieval
+- [Retrieval Strategies](../retrieval-strategies) — dense, hybrid, HyDE, MMR, cross-encoder reranking
+- [Advanced RAG](../advanced-rag) — RAPTOR, FLARE, CRAG, query decomposition
+- [Agentic RAG](../agentic-rag) — multi-step retrieval agents

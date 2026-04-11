@@ -353,7 +353,7 @@ app = workflow.compile()
 
 ## See Also
 
-- [Advanced RAG](./advanced-rag) — pre/post retrieval optimizations (simpler, no agent required)
-- [Retrieval Strategies](./retrieval-strategies) — underlying retrieval mechanisms used by agents
-- [Evaluation](./evaluation) — measuring whether agentic approaches actually improve scores
-- [RAG Types](./rag-types) — interactive side-by-side architecture comparison
+- [Advanced RAG](../advanced-rag) — pre/post retrieval optimizations (simpler, no agent required)
+- [Retrieval Strategies](../retrieval-strategies) — underlying retrieval mechanisms used by agents
+- [Evaluation](../evaluation) — measuring whether agentic approaches actually improve scores
+- [RAG Types](../rag-types) — interactive side-by-side architecture comparison

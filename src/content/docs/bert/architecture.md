@@ -201,6 +201,6 @@ Self-attention is $O(n^2 \cdot d)$ in compute and $O(n^2)$ in memory (the attent
 
 ## See Also
 
-- [WordPiece Tokenization](./tokenization) — how text is converted to token IDs
-- [Pre-training Objectives](./pretraining) — MLM and NSP training details
-- [BERT Variants](./variants) — RoBERTa, DistilBERT, ALBERT, DeBERTa
+- [WordPiece Tokenization](../tokenization) — how text is converted to token IDs
+- [Pre-training Objectives](../pretraining) — MLM and NSP training details
+- [BERT Variants](../variants) — RoBERTa, DistilBERT, ALBERT, DeBERTa

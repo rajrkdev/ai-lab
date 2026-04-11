@@ -541,8 +541,8 @@ np.save("corpus_embeddings.npy", all_embeddings)
 
 ## See Also
 
-- [Chunking Strategies](./chunking) — preparing text before embedding
-- [Vector Stores](./vector-stores) — storing and indexing embeddings
-- [Retrieval Strategies](./retrieval-strategies) — dense, sparse, and hybrid retrieval
-- [BM25 & Sparse Retrieval](./bm25-sparse-retrieval) — BGE-M3's sparse output for hybrid
+- [Chunking Strategies](../chunking) — preparing text before embedding
+- [Vector Stores](../vector-stores) — storing and indexing embeddings
+- [Retrieval Strategies](../retrieval-strategies) — dense, sparse, and hybrid retrieval
+- [BM25 & Sparse Retrieval](../bm25-sparse-retrieval) — BGE-M3's sparse output for hybrid
 - [BERT in RAG](../bert/bert-in-rag) — the architecture behind most open-source embedding models

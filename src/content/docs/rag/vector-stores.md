@@ -412,6 +412,6 @@ Custom ANN research:                  FAISS (library)
 
 ## See Also
 
-- [Embedding Models](./embedding-models) — what generates the vectors stored here
-- [Retrieval Strategies](./retrieval-strategies) — dense, sparse, hybrid, and reranking patterns
-- [Production RAG](./production-rag) — caching, scaling, and cost optimization
+- [Embedding Models](../embedding-models) — what generates the vectors stored here
+- [Retrieval Strategies](../retrieval-strategies) — dense, sparse, hybrid, and reranking patterns
+- [Production RAG](../production-rag) — caching, scaling, and cost optimization
