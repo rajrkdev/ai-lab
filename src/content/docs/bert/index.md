@@ -36,6 +36,8 @@ BERT (Bidirectional Encoder Representations from Transformers) is the foundation
 | DistilBERT | 6 | 768 | 12 | 66 M |
 | ALBERT-base | 12 (shared) | 768 | 12 | 12 M |
 | DeBERTa-v3-base | 12 | 768 | 12 | 86 M |
+| **ModernBERT-base** | **22** | **768** | **12** | **149 M** |
+| **ModernBERT-large** | **28** | **1024** | **16** | **395 M** |
 
 ### Key Formulas
 

@@ -2,7 +2,7 @@
 title: "BM25 & Sparse Retrieval"
 description: How BM25 keyword scoring works (with the math explained simply), when it beats vector search, SPLADE learned sparse retrieval, Elasticsearch/Typesense integration, and hybrid RRF fusion — with Anthropic SDK and LangChain implementations.
 sidebar:
-  order: 15
+  order: 17
 ---
 
 ## What Is Sparse Retrieval?

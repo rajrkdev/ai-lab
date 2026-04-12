@@ -708,8 +708,13 @@ claude plugin disable old-plugin             # disable
 |---------|---------|---------|
 | `/branch` | v2.1.80 | Create conversation branch (alias: `/fork`) |
 | `/color` | v2.1.75 | Set Claude's response accent color |
+| `/effort` | v2.1.72+ | Set effort level (`low` / `medium` / `high`) for current session |
+| `/loop` | v2.1.x | Iterate on a task repeatedly until a condition is met |
+| `/simplify` | v2.1.x | Ask Claude to produce a simpler version of the previous response |
+| `/batch` | v2.1.x | Run multiple commands in sequence without re-prompting |
+| `/remote-control` | v2.1.x | Allow external process to send commands to running session |
 | `/powerup` | v2.1.90 | Load all available skills into context |
-| `/team-onboarding` | v2.1.101 | Generate onboarding guide for your codebase |
+| `/team-onboarding` | v2.1.104 | Generate onboarding guide for your codebase |
 | `/reload-plugins` | v2.0.12+ | Hot-reload plugins without restarting |
 | `/todos` | — | View and manage current task list |
 
@@ -728,6 +733,134 @@ JSON fragments are merged in lexicographic order. Managed settings have **highes
 - **macOS:** MDM plist (`com.anthropic.claudecode` preference domain)
 - **Windows:** Registry keys under `HKLM\SOFTWARE\Anthropic\ClaudeCode` (v2.1.51)
 - **`forceRemoteSettingsRefresh`** policy pulls latest managed settings on every session start (v2.1.92)
+
+### Hook Events — Complete Reference (v2.1.76+)
+
+Hooks let you inject deterministic logic at specific lifecycle points — no context window cost. All hooks run in your process, not in Claude's context.
+
+| Event | When it fires | Typical use |
+|---|---|---|
+| `PreToolUse` | Before any tool call | Block disallowed commands, audit logging |
+| `PostToolUse` | After any tool call | Normalize outputs, trigger side-effects |
+| `Notification` | When Claude sends a user-facing notification | Intercept, modify, or suppress alerts |
+| `Stop` | When Claude exits | Cleanup, final logging |
+| `SubagentStop` | When a forked subagent exits | Collect subagent results |
+| `PostCompact` | After context compaction runs | Re-inject lost critical instructions |
+| `CwdChanged` | When working directory changes | Update path-specific rules, reset state |
+| `FileChanged` | When a file is written or deleted | Trigger lint, run tests, update index |
+| `ConfigChange` | When settings or CLAUDE.md are reloaded | Validate new config, log changes |
+| `InstructionsLoaded` | After each CLAUDE.md / rules file loads | Audit or transform instructions |
+| `Elicitation` | When an MCP server sends `elicitation/create` | UI prompt, validate/gate structured input |
+
+**Exam-critical hooks:**
+- **`PostCompact`**: fires after `/compact` — use to re-inject persistent rules that may not survive compaction (Rule 10: `/compact` after `/compact` = rules may be lost)
+- **`PreToolUse`**: the deterministic safety gate — Rule 3: Hooks > Prompts for compliance/security
+- **`Elicitation`**: v2.1.76+ only — MCP servers request structured user input mid-execution
+
+```json
+// .claude/settings.json — register hooks
+{
+  "hooks": {
+    "PostCompact": [
+      {
+        "type": "command",
+        "command": "cat .claude/persistent-rules.md >> /tmp/hook-inject.txt && echo 'RULES RELOADED'"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "type": "command",
+        "command": "python .claude/hooks/security_gate.py",
+        "timeout": 5000
+      }
+    ],
+    "FileChanged": [
+      {
+        "type": "http",
+        "url": "http://localhost:8080/on-file-changed",
+        "method": "POST"
+      }
+    ]
+  }
+}
+```
+
+### Skills = Slash Commands Merger (v2.1.3)
+
+**Exam fact:** Before v2.1.3, skills and slash commands were two separate systems. After v2.1.3, they are **unified**: every skill is automatically available as a slash command using the `name` field from its `SKILL.md` frontmatter.
+
+```
+Before v2.1.3:
+  .claude/skills/analyze-codebase/SKILL.md  → invoked as a "skill"
+  .claude/commands/review.md               → invoked as /review
+
+After v2.1.3:
+  .claude/skills/analyze-codebase/SKILL.md  → also invoked as /analyze-codebase
+  .claude/commands/review.md               → still works as /review
+  BOTH approaches create slash commands — no duplication needed
+```
+
+**Decision rule:** Use `skills/` (with full SKILL.md frontmatter) for complex reusable workflows with tool restrictions and context isolation. Use `commands/` for simple single-prompt shortcuts.
+
+### Auto-Memory (v2.1.59)
+
+Claude Code can **automatically save key facts** to `~/.claude/memory.md` during a session without being told to — remembering architectural decisions, team conventions, and environment details across sessions.
+
+```
+v2.1.59+:
+  User: "Our API base URL is https://api.internal.corp/v3"
+  Claude: [automatically appends to ~/.claude/memory.md]:
+    "## Project: corp-backend
+     API base URL: https://api.internal.corp/v3
+     Added: 2026-04-12"
+  
+  Next session:
+  User: "Curl the users endpoint"
+  Claude: [reads memory, uses saved URL] → curl https://api.internal.corp/v3/users
+```
+
+**Exam implication:** Auto-memory means `~/.claude/memory.md` may contain project context not explicitly set by the user. In multi-project environments, this can cause cross-contamination — use `--bare` in CI to skip auto-memory loading.
+
+### Agent Teams (Experimental)
+
+Enable with `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. Agent teams allow multiple coordinated Claude Code sessions to work on different parts of a task simultaneously, sharing state via a shared workspace.
+
+```bash
+# Enable experimental agent teams
+export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
+
+# Team coordinator spawns sub-agents
+claude -p "Implement the payment module. Use agent teams to parallelize:
+  - Agent 1: schema design
+  - Agent 2: API endpoints
+  - Agent 3: unit tests"
+```
+
+**Exam note:** This is **experimental** and may change. For exam purposes: agent teams require the env var, are distinct from the standard `Agent` tool for subagent spawning, and are designed for parallelism within a single task.
+
+### Sandbox Mode
+
+```json
+// .claude/settings.json
+{ "sandbox": { "enabled": true } }
+
+// OR
+{ "sandbox": { "enabled": true, "type": "docker", "image": "ubuntu:22.04" } }
+```
+
+Sandbox mode runs Claude Code's tool calls inside an isolated environment. File writes, shell commands, and process spawns are contained. Enabled via settings or `--sandbox` CLI flag.
+
+**Use cases:** CI pipelines where you don't want Claude to affect the host, security-sensitive codebases, multi-tenant deployments.
+
+### Current Recommended Models (April 2026)
+
+| Use Case | Model | Notes |
+|---|---|---|
+| Complex architecture, long docs | `claude-opus-4-6` | Highest capability |
+| Standard development, agentic tasks | `claude-sonnet-4-6` | Best speed/quality balance |
+| Fast classification, grading | `claude-haiku-4-5` | Low latency, low cost |
+
+**Deprecated:** Do not use `claude-opus-4-0`, `claude-opus-4-1`, or `claude-sonnet-4-5` in new Claude Code configurations — prefer the `.6` suffix versions for latest capability.
 
 ### Session Context Isolation for Review
 
@@ -882,10 +1015,19 @@ Glob patterns in `.claude/rules/` apply to matching files anywhere in the codeba
 | **Direct execution** | Simple, well-scoped, single-file changes |
 | **-p flag** | Non-interactive mode for CI/CD — the correct answer |
 | **CLAUDE_HEADLESS** | Does NOT exist — wrong answer |
-| **--batch** | Does NOT exist — wrong answer |
+| **--batch (as a flag)** | Does NOT exist as a flag — wrong answer (there is a `/batch` slash command) |
 | **--output-format json** | Machine-parseable output for CI |
 | **--json-schema** | Enforce output schema structure |
 | **Session isolation** | Independent review session > same-session self-review |
 | **Prior findings** | Include in context to avoid duplicate PR comments |
 | **Interview pattern** | Claude asks questions before implementing |
 | **Input/output examples** | Most effective for transformation tasks |
+| **Skills = Slash Commands** | v2.1.3+: unified — skills auto-register as slash commands |
+| **PostCompact hook** | Fires after context compaction — re-inject lost rules |
+| **CwdChanged / FileChanged** | v2.1.76+ lifecycle hooks — fires on directory or file change |
+| **Elicitation hook** | v2.1.76+: MCP server requests mid-execution user input |
+| **Auto-memory** | v2.1.59+: Claude auto-saves facts to `~/.claude/memory.md` |
+| **--bare** | Skip CLAUDE.md auto-discovery — use in CI for reproducibility |
+| **Sandbox mode** | `sandbox.enabled: true` — isolates tool calls in container |
+| **Agent teams** | Experimental: `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` |
+| **Current gen models** | opus-4-6, sonnet-4-6, haiku-4-5 — prefer these over .0/.1 variants |

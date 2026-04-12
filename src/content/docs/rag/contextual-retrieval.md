@@ -2,7 +2,7 @@
 title: "Contextual Retrieval"
 description: Anthropic's November 2024 technique that adds LLM-generated context to each chunk before embedding — reducing retrieval failures by 67% and 49% further with reranking, using BM25 alongside vector search.
 sidebar:
-  order: 14
+  order: 15
 ---
 
 ## The Problem This Solves

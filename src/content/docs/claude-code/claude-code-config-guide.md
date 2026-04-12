@@ -1,5 +1,7 @@
 ---
 title: CLAUDE.md vs Skills vs Rules — Architecture Guide
+sidebar:
+  order: 3
 ---
 
 # CLAUDE.md vs Skills vs Rules — Complete Architecture & Best Practices Guide
@@ -195,11 +197,14 @@ Every `.md` file in `.claude/rules/` is **automatically discovered** by Claude C
 
 ### 3.3 Path-Scoped Rules (The Key Differentiator)
 
-This is where rules become powerful. You can target rules to specific file patterns using YAML frontmatter:
+This is where rules become powerful. You can target rules to specific file patterns using YAML frontmatter. **Since v2.1.84, `paths:` accepts a YAML list of multiple glob patterns:**
 
 ```markdown
 ---
-paths: src/api/**/*.ts
+paths:
+  - "src/api/**/*.ts"
+  - "src/controllers/**/*.cs"
+  - "tests/api/**"
 ---
 
 # API Development Rules
@@ -210,7 +215,14 @@ paths: src/api/**/*.ts
 - Use pagination for list endpoints (limit + offset)
 ```
 
-**How path scoping works**: This rule **only activates when Claude works on files matching `src/api/**/*.ts`**. Your API guidelines stay completely out of context when you're editing React components, database migrations, or configuration files. This directly saves tokens and reduces noise.
+**Single path** (original v2.0.64 syntax — still works):
+```yaml
+---
+paths: src/api/**/*.ts
+---
+```
+
+**How path scoping works**: This rule **only activates when Claude works on files matching any of the listed patterns**. Your API guidelines stay completely out of context when you're editing React components, database migrations, or configuration files. This directly saves tokens and reduces noise.
 
 **Rules without `paths:` frontmatter** apply globally — they are loaded every session, just like content in CLAUDE.md.
 
@@ -481,17 +493,25 @@ Research $ARGUMENTS thoroughly:
 3. Summarize findings with specific file references
 ```
 
-### 4.8 Skills vs. Slash Commands
+### 4.8 Skills vs. Slash Commands — Now Unified (v2.1.3+)
 
-This is a common confusion point. Skills and slash commands are **different mechanisms**:
+> **v2.1.3 update:** Skills and slash commands are now **architecturally unified**. A `SKILL.md` in `.claude/skills/<name>/` automatically creates a `/name` slash command. The distinction below is now about *how* a skill is triggered — whether Claude auto-invokes it based on context, or you call it explicitly via `/name`. Both use the same file format.
 
-| Aspect | Skills | Slash Commands |
+| Aspect | Auto-invoked (skill) | User-invoked (`/slash-command`) |
 |--------|--------|----------------|
-| Invocation | **Model-invoked** — Claude autonomously decides when to use them | **User-invoked** — you explicitly type `/command` |
-| Discovery | Claude matches your request to skill descriptions | You browse/autocomplete from `/` menu |
-| Files | Folder with SKILL.md + supporting files | Single `.md` file in `.claude/commands/` |
-| Complexity | Can include scripts, templates, references | Single prompt template |
-| Context | Can run in subagents (forked context) | Always runs inline |
+| Trigger | **Model decides** — Claude matches your request to skill descriptions | **You type** `/command-name` explicitly |
+| Discovery | Claude reads `description:` frontmatter to decide | You browse/autocomplete from `/` menu |
+| Files | Folder with `SKILL.md` + supporting files | Same `SKILL.md` file in `.claude/skills/` |
+| Disable auto | Add `disable-model-invocation: true` | Not needed — user controls invocation |
+| Context | Can run in subagents (forked context) | Can run in subagents (forked context) |
+
+To **force user-only invocation** (e.g., for destructive operations), use:
+```yaml
+---
+name: deploy-production
+disable-model-invocation: true  # Won't auto-trigger; /deploy-production only
+---
+```
 
 ### 4.9 Best Practices for Skills
 
@@ -760,7 +780,7 @@ Claude Code will prompt you to choose which memory file to store it in (CLAUDE.m
 
 ### 10.2 Plugin System (Complementary Mechanism)
 
-Introduced in Claude Code **v2.1.83**, the Plugin System provides a package manager for bundling and distributing CLAUDE.md, rules, skills, MCP server configurations, and hooks as a single versioned artifact.
+Introduced in Claude Code **v2.0.12+**, the Plugin System provides a package manager for bundling and distributing CLAUDE.md, rules, skills, MCP server configurations, and hooks as a single versioned artifact.
 
 **CLI commands:**
 ```bash
@@ -795,6 +815,78 @@ Use `/reload-plugins` inside a session to pick up plugin changes without restart
 ### 10.3 Hooks (Complementary Mechanism)
 
 Hooks are shell scripts that run automatically at specific lifecycle points (before/after commands, before/after responses). They are NOT the same as rules or skills — they are code execution triggers. Use hooks for mechanical checks (file exists? lint passes?) and rules/skills for nuanced judgment.
+
+### 10.4 Auto-Memory System (v2.1.59+)
+
+Claude Code can **automatically save useful context to memory files** without you needing to explicitly ask. When Claude notices important project facts — architectural decisions, recurring conventions, key file paths — it may proactively write them to memory.
+
+**How it works:**
+- Auto-memory is stored in `~/.claude/projects/<project-hash>/memory/` by default
+- Change the location with the `autoMemoryDirectory` setting (v2.1.74)
+- Memory filenames include a last-modified timestamp (v2.1.75) for freshness reasoning
+- Truncated at 200 lines / 25KB per file when injected into context
+- Managed via `/memory` command — view, edit, or toggle auto-memory
+
+**Configure the location:**
+```json
+// ~/.claude/settings.json
+{
+  "autoMemoryDirectory": "/path/to/shared/memory"
+}
+```
+
+**Disable auto-memory:**
+```bash
+export CLAUDE_CODE_DISABLE_AUTO_MEMORY=1
+# or in settings.json: (use /memory command to toggle in-session)
+```
+
+**Quick memory during session:** Type `#` at the start of input to immediately save a note to memory:
+```
+# Use vertical slice architecture, not Clean Architecture, in this project
+```
+
+### 10.5 Enterprise Managed Settings (v2.1.51+)
+
+For enterprise deployments, Claude Code supports **multiple managed settings delivery mechanisms** — all taking highest precedence, overriding user and project settings:
+
+**File-based (all platforms):**
+```
+~/.claude/managed-settings.json          # Single file
+~/.claude/managed-settings.d/           # Drop-in directory (v2.1.83)
+  ├── 01-org-policy.json                # Merged alphabetically
+  ├── 02-approved-plugins.json          # Independent team fragments
+  └── 03-mcp-servers.json
+
+# Windows enterprise path:
+C:\Program Files\ClaudeCode\managed-settings.json
+```
+
+**macOS MDM delivery (v2.1.51+):**
+```bash
+# Deploy via Munki, Mosyle, Jamf, or manual `defaults write`
+defaults write com.anthropic.claudecode permissions.allow -array "Read" "Grep" "Glob"
+defaults write com.anthropic.claudecode sandbox.enabled -bool true
+```
+
+**Windows Registry (v2.1.51+):**
+```
+HKLM\SOFTWARE\Anthropic\ClaudeCode
+  ↳ Keys map 1:1 to settings.json fields
+  ↳ Deployed via Group Policy, SCCM, Intune
+```
+
+**Drop-in directory advantage (v2.1.83):** Separate teams can deploy independent policy fragments without overwriting each other. Files are merged alphabetically — prefix with numbers to control merge order:
+```json
+// 01-security-policy.json (Security team)
+{ "permissions": { "deny": ["Bash(rm -rf *)"] } }
+
+// 02-approved-models.json (Platform team)  
+{ "availableModels": ["claude-sonnet-4-6-*"] }
+
+// 03-mcp-servers.json (DevOps team)
+{ "mcpServers": { "internal-tools": { "..." } } }
+```
 
 **Hook types (2026):** `command` (shell script), `http` (POST to webhook endpoint — v2.1.63), `prompt` (LLM evaluation), `agent` (full subagent with tool access).
 

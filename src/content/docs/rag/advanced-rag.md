@@ -431,6 +431,284 @@ docs = proposition_retrieve("When was BERT released?", prop_store)
 
 ---
 
+---
+
+## Contextual Retrieval (Anthropic, November 2024)
+
+**Blog post:** Anthropic, "Contextual Retrieval" (November 2024)  
+**Full coverage:** See [Contextual Retrieval](../contextual-retrieval) for the complete deep-dive.
+
+Standard chunking embeds each chunk in isolation, stripping away surrounding document context. A chunk from page 47 of a contract — "The termination clause shall apply when payment obligations fail within 30 days" — contains no mention of which parties this refers to. Retrieval fails because the chunk no longer resembles queries that include those party names.
+
+**Contextual Retrieval** prepends an LLM-generated context sentence to each chunk *before embedding*:
+
+```
+[CONTEXT]: This excerpt is from an agreement between Acme Corp (Licensor)
+and Globex Inc (Licensee), in the Termination section.
+
+[CHUNK]: The termination clause shall apply when payment obligations fail
+within 30 days. In such cases, the non-defaulting party may...
+```
+
+The combined text embeds better — the entity names and section label are now part of the vector. Anthropic's tests show a **67% reduction in retrieval failures** versus standard chunking, and **49% further reduction** when BM25 is added alongside vector search.
+
+```python
+import anthropic
+
+client = anthropic.Anthropic()
+
+CONTEXT_PROMPT = """\
+<document>
+{full_document}
+</document>
+
+Here is the chunk we want to situate within the whole document:
+<chunk>
+{chunk_text}
+</chunk>
+
+Please give a short succinct context to situate this chunk within the overall document
+for the purposes of improving search retrieval of the chunk.
+Answer only with the succinct context and nothing else."""
+
+def add_context_to_chunk(chunk: str, full_document: str) -> str:
+    """Prepend an LLM-generated context to a chunk before embedding."""
+    response = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=200,
+        system=[{
+            "type": "text",
+            "text": "You are a document indexing assistant.",
+            "cache_control": {"type": "ephemeral"},   # cache the large document
+        }],
+        messages=[{
+            "role": "user",
+            "content": CONTEXT_PROMPT.format(
+                full_document=full_document,
+                chunk_text=chunk,
+            ),
+        }],
+    )
+    context_text = response.content[0].text.strip()
+    return f"{context_text}\n\n{chunk}"
+
+# Index a document with contextualised chunks
+from langchain_core.documents import Document
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.vectorstores import FAISS
+
+full_doc = open("my_document.txt").read()
+raw_chunks = ["chunk 1 text...", "chunk 2 text..."]  # your normal chunking output
+
+contextualised_docs = [
+    Document(page_content=add_context_to_chunk(chunk, full_doc))
+    for chunk in raw_chunks
+]
+
+vectorstore = FAISS.from_documents(contextualised_docs, OpenAIEmbeddings())
+```
+
+**Prompt caching impact:** Use `cache_control: ephemeral` on the full document to avoid re-tokenizing it for every chunk. For a 100-page document with 500 chunks, caching reduces contextualisation cost by ~90%.
+
+---
+
+## Late Chunking (JinaAI, October 2024)
+
+**Blog post:** JinaAI, "Late Chunking: Contextual Chunk Embeddings Using Long-Context Embedding Models" (October 2024)
+
+Standard RAG chunks first, then embeds — so each chunk embedding is computed in isolation and loses document-level context. **Late Chunking** reverses this: embed the *entire* document first (using a long-context model), then pool the resulting token embeddings into chunk-level embeddings.
+
+```
+Standard:   [Chunk 1] → embed → [vec_1]
+            [Chunk 2] → embed → [vec_2]    ← each chunk sees only itself
+            [Chunk 3] → embed → [vec_3]
+
+Late:       [Chunk 1 | Chunk 2 | Chunk 3]  ← full document fed to model
+            ↓ (long-context transformer processes whole context)
+            [tok₁, tok₂, ..., tok_n]       ← token embeddings with full context
+            ↓ (mean-pool tokens per chunk boundary)
+            [vec_1, vec_2, vec_3]           ← chunk vectors, each context-aware
+```
+
+Each chunk vector now encodes how that chunk relates to the rest of the document — without needing an LLM to write a context prefix.
+
+```python
+from transformers import AutoTokenizer, AutoModel
+import torch
+import numpy as np
+
+# Use a long-context embedding model (jina-embeddings-v3 supports 8192 tokens)
+model_name = "jinaai/jina-embeddings-v3"
+tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+model = AutoModel.from_pretrained(model_name, trust_remote_code=True)
+model.eval()
+
+def late_chunk_embed(full_document: str, chunk_boundaries: list[tuple[int, int]]) -> np.ndarray:
+    """
+    Embed a full document, then pool token embeddings per chunk.
+    
+    chunk_boundaries: list of (char_start, char_end) tuples for each chunk.
+    """
+    # Tokenize the full document
+    encoded = tokenizer(
+        full_document,
+        return_tensors="pt",
+        max_length=8192,
+        truncation=True,
+        return_offsets_mapping=True,
+    )
+    offset_mapping = encoded.pop("offset_mapping")[0].tolist()
+
+    with torch.no_grad():
+        outputs = model(**encoded)
+    
+    token_embeddings = outputs.last_hidden_state[0]  # [seq_len, hidden]
+
+    chunk_vecs = []
+    for char_start, char_end in chunk_boundaries:
+        # Find which token indices cover this chunk's character range
+        tok_indices = [
+            i for i, (t_start, t_end) in enumerate(offset_mapping)
+            if t_start >= char_start and t_end <= char_end and t_start < t_end
+        ]
+        if not tok_indices:
+            # Fall back to full document embedding if no tokens in range
+            vec = token_embeddings.mean(dim=0)
+        else:
+            vec = token_embeddings[tok_indices].mean(dim=0)
+        
+        # Normalise for cosine similarity
+        vec = vec / (vec.norm() + 1e-9)
+        chunk_vecs.append(vec.numpy())
+
+    return np.array(chunk_vecs)   # [n_chunks, hidden_dim]
+
+# Usage
+text = open("my_document.txt").read()
+chunks = ["first chunk text...", "second chunk text..."]
+
+# Build character boundaries for each chunk
+boundaries = []
+offset = 0
+for chunk in chunks:
+    start = text.find(chunk, offset)
+    if start == -1:
+        start = offset
+    end = start + len(chunk)
+    boundaries.append((start, end))
+    offset = end
+
+# Late chunk embeddings — each vector "knows" its document context
+chunk_embeddings = late_chunk_embed(text, boundaries)
+```
+
+**When to use Late Chunking:**
+- Long documents where context is critical (legal, scientific, technical)
+- Documents with co-references and implicit relationships across sections
+- When you can't afford the LLM cost of Contextual Retrieval per chunk
+
+**Trade-off:** Requires a long-context embedding model (BGE-M3, jina-embeddings-v3, Qwen3-Embedding). Not compatible with 512-token models.
+
+---
+
+## ColPali — Vision RAG for PDFs and Images (2024)
+
+**Paper:** Faysse et al., "ColPali: Efficient Document Retrieval with Vision Language Models" (2024)  
+**GitHub:** `illuin-tech/colpali`
+
+Standard PDF parsing pipelines extract text from PDFs before embedding — losing tables, figures, charts, and the visual layout that carries meaning. ColPali embeds **page images** instead of extracted text, using a vision-language model to produce multi-vector (ColBERT-style) embeddings of each page.
+
+```
+Standard PDF RAG:
+  PDF → Text extraction (pdfplumber/PyMuPDF) → Chunk text → Embed text → Vector store
+  [loses tables, figures, visual layout, multi-column formatting]
+
+ColPali:
+  PDF → Render pages as images → PaliGemma VLM → multi-vector page embeddings
+  [preserves everything — tables, charts, figures, handwriting]
+```
+
+ColPali uses **PaliGemma** (Google's vision-language model) as the document encoder and **ColBERT late interaction** for scoring — each page produces multiple patch embeddings, and retrieval scores each query token against each page patch.
+
+```python
+from colpali_engine.models import ColPali, ColPaliProcessor
+from PIL import Image
+import torch
+import pdf2image
+
+# Load ColPali model
+model = ColPali.from_pretrained(
+    "vidore/colpali-v1.2",
+    torch_dtype=torch.bfloat16,
+    device_map="cuda",
+)
+processor = ColPaliProcessor.from_pretrained("vidore/colpali-v1.2")
+
+def embed_pdf_pages(pdf_path: str) -> list[torch.Tensor]:
+    """Render each PDF page as an image and embed with ColPali."""
+    images = pdf2image.convert_from_path(pdf_path, dpi=150)
+    page_embeddings = []
+    
+    with torch.no_grad():
+        for image in images:
+            batch = processor.process_images([image]).to(model.device)
+            embedding = model(**batch)   # [1, n_patches, hidden]
+            page_embeddings.append(embedding[0].cpu())   # [n_patches, hidden]
+    
+    return page_embeddings
+
+def score_query_against_pages(
+    query: str,
+    page_embeddings: list[torch.Tensor],
+) -> list[float]:
+    """Score query against all pages using ColBERT late interaction."""
+    with torch.no_grad():
+        batch_query = processor.process_queries([query]).to(model.device)
+        query_embedding = model(**batch_query)[0].cpu()   # [n_query_tokens, hidden]
+    
+    scores = []
+    for page_emb in page_embeddings:
+        # ColBERT MaxSim: for each query token, max similarity over all page patches
+        sim = torch.einsum("qh,ph->qp", query_embedding, page_emb)
+        score = sim.max(dim=1).values.sum().item()   # sum of per-token max similarities
+        scores.append(score)
+    
+    return scores
+
+def colpali_retrieve(
+    query: str,
+    page_embeddings: list[torch.Tensor],
+    top_k: int = 3,
+) -> list[int]:
+    """Return top-k page indices sorted by ColPali score."""
+    scores = score_query_against_pages(query, page_embeddings)
+    ranked = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)
+    return ranked[:top_k]
+
+# Index a PDF
+page_embeddings = embed_pdf_pages("annual_report.pdf")
+
+# Query
+top_pages = colpali_retrieve("What was the revenue growth in Q3?", page_embeddings)
+print(f"Most relevant pages: {[p+1 for p in top_pages]}")
+```
+
+**ColPali vs. OCR-based RAG:**
+
+| Aspect | OCR Pipeline | ColPali |
+|---|---|---|
+| Tables | Loses structure | Preserves layout |
+| Charts/figures | Cannot embed | Embedded as image patches |
+| Multi-column PDFs | Often misread | Handled natively |
+| Handwritten text | Poor OCR | Better with VLM |
+| Processing cost | Low | High (GPU required) |
+| Retrieval accuracy | Moderate | High for document-dense queries |
+| Index size | Small (text only) | Large (multi-vector per page) |
+
+**Best for:** Financial reports, scientific papers, slide decks, government documents — any structured PDF where tables and figures carry meaning.
+
+---
+
 ## FLARE — Forward-Looking Active Retrieval
 
 **Paper:** Jiang et al., "Active Retrieval Augmented Generation" (2023)
@@ -606,6 +884,8 @@ User Query
 ## See Also
 
 - [Retrieval Strategies](../retrieval-strategies) — dense, sparse, hybrid, MMR, HyDE
+- [Contextual Retrieval](../contextual-retrieval) — full deep-dive on prepending LLM-generated context to chunks
 - [Agentic RAG](../agentic-rag) — Self-RAG, CRAG, tool-calling, and routing
+- [Graph RAG](../graph-rag) — knowledge-graph-based retrieval for entity reasoning
 - [Evaluation](../evaluation) — how to measure if advanced optimizations actually help
 - [RAG Types](../rag-types) — interactive comparison of naive vs advanced vs agentic

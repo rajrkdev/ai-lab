@@ -2,7 +2,7 @@
 title: Production RAG
 description: Operating RAG systems at scale — latency optimization, Anthropic prompt caching, semantic caching, vLLM, LiteLLM, async retrieval, cost control, W&B Weave observability, guardrails, and CI/CD for RAG pipelines.
 sidebar:
-  order: 12
+  order: 13
 ---
 
 > **Current as of April 2026.**

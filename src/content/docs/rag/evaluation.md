@@ -2,7 +2,7 @@
 title: RAG Evaluation
 description: Complete 2026 guide to RAG evaluation — RAGAS v0.2, DeepEval, TruLens, ARES, RAGXplain, faithfulness, answer relevancy, context precision/recall, BEIR/FinanceBench benchmarks, unit testing, and CI/CD patterns.
 sidebar:
-  order: 11
+  order: 12
 ---
 
 > **Current as of April 2026.**

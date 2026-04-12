@@ -1,6 +1,8 @@
 ---
 title: "The Definitive Claude Code Reference Guide"
 description: "Complete reference for Claude Code architecture, configuration, slash commands, tools, hooks, MCP, agents, context management, and professional workflows."
+sidebar:
+  order: 2
 ---
 
 # The Definitive Claude Code Reference Guide
@@ -63,7 +65,7 @@ Claude Code is Anthropic's **agentic CLI coding tool** that operates as a full a
 
 ### By the Numbers (April 2026)
 
-- **111,000+ GitHub stars**
+- **113,000+ GitHub stars**
 - **~195 million lines of code** processed weekly
 - **~4% of all public GitHub commits** authored by Claude Code
 - **$1B+ annualized revenue** (surpassed November 2025)
@@ -330,7 +332,7 @@ Claude Code walks **up** the directory tree from CWD, checking each directory fo
 | `/desktop` / `/app` | Continue in Desktop app |
 | `/mobile` | QR code for mobile app |
 | `/remote-control` / `/rc` | Make session controllable from claude.ai |
-| `/team-onboarding` | Generate team onboarding guide for your codebase (v2.1.101) |
+| `/team-onboarding` | Generate team onboarding guide for your codebase (v2.1.104) |
 
 ### Code & Review
 | Command | Description |
@@ -409,13 +411,62 @@ Array settings **merge** across scopes (concatenated, deduplicated). If **denied
   "autoUpdatesChannel": "stable", // stable|latest
   
   // Sandbox config
-  "sandbox": { /* filesystem/network isolation */ },
+  "sandbox": {
+    "enabled": false,
+    "network": { "allowList": [], "allowMachLookup": true, "enableWeakerNetworkIsolation": false },
+    "filesystem": { "allowWrite": [], "denyRead": [], "allowRead": [] },
+    "failIfUnavailable": false  // v2.1.83: fail if sandbox cannot start
+  },
   
   // Restrict available models
   "availableModels": ["claude-sonnet-4-6-*", "claude-opus-4-6-*"],
   
   // Response language
   "language": "en",
+  
+  // Auto-memory directory (v2.1.74) — defaults to ~/.claude/projects/<project>/memory/
+  "autoMemoryDirectory": "/path/to/memory/dir",
+  
+  // Map friendly model aliases to specific model IDs (v2.1.73)
+  "modelOverrides": {
+    "opus": "claude-opus-4-6-20260305",
+    "sonnet": "claude-sonnet-4-6-20260305"
+  },
+  
+  // Attribution model for cost tracking (e.g. per-team billing)
+  "attributionModel": "team-name",
+  
+  // Include git metadata in system prompt (v2.1.69)
+  "includeGitInstructions": true,
+  
+  // Disable skill shell execution — skill scripts run in read-only mode (v2.1.91)
+  "disableSkillShellExecution": false,
+  
+  // Prevent Claude Code from registering OS deep links (v2.1.83)
+  "disableDeepLinkRegistration": false,
+  
+  // Restrict which plugin channels are allowed (enterprise, v2.1.84)
+  "allowedChannelPlugins": ["anthropic-official"],
+  
+  // File suggestion in IDE integration (v2.0.65)
+  "fileSuggestion": true,
+  
+  // Respect .gitignore for file discovery
+  "respectGitignore": true,
+  
+  // Days before old sessions are purged from history
+  "cleanupPeriodDays": 30,
+  
+  // Override the spinner tips shown during processing (v2.1.45)
+  "spinnerTipsOverride": [],
+  
+  // Fraction (0–1) of sessions that are prompted for feedback survey
+  "feedbackSurveyRate": 0.1,
+  
+  // Sparse checkout paths when using worktree isolation (v2.1.76)
+  "worktree": {
+    "sparsePaths": ["src/", "tests/"]
+  },
   
   // MCP servers
   "mcpServers": { /* see MCP section */ }
@@ -475,6 +526,7 @@ Local Settings → allow: [...], deny: [...], ask: [...]
 | Variable | Description |
 |----------|-------------|
 | `CLAUDE_CODE_USE_BEDROCK=1` | Use Amazon Bedrock |
+| `CLAUDE_CODE_USE_MANTLE=1` | Use Amazon Bedrock powered by Mantle (v2.1.94) |
 | `CLAUDE_CODE_USE_VERTEX=1` | Use Google Vertex AI |
 | `CLAUDE_CODE_USE_FOUNDRY=1` | Use Azure AI Foundry |
 
@@ -490,24 +542,41 @@ Local Settings → allow: [...], deny: [...], ask: [...]
 | `CLAUDE_CODE_NO_FLICKER=1` | — | Flicker-free alt-screen rendering (v2.1.89) |
 | `CLAUDE_CODE_PERFORCE_MODE=1` | — | Enable Perforce VCS integration (v2.1.98) |
 | `CLAUDE_STREAM_IDLE_TIMEOUT_MS` | — | Timeout for idle streaming connections |
-| `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` | — | Env vars to scrub from subprocesses |
+| `CLAUDE_CODE_MAX_CONTEXT_TOKENS` | — | Cap context window token count |
+| `CLAUDE_CODE_MAX_OUTPUT_TOKENS` | — | Max output tokens per response |
+| `CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS` | — | Limit tokens returned from file read operations |
+| `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1` | — | Strip credentials from Bash, hook, and MCP stdio subprocess environments (v2.1.83) |
+| `CLAUDE_CODE_SCRIPT_CAPS` | — | Limit per-session script invocations (v2.1.98) |
 | `CLAUDE_CODE_DISABLE_1M_CONTEXT=1` | — | Force 200K context even when 1M is available |
+| `DISABLE_COMPACT` | — | Disable auto-compaction entirely |
 | `CLAUDE_CODE_DISABLE_CRON=1` | — | Disable CronCreate scheduling tool |
+| `CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS` | — | Override SessionEnd hook timeout (default: 10 minutes) |
+| `CLAUDE_CODE_EXIT_AFTER_STOP_DELAY` | — | Delay (ms) before exiting after Stop event |
+| `CLAUDE_CODE_SHELL` | — | Override shell used for Bash tool (e.g. `/bin/zsh`) |
+| `CLAUDE_CODE_TMPDIR` | — | Custom temp directory for Claude Code operations |
+| `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1` | — | Keep Bash tool cwd anchored to project root |
 
 ### Model Pinning
 | Variable | Description |
 |----------|-------------|
+| `ANTHROPIC_MODEL` | Override default primary model |
+| `ANTHROPIC_SMALL_FAST_MODEL` | Override the small/fast model (Haiku-equivalent) |
 | `ANTHROPIC_DEFAULT_SONNET_MODEL` | Pin Sonnet version |
 | `ANTHROPIC_DEFAULT_OPUS_MODEL` | Pin Opus version |
 | `ANTHROPIC_DEFAULT_HAIKU_MODEL` | Pin Haiku version |
+| `ANTHROPIC_CUSTOM_MODEL_OPTION` | Override the custom model dropdown option (v2.1.78) |
 | `CLAUDE_CODE_SUBAGENT_MODEL` | Override subagent model |
 
-### MCP
+### MCP & Plugins
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MCP_TIMEOUT` | — | MCP connection timeout |
+| `MCP_TIMEOUT` | — | MCP server connection timeout |
+| `MCP_TOOL_TIMEOUT` | — | Per-tool execution timeout (separate from connection) |
 | `MAX_MCP_OUTPUT_TOKENS` | 25000 | Max MCP tool output |
 | `ENABLE_TOOL_SEARCH` | true | Deferred tool loading |
+| `CLAUDE_CODE_PLUGIN_SEED_DIR` | — | Pre-installed plugin directories for offline/headless installs (multiple paths: `:` on Unix, `;` on Windows) |
+| `CLAUDE_CODE_PLUGIN_GIT_TIMEOUT_MS` | — | Timeout for git operations during plugin installation |
+| `MCP_CONNECTION_NONBLOCKING=true` | — | Non-blocking MCP connections in `-p`/headless mode (v2.1.89) |
 
 ### Feature Flags
 | Variable | Description |
@@ -519,6 +588,21 @@ Local Settings → allow: [...], deny: [...], ask: [...]
 | `CLAUDE_CODE_SIMPLE=1` | Minimal prompt (Bash/Read/Edit only) |
 | `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` | Enable agent teams (still flag-gated) |
 | `CLAUDE_CODE_ENABLE_POWERSHELL=1` | Enable opt-in PowerShell tool (Windows, v2.1.84) |
+| `ENABLE_CLAUDEAI_MCP_SERVERS=false` | Opt out of claude.ai MCP connectors (v2.1.63) |
+| `IS_DEMO=1` | Hide email/org info from UI (v2.1.0) |
+| `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` | Disable background task scheduling |
+| `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` | Block non-essential network requests (telemetry, updates) |
+| `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1` | Suppress auto-injected git workflow instructions |
+| `CLAUDE_CODE_CERT_STORE=bundled` | Use only bundled CA certificates, not OS CA store (v2.1.104 changed default to trust OS CA) |
+
+### OpenTelemetry (OTEL)
+| Variable | Description |
+|----------|-------------|
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP endpoint URL for traces/metrics/logs |
+| `OTEL_LOG_USER_PROMPTS=1` | Include user prompt text in OTEL spans |
+| `OTEL_LOG_TOOL_DETAILS=1` | Include tool parameters in OTEL events |
+| `OTEL_LOG_TOOL_CONTENT=1` | Include tool result content in OTEL events |
+| **`TRACEPARENT`** (auto-set) | W3C trace context propagated to Bash tool subprocesses when OTEL is enabled (v2.1.97) — enables child-process spans to parent correctly in distributed traces |
 
 ---
 
@@ -592,12 +676,14 @@ SESSION LIFECYCLE          TOOL LIFECYCLE           AGENT LIFECYCLE
 ├── StopFailure            │   (v2.1.89)            ├── TeammateIdle
 ├── Notification           CONTEXT & CONFIG
 │                          ├── InstructionsLoaded   COMPACTION
-WORKSPACE                  ├── ConfigChange         ├── PreCompact
-├── CwdChanged             ├── FileChanged          ├── PostCompact
-├── WorktreeCreate
-├── WorktreeRemove         INTERACTION
-                           ├── Elicitation
-                           ├── ElicitationResult
+WORKSPACE                  │   (v2.1.69)            ├── PreCompact
+├── CwdChanged (v2.1.83)   ├── ConfigChange         ├── PostCompact (v2.1.76)
+├── WorktreeCreate (v2.1.50)│  (v2.1.49)
+├── WorktreeRemove (v2.1.50)├── FileChanged (v2.1.83)
+                           INTERACTION              SETUP
+                           ├── Elicitation (v2.1.76)├── Setup (v2.1.10)
+                           ├── ElicitationResult         (--maintenance flag)
+                               (v2.1.76)
 
 * = Can block/modify behavior
 ```
@@ -610,11 +696,13 @@ WORKSPACE                  ├── ConfigChange         ├── PreCompact
     "PreToolUse": [
       {
         "matcher": "Write|Edit|MultiEdit",   // Regex for tool name
-        "if": "Bash(rm *)",                   // Optional permission rule filter
+        "if": "Bash(rm *)",                   // Optional permission rule filter (v2.1.85)
+        "once": true,                          // Run once per session then remove (v2.1.0)
         "hooks": [
           {
             "type": "command",                // command | http | prompt | agent
-            "command": "python3 /scripts/validate.py"
+            "command": "python3 /scripts/validate.py",
+            "timeout": 30000                  // ms; global hook timeout = 10 min (v2.1.3)
           }
         ]
       }
@@ -628,10 +716,44 @@ WORKSPACE                  ├── ConfigChange         ├── PreCompact
           }
         ]
       }
+    ],
+    "Setup": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "scripts/setup-env.sh" // Runs on --maintenance flag or Setup event (v2.1.10)
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "scripts/inject-session-title.sh"
+            // hookSpecificOutput: { "sessionTitle": "string" } renames the session (v2.1.x)
+          }
+        ]
+      }
     ]
   }
 }
 ```
+
+> **`disableAllHooks` setting:** Set `"disableAllHooks": true` in settings to completely disable all hook execution. `"disableSkillShellExecution": true` (v2.1.91) prevents skills from running shell commands.
+>
+> **`CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS`**: Override the SessionEnd hook timeout (separate env var; default inherits the 10-minute global hook timeout).
+
+### hookSpecificOutput
+
+Some hooks support special output fields:
+
+| Hook event | `hookSpecificOutput` field | Effect |
+|-----------|---------------------------|--------|
+| `UserPromptSubmit` | `sessionTitle` (string) | Renames the current session |
+| `WorktreeCreate` | `worktreePath` (string) | Overrides the worktree directory path (v2.1.50) |
 
 ### Hook Types
 
@@ -1274,6 +1396,7 @@ cat error.log | claude -p "find root cause"
 | `--max-turns` | Iteration limit |
 | `--bare` | Skip auto-discovery of CLAUDE.md + memory (reproducible CI; v2.1.81) |
 | `--channels` | Subscribe to named event channels for pub/sub messaging (v2.1.80) |
+| `--exclude-dynamic-system-prompt-sections` | Strip volatile auto-injected system prompt sections (e.g., date headers) for cross-user prompt caching in CI (v2.1.98) |
 | `-w` / `--worktree <path>` | Start session in specified Git worktree (v2.1.49) |
 | `--append-system-prompt` | Inject instructions |
 | `--system-prompt` | Full system prompt override |
@@ -1323,7 +1446,7 @@ Enable: `/sandbox`
 - Web fetch uses separate context (anti-prompt-injection)
 - First-time codebase runs require verification
 - New MCP servers require verification
-- OS CA certificate store trusted by default (v2.1.101) — no need to configure custom CA bundles
+- OS CA certificate store trusted by default (v2.1.104) — no need to configure custom CA bundles
 
 > ⚠️ **`--dangerously-skip-permissions`** should ONLY be used in Docker containers without internet. A documented incident resulted in total file loss via `rm -rf`.
 
@@ -1558,10 +1681,11 @@ Each `.json` file follows the same schema as `settings.json`. Files are processe
 | Mar 2026 | `--channels` pub/sub flag (v2.1.80); `--bare` CI flag (v2.1.81); `managed-settings.d/` (v2.1.83) |
 | Mar 2026 | PowerShell tool opt-in preview for Windows (v2.1.84); `CLAUDE_CODE_NO_FLICKER` (v2.1.89); `/powerup` (v2.1.90) |
 | Apr 2026 | Bedrock setup wizard (v2.1.92); `forceRemoteSettingsRefresh` policy; default effort → high for professional tiers (v2.1.94) |
+| Apr 2026 | `CLAUDE_CODE_USE_MANTLE=1` for Bedrock-Mantle (v2.1.94); `refreshInterval` status line setting + W3C `TRACEPARENT` propagation to Bash subprocesses (v2.1.97) |
 | Apr 2026 | Monitor tool (v2.1.98); Vertex AI setup wizard; `CLAUDE_CODE_PERFORCE_MODE` |
-| Apr 10, 2026 | OS CA certificate store trusted by default (v2.1.101); `/team-onboarding` command |
+| Apr 12, 2026 | OS CA certificate store trusted by default (v2.1.104); `/team-onboarding` command |
 
-### Current Version: v2.1.101 (April 10, 2026)
+### Current Version: v2.1.104 (April 12, 2026)
 
 ### Current Models
 

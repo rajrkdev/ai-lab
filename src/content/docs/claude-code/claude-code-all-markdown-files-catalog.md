@@ -1,5 +1,7 @@
 ---
 title: Every Markdown File Claude Code Recognizes — Complete Catalog
+sidebar:
+  order: 4
 ---
 
 # Every Markdown File Claude Code Recognizes — Complete Catalog
@@ -284,9 +286,9 @@ Update your agent memory as you discover codepaths, patterns, and key architectu
 | Attribute | Detail |
 |-----------|--------|
 | **File** | Must be named `SKILL.md` (case-sensitive) |
-| **Location** | `~/.claude/skills/<skill-name>/SKILL.md` |
+| **Location** | `~/.claude/skills/<skill-name>/SKILL.md` (also auto-discovered from nested `.claude/skills/` subdirectories) |
 | **Folder name** | The skill's identity (lowercase, hyphens, numbers only) |
-| **Invocation** | Model-invoked (Claude auto-decides) OR user via `/skill-name` |
+| **Invocation** | Model-invoked (Claude auto-decides) OR user via `/skill-name` — **unified since v2.1.3** |
 | **When loaded** | Frontmatter only at session start; full body on invocation |
 | **Shared with** | Just you, across all projects |
 | **Can include** | Supporting `.md` files, scripts, templates, data files |
@@ -437,13 +439,13 @@ This is the most commonly used file. See previous guide for complete details. Bo
 ```yaml
 ---
 paths:
-  - "src/api/**/*.ts"
+  - "src/api/**/*.ts"         # Multiple globs supported (v2.1.84)
   - "src/controllers/**/*.cs"
 ---
 ```
 
 Rules without `paths:` → loaded unconditionally (global).
-Rules with `paths:` → loaded only when Claude works with matching file patterns.
+Rules with `paths:` → loaded only when Claude works with matching file patterns. Supports single string or YAML list of globs (YAML list added v2.1.84).
 
 See previous guide for complete details.
 
@@ -481,9 +483,10 @@ Same format as personal subagents (item #4). Useful for team-standard agents lik
 | Attribute | Detail |
 |-----------|--------|
 | **File** | `SKILL.md` inside a named folder |
-| **Location** | `.claude/skills/<skill-name>/SKILL.md` |
+| **Location** | `.claude/skills/<skill-name>/SKILL.md` (auto-discovered from nested subdirectories too) |
 | **Shared with** | Team via git |
 | **Git tracked** | Yes |
+| **Note** | Since v2.1.3, skills and slash commands are unified—a SKILL.md in `.claude/skills/<name>/` automatically creates the `/name` slash command |
 
 Same format as personal skills (item #5). Team members get these skills automatically.
 
@@ -591,10 +594,13 @@ These are NOT markdown but are part of the Claude Code configuration ecosystem:
 |------|----------|--------|---------|
 | `settings.json` | `.claude/settings.json` (project) or `~/.claude/settings.json` (user) | JSON | Permissions, model, env vars, allowed tools |
 | `settings.local.json` | `.claude/settings.local.json` | JSON | Local project settings (gitignored) |
-| `hooks.json` | `.claude/hooks.json` | JSON | Lifecycle hooks (PreToolUse, PostToolUse, etc.) |
+| `managed-settings.json` | `~/.claude/managed-settings.json` (v2.1.51+) or `C:\Program Files\ClaudeCode\managed-settings.json` (Windows) | JSON | Enterprise policy (highest precedence; also via macOS plist or Windows Registry) |
+| `managed-settings.d/*.json` | `~/.claude/managed-settings.d/` (v2.1.83) | JSON | Drop-in policy fragments—merged alphabetically, independent team fragments |
+| `hooks.json` | `.claude/hooks.json` | JSON | Lifecycle hooks (PreToolUse, PostToolUse, Setup, etc.) |
 | `.mcp.json` | `.claude/.mcp.json` or `~/.claude/.mcp.json` | JSON | MCP server configurations |
 | `.lsp.json` | `.claude/.lsp.json` | JSON | Language Server Protocol configurations |
 | `plugin.json` | `.claude-plugin/plugin.json` | JSON | Plugin manifest |
+| `keybindings.json` | `~/.claude/keybindings.json` (v2.1.18+) | JSON | Custom key bindings—create/edit via `/keybindings` command |
 
 ---
 

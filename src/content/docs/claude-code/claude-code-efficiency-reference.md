@@ -1,11 +1,13 @@
 ---
 title: "Claude Code: Context, Cost & Token Efficiency — Reference"
 description: "Complete reference for context management, prompt caching, token budgets, model selection, and effort controls in Claude Code v2.1.92+. Covers all five CCA-F exam domains."
+sidebar:
+  order: 5
 ---
 
 # Claude Code: Context, Cost & Token Efficiency — Complete Reference
 
-> **Version:** April 2026 · Claude Code v2.1.92+  
+> **Version:** April 2026 · Claude Code v2.1.104  
 > **CCA-F Domains:** D1 (Agentic Architecture), D2 (Claude Code Config), D3 (Prompt Engineering), D4 (Tool Design & MCP), D5 (Context Management & Reliability)  
 > **Target audience:** Developers optimizing Claude Code usage for cost and token efficiency
 
@@ -98,6 +100,8 @@ Between v2.1.69 and v2.1.90, `--resume` sessions suffered a critical bug causing
 | Never switch models mid-session | Caches are per-model; new model = cold start | Full context rebuild + 1.25× write |
 | Never add/remove tools mid-session | Tool definitions are in the cached prefix | Prefix invalidation → full re-cache |
 | Keep messages within 5-min TTL | Cache expires after 5 min of inactivity | Full cold start on next turn |
+| Move the current date out of system prompt | Date string changes every day, invalidating cache (v2.1.42 tip) | Daily cold cache = full write cost every session start |
+| Use `--exclude-dynamic-system-prompt-sections` | CLI flag (v2.1.98) strips volatile auto-injected sections (e.g., date headers) from system prompt for deterministic CI runs | N/A — opt-in flag |
 | Disable unused MCP servers via `/mcp` | Each server adds tool schemas to prefix | Wasted prefix tokens every turn |
 | Prefer CLI tools (gh, aws, gcloud) | No per-tool definition overhead in prefix | MCP tools add schema tokens |
 | Use subagents for different-model tasks | Subagent uses separate API call — parent cache stays warm | Switching main model kills parent cache |
@@ -167,8 +171,11 @@ Additional details: only MCP tools (`mcp__` prefix) are eligible for deferral; b
 | Context window | 1M (standard pricing) | 1M (standard pricing) | 200K |
 | Max output (default / upper) | 64K / 128K | 64K / 128K | 64K |
 | SWE-bench Verified | 80.8% | 79.6% | — |
-| Extended thinking | low / med / high / max | low / med / high | Not supported |
+| Extended thinking | low / med / high | low / med / high | Not supported |
+| Fast mode | Yes (v2.1.36, Max/Team users) | N/A | N/A |
 | Cost relative to Opus | 1× | 0.2× (80% cheaper) | 0.07× (93% cheaper) |
+
+**Fast mode for Opus 4.6 (v2.1.36):** Available to Max and Team tier users. Activates a faster, lower-latency processing path. Good for quick lookups, formatting, and simple refactors where latency matters more than maximum reasoning depth. Toggle with `/fast on` or in session settings.
 
 **Sonnet handles ~90% of coding tasks** at 80% lower cost than Opus. The SWE-bench delta is only 1.2 percentage points.
 
@@ -223,22 +230,49 @@ export MAX_THINKING_TOKENS=10000
 
 Effort levels control adaptive reasoning — dynamically allocating thinking tokens based on task complexity.
 
+### `/effort` Command (v2.1.76)
+
+The primary way to set effort in an interactive session:
+
+```
+/effort low      # Quick tasks: formatting, lookups, simple moves
+/effort medium   # Default: most coding work
+/effort high     # Complex debugging, architecture decisions
+```
+
+Can also be set via arrow keys in the `/model` picker. In **VS Code** (v2.1.72+), a colored indicator on the input border shows current effort level.
+
+### `ultrathink` Keyword (v2.1.68)
+
+Including `ultrathink` in a prompt triggers **maximum effort for that single turn only**, regardless of the session effort setting. Re-added in v2.1.68:
+
+```
+ultrathink: refactor the authentication module to use the repository pattern
+```
+
+Does not change the session effort level — subsequent turns revert to the session default. Equivalent to "think harder" in extended thinking token budget terms.
+
+### Effort Level Reference
+
 | Level | Thinking tokens | Use cases | Token impact |
 |-------|----------------|-----------|-------------|
 | low | 0–500 (may skip entirely) | Formatting, linting, lookups, file moves | Saves thousands of output tokens per turn |
 | medium | Balanced (default) | Most coding: features, tests, docs, refactoring | Standard allocation |
 | high | Deep reasoning (2–4× more) | Complex debugging, architecture decisions | Expensive but justified |
-| max | Unconstrained (Opus 4.6 only) | Novel algorithms, research-grade problems | Maximum possible cost |
+
+> **Note:** The `max` effort level was removed in v2.1.72. Use `ultrathink` in the prompt for maximum one-turn depth.
+
+### Effort in Frontmatter
 
 ```yaml
-# In skill frontmatter: .claude/commands/quick-format.md
+# In skill frontmatter: .claude/skills/quick-format/SKILL.md
 ---
 name: quick-format
 description: Quick code formatting check
 effort: low
 ---
 
-# In subagent frontmatter: .claude/agents/reviewer.md
+# In agent frontmatter: .claude/agents/reviewer.md
 ---
 name: code-reviewer
 model: sonnet
@@ -246,7 +280,7 @@ effort: low
 ---
 ```
 
-**Priority order:** `CLAUDE_CODE_EFFORT_LEVEL` env var (highest) → skill/subagent frontmatter → session `/effort` command → model default (medium). Including "ultrathink" in a prompt triggers high effort for that single turn only.
+**Priority order:** `CLAUDE_CODE_EFFORT_LEVEL` env var (highest) → skill/agent frontmatter → session `/effort` command → model default (medium). `ultrathink` in prompt text overrides for a single turn.
 
 ---
 

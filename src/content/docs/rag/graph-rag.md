@@ -2,7 +2,7 @@
 title: "GraphRAG & Knowledge Graphs"
 description: Microsoft GraphRAG (2024), LightRAG (2024), NodeRAG (2025), Graph-R1 (2026) — community detection for global queries, dual-level graph retrieval, Neo4j integration — when entity relationships beat vector similarity, with Anthropic SDK and LangChain implementations.
 sidebar:
-  order: 16
+  order: 18
 ---
 
 > **Current as of April 2026.**

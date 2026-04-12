@@ -2,7 +2,7 @@
 title: "Vectorless RAG — Complete Guide"
 description: Why vector similarity fails for structured documents, and how PageIndex, contextual retrieval, BM25, GraphRAG, and long-context LLMs replace or reduce it — with flow diagrams and full implementations.
 sidebar:
-  order: 13
+  order: 14
 ---
 
 ## What is RAG? (Beginner Recap)

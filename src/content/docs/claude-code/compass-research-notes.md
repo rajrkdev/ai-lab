@@ -1,5 +1,7 @@
 ---
 title: Compass Research Notes
+sidebar:
+  order: 12
 ---
 
 # Compass Research Notes

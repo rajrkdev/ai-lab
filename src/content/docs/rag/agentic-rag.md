@@ -784,6 +784,7 @@ print(answer)
 ## See Also
 
 - [Advanced RAG](../advanced-rag) — pre/post retrieval optimizations (simpler, no agent required)
+- [Graph RAG](../graph-rag) — Microsoft GraphRAG, LightRAG, NodeRAG — community-graph retrieval for global queries
 - [Retrieval Strategies](../retrieval-strategies) — underlying retrieval mechanisms used by agents
 - [Evaluation](../evaluation) — measuring whether agentic approaches actually improve scores
 - [RAG Types](../rag-types) — interactive side-by-side architecture comparison

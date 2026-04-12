@@ -1,5 +1,7 @@
 ---
 title: Elite Claude Code Mastery — Training Program
+sidebar:
+  order: 11
 ---
 
 # Elite Claude Code mastery: a complete AI Engineer training program
@@ -89,7 +91,7 @@ Keep CLAUDE.md **ruthlessly concise**. Research from HumanLayer shows Claude's s
 
 ### Plugin System — package and distribute configurations
 
-Introduced in **v2.1.83**, plugins bundle CLAUDE.md, rules, skills, MCP server configs, and hooks as a single versioned artifact. This is the preferred mechanism for sharing team-wide configurations.
+Introduced in **v2.0.12+**, plugins bundle CLAUDE.md, rules, skills, MCP server configs, and hooks as a single versioned artifact. This is the preferred mechanism for sharing team-wide configurations.
 
 ```bash
 claude plugin install <name-or-url>   # Install from registry or local path
@@ -117,7 +119,7 @@ claude plugin update                  # Pull latest versions of all plugins
 }
 ```
 
-Use `/reload-plugins` inside a session to pick up changes without restarting. For enterprise rollout: drop plugin configs into `.claude/managed-settings.d/` and deliver via MDM plist (macOS) or Windows Registry (`HKLM\SOFTWARE\Anthropic\ClaudeCode`). The `forceRemoteSettingsRefresh` policy (v2.1.92) triggers re-download on session start.
+Use `/reload-plugins` inside a session to pick up changes without restarting. For enterprise rollout: drop plugin configs into `.claude/managed-settings.d/` (v2.1.83 — a drop-in directory where separate teams can deploy independent policy fragments, merged alphabetically) and deliver via MDM plist (macOS, `com.anthropic.claudecode` preference domain) or Windows Registry (`HKLM\SOFTWARE\Anthropic\ClaudeCode`, v2.1.51). The `forceRemoteSettingsRefresh` policy (v2.1.92) triggers re-download on session start.
 
 ### Context window mastery
 
@@ -174,6 +176,9 @@ name: dotnet-security-reviewer
 description: Reviews .NET code for security vulnerabilities
 tools: Read, Glob, Grep
 model: sonnet
+effort: high
+maxTurns: 30
+isolation: worktree   # Run in an isolated git worktree (v2.1.50)
 ---
 You are a .NET security specialist. Analyze code for:
 - SQL injection via raw queries or string interpolation
@@ -181,6 +186,17 @@ You are a .NET security specialist. Analyze code for:
 - Secrets in configuration files
 - Insecure deserialization patterns
 ```
+
+**`isolation: worktree` (v2.1.50):** Runs the agent in its own git worktree, preventing interference with the main workspace. Required for Agent Teams teammates; optional for subagents doing parallel file modifications.
+
+**Monitor tool (v2.1.98):** Stream and filter events from background scripts or other agents in real time without polling Bash. Use in long-running agent sessions to watch for build failures, file changes, or external triggers:
+
+```markdown
+# In an agent prompt:
+Use the Monitor tool to watch for new files in ./queue/ and process them as they arrive.
+```
+
+**`/team-onboarding` command (v2.1.104):** Generate a teammate ramp-up guide from your local Claude Code usage patterns — useful for onboarding new team members or configuring new agent teammates with project context.
 
 **Cost optimization pattern**: Use Opus for the lead (strategic decisions) and Sonnet for teammates (execution work). This cuts costs by 60-70% with minimal quality loss on implementation tasks.
 
@@ -198,18 +214,31 @@ Hooks transform Claude Code from an interactive assistant into a **governed deve
 
 Claude Code provides **25+ hook events** spanning the full session lifecycle:
 
-| Event | When | Can Block? |
-|-------|------|-----------|
-| **PreToolUse** | Before any tool executes | Yes — return `deny` to prevent execution |
-| **PostToolUse** | After tool completes | Yes — feed errors back to Claude |
-| **UserPromptSubmit** | Before Claude processes your input | Yes — exit 2 blocks the prompt |
-| **Stop** | When Claude finishes responding | Yes — exit 2 with reason forces continuation |
-| **StopFailure** | When the Stop hook itself fails | No — error logged |
-| **SubagentStop** | When a subagent finishes | Yes |
-| **SessionStart** | New/resumed session | No — but can inject context |
-| **Notification** | Permission prompts, idle alerts | No |
-| **PreCompact** | Before context compaction | Matcher: `manual` or `auto` |
-| **PermissionDenied** | User denies a permission prompt (v2.1.89) | No — but can log or alert |
+| Event | When | Can Block? | Version |
+|-------|------|-----------|---------|
+| **PreToolUse** | Before any tool executes | Yes — return `deny` to prevent execution | Original |
+| **PostToolUse** | After tool completes | Yes — feed errors back to Claude | Original |
+| **UserPromptSubmit** | Before Claude processes your input | Yes — exit 2 blocks the prompt | Original |
+| **Stop** | When Claude finishes responding | Yes — exit 2 with reason forces continuation | Original |
+| **StopFailure** | When the Stop hook itself fails | No — error logged | v2.1.78 |
+| **SessionStart** | New/resumed session | No — but can inject context | Original |
+| **SessionEnd** | Session terminating | No — async, uses separate timeout env var | Original |
+| **Setup** | Triggered by `--maintenance` flag or on-demand setup workflows | No — runs setup scripts | v2.1.10 |
+| **Notification** | Permission prompts, idle alerts | No | Original |
+| **PreCompact** | Before context compaction (matcher: `manual` or `auto`) | No | Original |
+| **PostCompact** | After context compaction completes | No | v2.1.76 |
+| **WorktreeCreate** | When a git worktree is created | No — `hookSpecificOutput.worktreePath` | v2.1.50 |
+| **WorktreeRemove** | When a git worktree is removed | No | v2.1.50 |
+| **CwdChanged** | When the working directory changes | No | v2.1.83 |
+| **FileChanged** | When a tracked file is modified on disk | No | v2.1.83 |
+| **ConfigChange** | When a settings file changes | No — triggers config reload | v2.1.49 |
+| **InstructionsLoaded** | After CLAUDE.md and rules finish loading | No | v2.1.69 |
+| **Elicitation** | MCP server requests structured input from user | No — pause for user dialog | v2.1.76 |
+| **ElicitationResult** | After user responds to elicitation | No | v2.1.76 |
+| **SubagentStop** | When a subagent finishes | Yes | Original |
+| **PermissionDenied** | User denies a permission prompt | No — but can log or alert | v2.1.89 |
+| **TeammateIdle** | An Agent Teams teammate has no pending tasks | No | Original |
+| **TaskCompleted** | An Agent Teams task transitions to completed | No | Original |
 
 ### Configuration format and matchers
 
@@ -263,6 +292,13 @@ Beyond standard **command** hooks (shell scripts), Claude Code supports:
 - **agent** hooks (full subagent verification with tool access, up to 50 turns)
 
 Agent hooks are the most powerful — they can read files, run tests, and make informed decisions about whether Claude should stop or continue.
+
+**Additional hook options:**
+- `"once": true` — hook runs once per session then auto-removes itself (v2.1.0); useful for one-time setup validation
+- `"if": "Bash(git *)"` — conditional hook using permission rule syntax; hook only fires when the condition matches (v2.1.85)
+- `"disableAllHooks": true` in settings — completely disables all hook execution for a session
+- `"disableSkillShellExecution": true` (v2.1.91) — prevents skills from executing shell commands, making them read-only
+- `CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS` env var — override the SessionEnd hook timeout (separate from the 10-minute global timeout)
 
 ### Production .NET integration hooks
 
@@ -389,6 +425,18 @@ Use `CreateEmptyApplicationBuilder` (not `CreateDefaultBuilder`) for stdio trans
 MCP security is non-negotiable in enterprise settings. Real-world incidents in 2025 included SQL injection in Anthropic's own SQLite reference server, a path-traversal exploit on the Smithery platform affecting 3,000+ hosted apps, and a critical OS command-injection (CVE-2025-6514) in `mcp-remote` affecting 437,000+ environments. **Mitigations**: validate and sanitize all inputs, use parameterized queries, run local servers in Docker sandboxes, implement least-privilege tokens, and monitor for tool description changes (rug pull attacks).
 
 **Context window awareness**: each enabled MCP server adds tool definitions to Claude's system prompt. Keep MCP overhead under **20K tokens** — disable unused servers via `/mcp` during sessions.
+
+**ToolSearch auto-deferral (v2.1.7+):** When total MCP tool definitions exceed ~10% of context (~10K tokens), Claude Code automatically defers loading full tool schemas. Only lightweight stubs (name + 1-line description) appear in the context prefix; full schemas are injected into conversation history on demand. This saves **85%+ of tool definition tokens** and actually improves tool selection accuracy. Opt out per-server with `"enableToolSearch": false` in `.mcp.json`.
+
+**Tool description caps (v2.1.84):** Tool descriptions are limited to 2KB to prevent OpenAPI-generated servers from bloating context. Long descriptions are truncated automatically.
+
+**MCP Elicitation (v2.1.76):** MCP servers can request structured input from the user mid-task via an interactive dialog. Claude Code pauses and presents the elicitation form to the user. The `Elicitation` hook fires before the dialog, `ElicitationResult` after.
+
+**Large tool results (v2.1.91):** MCP tools can return up to 500K characters by including `_meta["anthropic/maxResultSizeChars"]` in their response. Default cap is 25K tokens.
+
+**MCP OAuth (v2.1.85):** HTTP MCP servers support OAuth via RFC 9728 discovery. Manual URL paste fallback available for environments where browser redirect fails (v2.1.63).
+
+**MCP headers (v2.1.85):** Use `headersHelper` scripts in `.mcp.json` to generate dynamic auth headers. `CLAUDE_CODE_MCP_SERVER_NAME` and `CLAUDE_CODE_MCP_SERVER_URL` env vars are injected into helper scripts.
 
 ---
 
