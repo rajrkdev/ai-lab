@@ -1,9 +1,11 @@
 ---
 title: Chunking Strategies
-description: Complete guide to document chunking for RAG — fixed-size, recursive, semantic, document-structure-aware, and sliding-window strategies with LangChain and LlamaIndex code examples.
+description: Complete 2025 guide to document chunking for RAG — fixed-size, recursive, semantic, late chunking (Jina AI 2024), parent document retrieval, sliding-window — with LangChain code examples.
 sidebar:
   order: 4
 ---
+
+> **Current as of April 2026.**
 
 ## Why Chunking Matters
 
@@ -292,8 +294,217 @@ chunk = Document(
 
 ---
 
+---
+
+## 7. Late Chunking (Jina AI, 2024)
+
+**Paper:** Günther et al., "Late Chunking: Contextual Chunk Embeddings Using Long-Context Embedding Models" (2024)
+
+Standard chunking embeds each chunk independently — the chunk loses all context from the surrounding document. Late Chunking fixes this by embedding the **entire document first**, then pooling token embeddings into chunk-level representations.
+
+```
+  STANDARD CHUNKING:
+  ────────────────────────────────────────────────────────────
+  Document → split → [Chunk 1] → embed → vec1
+                     [Chunk 2] → embed → vec2   ← independent, no context
+                     [Chunk 3] → embed → vec3
+
+
+  LATE CHUNKING:
+  ────────────────────────────────────────────────────────────
+  Document → embed entire document → [t1, t2, t3, ..., tN]
+                                      ↑ token embeddings with full context
+             then split into chunks:
+             Chunk 1 = mean_pool(t1..t50)    ← vector with document context
+             Chunk 2 = mean_pool(t51..t100)  ← vector with document context
+             Chunk 3 = mean_pool(t101..t150) ← vector with document context
+
+
+  WHY IT MATTERS:
+  ────────────────────────────────────────────────────────────
+  Chunk 2 text: "He was born in 1879 in Ulm."
+
+  Standard embedding: Who is "He"? The embedding can't know.
+  Late chunking:      "He" = Einstein (from earlier in doc) — context preserved.
+```
+
+**Requirements:** Long-context embedding model (BGE-M3, jina-embeddings-v3, Nomic Embed v1.5 — all support 8192 tokens).
+
+```python
+# pip install transformers torch numpy
+import torch
+import numpy as np
+from transformers import AutoTokenizer, AutoModel
+
+model_name = "jinaai/jina-embeddings-v3"   # 8192-token context
+tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+model = AutoModel.from_pretrained(model_name, trust_remote_code=True)
+model.eval()
+
+def late_chunk_embed(document: str, chunk_boundaries: list[tuple[int, int]]) -> list[np.ndarray]:
+    """
+    Embed a full document and pool into chunk-level embeddings.
+
+    chunk_boundaries: list of (start_char, end_char) for each chunk
+    Returns: list of normalized chunk embeddings
+    """
+    # Tokenize the entire document
+    inputs = tokenizer(
+        document,
+        return_tensors="pt",
+        truncation=True,
+        max_length=8192,
+        return_offsets_mapping=True,   # char-level token offsets
+    )
+    offset_mapping = inputs.pop("offset_mapping")[0]   # (num_tokens, 2)
+
+    # Get token embeddings for the full document
+    with torch.no_grad():
+        outputs = model(**inputs)
+    token_embeddings = outputs.last_hidden_state[0]   # (num_tokens, hidden_dim)
+
+    # Pool token embeddings into chunk embeddings
+    chunk_embeddings = []
+    for start_char, end_char in chunk_boundaries:
+        # Find which tokens fall within this chunk's character range
+        mask = (
+            (offset_mapping[:, 0] >= start_char) &
+            (offset_mapping[:, 1] <= end_char) &
+            (offset_mapping[:, 0] != offset_mapping[:, 1])   # skip special tokens
+        )
+        chunk_tokens = token_embeddings[mask]
+
+        if len(chunk_tokens) == 0:
+            # Fallback: use CLS token
+            chunk_tokens = token_embeddings[:1]
+
+        # Mean pooling over chunk tokens
+        chunk_vec = chunk_tokens.mean(dim=0).numpy()
+
+        # L2 normalize
+        chunk_vec = chunk_vec / np.linalg.norm(chunk_vec)
+        chunk_embeddings.append(chunk_vec)
+
+    return chunk_embeddings
+
+
+def get_chunk_boundaries(document: str, chunk_size_chars: int = 500) -> list[tuple[int, int]]:
+    """Split document into character-level chunks, aligned to word boundaries."""
+    words = document.split()
+    boundaries = []
+    current_pos = 0
+    chunk_start = 0
+
+    for word in words:
+        word_start = document.find(word, current_pos)
+        word_end = word_start + len(word)
+        current_pos = word_end
+
+        if word_end - chunk_start >= chunk_size_chars:
+            boundaries.append((chunk_start, word_end))
+            chunk_start = word_end + 1   # next chunk starts after this word
+
+    if chunk_start < len(document):
+        boundaries.append((chunk_start, len(document)))
+
+    return boundaries
+
+
+# Usage
+document = "Albert Einstein was a German-born theoretical physicist... He developed the theory of relativity..."
+boundaries = get_chunk_boundaries(document, chunk_size_chars=500)
+chunk_texts = [document[s:e] for s, e in boundaries]
+chunk_embeddings = late_chunk_embed(document, boundaries)
+
+print(f"Document: {len(document)} chars → {len(chunk_embeddings)} late-chunked embeddings")
+# Each embedding captures surrounding document context
+```
+
+```python
+# Late chunking with LangChain + FAISS
+from langchain_core.documents import Document
+from langchain_community.vectorstores import FAISS
+import numpy as np
+
+def build_late_chunk_vectorstore(documents: list[str]) -> FAISS:
+    """Build a FAISS vectorstore using late chunk embeddings."""
+    all_chunks = []
+    all_embeddings = []
+
+    for doc_text in documents:
+        boundaries = get_chunk_boundaries(doc_text)
+        chunk_texts = [doc_text[s:e] for s, e in boundaries]
+        embeddings = late_chunk_embed(doc_text, boundaries)
+
+        for text, emb in zip(chunk_texts, embeddings):
+            all_chunks.append(Document(page_content=text))
+            all_embeddings.append(emb)
+
+    embeddings_array = np.array(all_embeddings, dtype="float32")
+
+    # Build FAISS from pre-computed embeddings
+    import faiss
+    d = embeddings_array.shape[1]
+    index = faiss.IndexFlatIP(d)
+    index.add(embeddings_array)
+
+    # Wrap in LangChain FAISS (requires custom embedding class that returns pre-computed vecs)
+    # In practice, store embeddings separately and use index.search() directly
+    return index, all_chunks
+```
+
+**When to use Late Chunking:**
+- Documents where pronoun resolution matters ("he", "it", "the company")
+- Legal and financial documents with heavy cross-references
+- Technical documentation with recurring abbreviations defined early in the text
+- Any use case where chunk context loss is causing retrieval failures
+
+**Tradeoff vs. Contextual Retrieval:**
+| | Late Chunking | Contextual Retrieval |
+|---|---|---|
+| Context source | Full document token embeddings | LLM-generated summary |
+| Cost | Embedding model only (cheap) | LLM call per chunk (expensive) |
+| Context precision | Implicit (pooled) | Explicit (written description) |
+| Model requirement | Long-context embedding model | Any embedding + LLM |
+| Speed | Fast (one forward pass) | Slow (LLM per chunk) |
+
+---
+
+## Chunk Size Benchmarks
+
+Research findings on chunk size vs. retrieval quality (varies by embedding model and domain):
+
+```
+  CHUNK SIZE EFFECT ON RETRIEVAL (general guidance)
+  ─────────────────────────────────────────────────────────────
+  < 128 tokens   High precision, low recall
+                 Loses surrounding context — often too small
+                 Good for: short FAQ answers, code snippets
+
+  128–256 tokens Sweet spot for sentence-transformers (512-token max)
+                 Best for: general Q&A, support docs
+
+  256–512 tokens Standard production range
+                 Best for: technical documentation, reports
+
+  512–1024 tokens Better for long-answer synthesis
+                 Risk: lower retrieval precision (too broad)
+                 Requires embedding model with >512 token context
+
+  > 1024 tokens  Use parent document retrieval or late chunking
+                 Direct embedding of very long chunks degrades quality
+                 for most embedding models
+  ─────────────────────────────────────────────────────────────
+  Overlap: 10–20% of chunk size is typical.
+  Test your specific domain — optimal sizes vary significantly.
+```
+
+---
+
 ## See Also
 
-- [Embedding Models](../embedding-models) — the model receiving your chunks
+- [Embedding Models](../embedding-models) — the model receiving your chunks; BGE-M3 for 8192-token late chunking
 - [Retrieval Strategies](../retrieval-strategies) — how chunks are retrieved once embedded
+- [Contextual Retrieval](./contextual-retrieval) — LLM-generated context prepended to chunks (Anthropic 2024)
+- [Vectorless RAG](./pageindex-vectorless-rag) — when to skip chunking entirely (PageIndex, long-context)
 - [Naive RAG Explainer](../naive-rag) — see chunking and retrieval in an interactive walkthrough

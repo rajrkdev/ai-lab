@@ -1,4 +1,4 @@
-# LangChain: Deep Reference Guide
+﻿# LangChain: Deep Reference Guide
 ### Architecture · Patterns · Production · v0.3
 
 > **Audience:** This guide assumes Python proficiency, familiarity with LLM APIs, and working knowledge of RAG systems. It does not hand-hold on Python syntax — it goes directly into LangChain mechanics, decision rationale, and production trade-offs. Every section connects back to real production use cases.
@@ -189,7 +189,7 @@ from langchain_core.output_parsers import StrOutputParser
 
 chain = (
     ChatPromptTemplate.from_template("Answer: {question}")
-    | ChatAnthropic(model="claude-3-5-sonnet-20241022")
+    | ChatAnthropic(model="claude-sonnet-4-6")
     | StrOutputParser()
 )
 
@@ -278,7 +278,7 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 
 model = ChatAnthropic(
-    model="claude-3-5-sonnet-20241022",   # model identifier
+    model="claude-sonnet-4-6",   # model identifier
     api_key=os.getenv("ANTHROPIC_API_KEY"),  # or set ANTHROPIC_API_KEY env var
     temperature=0.0,          # 0.0 for factual/RAG, 0.3-0.7 for creative
     max_tokens=4096,          # max output tokens
@@ -304,10 +304,10 @@ Claude 3.5 Sonnet is the right choice for primary response generation — it has
 
 ```python
 # For RAG generation, complex reasoning, structured extraction
-sonnet = ChatAnthropic(model="claude-3-5-sonnet-20241022", temperature=0.0)
+sonnet = ChatAnthropic(model="claude-sonnet-4-6", temperature=0.0)
 
 # For intent classification, query rewriting, document grading
-haiku = ChatAnthropic(model="claude-3-haiku-20240307", temperature=0.0)
+haiku = ChatAnthropic(model="claude-haiku-4-5", temperature=0.0)
 
 # Cost-optimised: use haiku for intermediate steps, sonnet only for final response
 # MyApp classification step: ~50 input tokens, ~5 output = $0.000025 per call (Haiku)
@@ -330,7 +330,7 @@ class InsuranceIntent(BaseModel):
     requires_agent: bool = Field(description="Whether this needs a human agent")
 
 # Bind the schema to the model — uses function calling under the hood
-structured_haiku = ChatAnthropic(model="claude-3-haiku-20240307").with_structured_output(
+structured_haiku = ChatAnthropic(model="claude-haiku-4-5").with_structured_output(
     InsuranceIntent,
     method="function_calling",  # default for Claude; also "json_mode" supported
     include_raw=False,          # True returns {"raw": AIMessage, "parsed": model, "parsing_error": ...}
@@ -355,7 +355,7 @@ For cases where you want to expose the model choice as a configurable parameter 
 ```python
 from langchain_core.runnables import ConfigurableField
 
-model = ChatAnthropic(model="claude-3-5-sonnet-20241022").configurable_fields(
+model = ChatAnthropic(model="claude-sonnet-4-6").configurable_fields(
     model=ConfigurableField(
         id="model",
         name="Claude Model",
@@ -369,7 +369,7 @@ result = chain.invoke({"question": "..."})
 # Override to haiku for this specific call
 result = chain.invoke(
     {"question": "..."},
-    config={"configurable": {"model": "claude-3-haiku-20240307"}}
+    config={"configurable": {"model": "claude-haiku-4-5"}}
 )
 ```
 
@@ -473,7 +473,7 @@ classifier_prompt = ChatPromptTemplate.from_messages([
 ])
 
 # Compose with Haiku (cheap, fast for classification)
-classifier = classifier_prompt | ChatAnthropic(model="claude-3-haiku-20240307") | StrOutputParser()
+classifier = classifier_prompt | ChatAnthropic(model="claude-haiku-4-5") | StrOutputParser()
 label = classifier.invoke({"query": "I need to add my wife to my product record"})
 # → "COVERAGE"
 ```
@@ -618,7 +618,7 @@ prompt = ChatPromptTemplate.from_messages([
     ("human", "Extract the coverage clause from: {text}"),
 ]).partial(format_instructions=format_instructions)
 
-chain = prompt | ChatAnthropic(model="claude-3-5-sonnet-20241022") | parser
+chain = prompt | ChatAnthropic(model="claude-sonnet-4-6") | parser
 
 result: RecordClause = chain.invoke({
     "text": "Section 5.2: The standard threshold for at-fault request handling is $500."
@@ -664,7 +664,7 @@ def get_record(record_id: str) -> str:
     return f"Record {record_id}: Motor Comprehensive"
 
 # Bind tools to model (explicit tool calling, not agent mode)
-model_with_tools = ChatAnthropic(model="claude-3-5-sonnet-20241022").bind_tools(
+model_with_tools = ChatAnthropic(model="claude-sonnet-4-6").bind_tools(
     [get_record],
     tool_choice="auto",   # "auto" | "any" | "none" | {"type": "tool", "name": "..."}
 )
@@ -796,8 +796,8 @@ result = branch.invoke({"intent": "REQUESTS", "question": "How do I file?"})
 
 ```python
 # Primary: Claude 3.5 Sonnet; fallback: Claude 3 Haiku
-resilient_model = ChatAnthropic(model="claude-3-5-sonnet-20241022").with_fallbacks(
-    [ChatAnthropic(model="claude-3-haiku-20240307")],
+resilient_model = ChatAnthropic(model="claude-sonnet-4-6").with_fallbacks(
+    [ChatAnthropic(model="claude-haiku-4-5")],
     exceptions_to_handle=(anthropic.RateLimitError, anthropic.APIStatusError),
 )
 
@@ -1225,7 +1225,7 @@ from langchain.evaluation import load_evaluator
 evaluator = load_evaluator(
     "labeled_pairwise_string",
     criteria="relevance",
-    llm=ChatAnthropic(model="claude-3-haiku-20240307"),
+    llm=ChatAnthropic(model="claude-haiku-4-5"),
 )
 
 # Build eval set: 20-50 question/expected_answer pairs from your domain
@@ -1463,7 +1463,7 @@ logging.getLogger("langchain.retrievers.multi_query").setLevel(logging.INFO)
 
 mq_retriever = MultiQueryRetriever.from_llm(
     retriever=hybrid_retriever,           # underlying retriever to call per query
-    llm=ChatAnthropic(model="claude-3-haiku-20240307"),
+    llm=ChatAnthropic(model="claude-haiku-4-5"),
     parser_key="lines",                   # how to parse generated queries (default: newlines)
     include_original=True,               # also retrieve for the original query
 )
@@ -1484,7 +1484,7 @@ Output 4 alternative questions, one per line:""",
 
 mq_retriever = MultiQueryRetriever.from_llm(
     retriever=hybrid_retriever,
-    llm=ChatAnthropic(model="claude-3-haiku-20240307"),
+    llm=ChatAnthropic(model="claude-haiku-4-5"),
     prompt=QUERY_PROMPT,
     include_original=True,
 )
@@ -1508,7 +1508,7 @@ Write 3-4 sentences only."""),
     ("human", "{question}"),
 ])
 
-hyde_generator = hyde_prompt | ChatAnthropic(model="claude-3-haiku-20240307") | StrOutputParser()
+hyde_generator = hyde_prompt | ChatAnthropic(model="claude-haiku-4-5") | StrOutputParser()
 
 # Step 2: Use the hypothetical document to retrieve real ones
 # The hypothetical doc is embedded and matched against the real document vectors
@@ -1565,7 +1565,7 @@ compression_retriever = ContextualCompressionRetriever(
 
 # ─── Option 2: LLM-based extraction (highest precision, expensive) ──────────────
 extractor = LLMChainExtractor.from_llm(
-    ChatAnthropic(model="claude-3-haiku-20240307")
+    ChatAnthropic(model="claude-haiku-4-5")
 )
 # Extracts ONLY the relevant passage from each document, discarding irrelevant content
 
@@ -1644,7 +1644,7 @@ summary_chain = (
         ("system", "Summarise this reference document section in 2-3 sentences."),
         ("human", "{text}"),
     ])
-    | ChatAnthropic(model="claude-3-haiku-20240307")
+    | ChatAnthropic(model="claude-haiku-4-5")
     | StrOutputParser()
 )
 
@@ -1823,7 +1823,7 @@ def calculate_price_estimate(
 # Create agent with MemorySaver for conversation persistence
 agent = create_react_agent(
     model=ChatAnthropic(
-        model="claude-3-5-sonnet-20241022",
+        model="claude-sonnet-4-6",
         max_tokens=4096,
     ),
     tools=[retrieve_record_info, get_record_by_number, calculate_price_estimate],
@@ -2191,7 +2191,7 @@ def generate_node(state: MyAppGraphState) -> dict:
     """
     context = "\n\n".join(d.page_content for d in state["retrieved_docs"])
     
-    response = ChatAnthropic(model="claude-3-5-sonnet-20241022").invoke(
+    response = ChatAnthropic(model="claude-sonnet-4-6").invoke(
         state["messages"] + [HumanMessage(content=f"Context:\n{context}\n\nUse only this context.")]
     )
     
@@ -2361,7 +2361,7 @@ Be strict: 'yes' means the document would genuinely help answer the question."""
 ])
 
 relevance_grader = grade_prompt | ChatAnthropic(
-    model="claude-3-haiku-20240307"
+    model="claude-haiku-4-5"
 ).with_structured_output(GradeDocuments)
 
 def grade_documents_node(state: CRAGState) -> dict:
@@ -2392,7 +2392,7 @@ Output only the rewritten query, nothing else."""),
     ("human", "Original query: {question}"),
 ])
 
-query_rewriter = rewrite_prompt | ChatAnthropic(model="claude-3-haiku-20240307") | StrOutputParser()
+query_rewriter = rewrite_prompt | ChatAnthropic(model="claude-haiku-4-5") | StrOutputParser()
 
 def rewrite_query_node(state: CRAGState) -> dict:
     new_question = query_rewriter.invoke({"question": state["question"]})
@@ -2435,21 +2435,21 @@ from typing import Literal
 
 # ─── Worker agents (specialised sub-agents) ──────────────────────────────
 data_agent_runnable = create_react_agent(
-    model=ChatAnthropic(model="claude-3-5-sonnet-20241022"),
+    model=ChatAnthropic(model="claude-sonnet-4-6"),
     tools=[retrieve_record_info, search_spec_documents],
     state_modifier="You are the Data Specialist agent. Answer ONLY content coverage questions. Be precise and cite sources.",
     checkpointer=None,  # workers are stateless — supervisor maintains state
 )
 
 ops_agent_runnable = create_react_agent(
-    model=ChatAnthropic(model="claude-3-5-sonnet-20241022"),
+    model=ChatAnthropic(model="claude-sonnet-4-6"),
     tools=[get_request_status, submit_request, get_required_documents],
     state_modifier="You are the Operations Specialist agent. Handle request submissions, status checks, and documentation requirements.",
     checkpointer=None,
 )
 
 pricing_agent_runnable = create_react_agent(
-    model=ChatAnthropic(model="claude-3-5-sonnet-20241022"),
+    model=ChatAnthropic(model="claude-sonnet-4-6"),
     tools=[calculate_price, get_product_pricing, apply_discount],
     state_modifier="You are the Pricing Specialist agent. Handle price calculations and pricing queries only.",
     checkpointer=None,
@@ -2480,7 +2480,7 @@ Rules:
     MessagesPlaceholder("messages"),
 ])
 
-structured_supervisor = ChatAnthropic(model="claude-3-5-sonnet-20241022").with_structured_output(
+structured_supervisor = ChatAnthropic(model="claude-sonnet-4-6").with_structured_output(
     SupervisorDecision
 )
 
@@ -2637,7 +2637,7 @@ results = evaluate(
     target=lambda x: chain.invoke(x),
     data="MyApp-RAG-Eval-v1",
     evaluators=[
-        LangChainStringEvaluator("qa", config={"llm": ChatAnthropic(model="claude-3-5-sonnet-20241022")}),
+        LangChainStringEvaluator("qa", config={"llm": ChatAnthropic(model="claude-sonnet-4-6")}),
         LangChainStringEvaluator("context_qa", ...),
     ],
     experiment_prefix="rag-v3-hybrid-retrieval",
@@ -2667,7 +2667,7 @@ chain = (
         ("system", "You are MyApp."),
         ("human", "{question}"),
     ])
-    | ChatAnthropic(model="claude-3-5-sonnet-20241022")
+    | ChatAnthropic(model="claude-sonnet-4-6")
     | StrOutputParser()
 )
 
@@ -2781,8 +2781,8 @@ class MyAppSettings(BaseSettings):
     langsmith_api_key: str = ""
     
     # Model configuration
-    generation_model: str = "claude-3-5-sonnet-20241022"
-    classification_model: str = "claude-3-haiku-20240307"
+    generation_model: str = "claude-sonnet-4-6"
+    classification_model: str = "claude-haiku-4-5"
     embedding_model: str = "voyage-3-5"
     
     # Retrieval configuration
@@ -2874,7 +2874,7 @@ async def health_check():
     
     # Check Anthropic API (minimal call)
     try:
-        model = ChatAnthropic(model="claude-3-haiku-20240307")
+        model = ChatAnthropic(model="claude-haiku-4-5")
         model.invoke("ping", max_tokens=1)
         checks["anthropic"] = {"status": "ok"}
     except Exception as e:

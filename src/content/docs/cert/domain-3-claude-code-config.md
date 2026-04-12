@@ -638,6 +638,97 @@ claude -p "Review the changes in this PR for security and correctness" \
 └──────────────────────────────────────────────────────────────────┘
 ```
 
+---
+
+## Task Statement 3.6: 2026 Claude Code Feature Updates
+
+### Effort Levels (v2.1.72+)
+
+**Critical exam knowledge:** The `max` effort level was **removed** in v2.1.72.
+
+| Level | Use Case |
+|-------|----------|
+| `low` | Quick lookups, simple edits, status checks |
+| `medium` | Standard development tasks |
+| `high` | Complex architectural changes, deep analysis (now the DEFAULT for API/Bedrock/Vertex/Team/Enterprise since v2.1.94) |
+
+```bash
+# CLI: Set effort
+claude --effort high -p "Refactor the payment module"
+
+# Settings: Default effort
+{ "effortLevel": "high" }
+
+# Env var
+CLAUDE_CODE_EFFORT_LEVEL=high claude -p "..."
+```
+
+### `--bare` Flag for Reproducible CI (v2.1.81)
+
+Without `--bare`, Claude Code auto-discovers CLAUDE.md files from the project root and user home. In CI, different runners may have different user configs, making results non-reproducible.
+
+```bash
+# Reproducible CI run — skips all CLAUDE.md auto-discovery
+claude -p "check for vulnerabilities" \
+  --bare \
+  --system-prompt "$(cat .claude/ci-system-prompt.txt)" \
+  --output-format json
+```
+
+**Exam trap:** Questions about "why does the same CI job produce different results on different runners?" → Answer: User-level CLAUDE.md not excluded. Fix: add `--bare`.
+
+### Plugin System (v2.0.12+)
+
+Plugins extend Claude Code without modifying core files. They ship with their own skills, CLAUDE.md content, and hooks.
+
+```bash
+claude plugin install anthropic/git-utils    # install
+claude plugin list                            # see installed
+claude plugin enable git-utils               # enable
+claude plugin disable old-plugin             # disable
+/reload-plugins                              # hot-reload in session
+```
+
+**Exam relevance:**
+- Plugins are installed **per-user** via CLI by default
+- Enterprise can pre-distribute plugins via `managed-settings.d/` (v2.1.83)
+- `/reload-plugins` hot-reloads without restarting — no interruption to active sessions
+
+### New CLI Flags (2026)
+
+| Flag | Version | Description |
+|------|---------|-------------|
+| `--bare` | v2.1.81 | Skip CLAUDE.md auto-discovery (reproducible CI) |
+| `-w` / `--worktree` | v2.1.49 | Start in specific Git worktree |
+| `--channels` | v2.1.80 | Subscribe to named pub/sub event channels |
+
+### New Slash Commands (2026)
+
+| Command | Version | Purpose |
+|---------|---------|---------|
+| `/branch` | v2.1.80 | Create conversation branch (alias: `/fork`) |
+| `/color` | v2.1.75 | Set Claude's response accent color |
+| `/powerup` | v2.1.90 | Load all available skills into context |
+| `/team-onboarding` | v2.1.101 | Generate onboarding guide for your codebase |
+| `/reload-plugins` | v2.0.12+ | Hot-reload plugins without restarting |
+| `/todos` | — | View and manage current task list |
+
+### Enterprise Managed Settings
+
+```
+/etc/claude/managed-settings.d/     (Linux)
+%APPDATA%\Anthropic\ClaudeCode\managed-settings.d\  (Windows)
+/Library/Application Support/ClaudeCode/managed-settings.d/  (macOS)
+├── 01-org-policy.json       # deny rules, allowed models
+├── 02-approved-plugins.json # auto-install plugin list
+└── 03-mcp-servers.json      # shared MCP servers for all users
+```
+
+JSON fragments are merged in lexicographic order. Managed settings have **highest precedence** — they cannot be overridden by user or project settings. Delivery methods:
+- **macOS:** MDM plist (`com.anthropic.claudecode` preference domain)
+- **Windows:** Registry keys under `HKLM\SOFTWARE\Anthropic\ClaudeCode` (v2.1.51)
+- **`forceRemoteSettingsRefresh`** policy pulls latest managed settings on every session start (v2.1.92)
+
 ### Session Context Isolation for Review
 
 ```python

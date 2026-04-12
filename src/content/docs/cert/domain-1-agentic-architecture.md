@@ -903,6 +903,11 @@ When multi-agent reports have coverage gaps, the first place to check is always 
 | **Subagent context** | Fresh conversation. Does NOT inherit coordinator history. |
 | **allowedTools: Agent** | Must include "Agent" in coordinator's allowed tools |
 | **"Agent" tool** | Renamed from "Task" in v2.1.63. Both work as aliases. |
+| **ExitWorktree tool** | Agent Teams: teammate exits worktree context, returns to main workspace (v2.1.72) |
+| **CronCreate tool** | Schedules recurring background tasks (v2.1.71). Suppress with `CLAUDE_CODE_DISABLE_CRON=1`. |
+| **SendMessage tool** | Peer-to-peer messaging between Agent Team members; JSON inbox on filesystem |
+| **Monitor tool** | Background filesystem/process watcher; notifies Claude when condition met (v2.1.98) |
+| **1M context window** | Opus 4.6 on Max/Team/Enterprise. Use `CLAUDE_CODE_DISABLE_1M_CONTEXT=1` to opt out. |
 | **AgentDefinition: description** | What Claude reads to decide WHEN to delegate |
 | **AgentDefinition: tools** | Restrict tool access (omit = inherit all) |
 | **AgentDefinition: model** | Route expensive/cheap models per agent role |

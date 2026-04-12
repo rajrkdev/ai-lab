@@ -842,6 +842,7 @@ Message Batches API is designed for exactly this: latency-tolerant, independent,
 | **custom_id** | YOUR identifier correlating batch request to result |
 | **Batch appropriate** | Overnight reports, weekly audits, nightly generation |
 | **Batch NOT appropriate** | Blocking pre-merge checks, real-time responses |
+| **Effort levels** | `/effort low/medium/high` (‘max’ removed v2.1.72). Default: `high` for API/pro tiers (v2.1.94) |
 | **Self-review limitation** | Retained reasoning = biased. Use independent instance. |
 | **Independent instance** | More effective than extended thinking or self-review |
 | **Multi-pass review** | Per-file parallel + cross-file integration pass |

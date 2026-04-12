@@ -223,32 +223,199 @@ model = DebertaV2ForSequenceClassification.from_pretrained(
 
 ---
 
+## ModernBERT (2024) — The New Standard
+
+**Paper:** Warner et al., "Smarter, Better, Faster, Longer: A Modern Bidirectional Encoder for Fast, Memory Efficient, and Long Context Finetuning and Inference" (arXiv:2412.13663)  
+**By:** Answer.AI + LightOn  
+**Released:** December 19, 2024  
+**HF Hub:** `answerdotai/ModernBERT-base` (149M), `answerdotai/ModernBERT-large` (395M)
+
+ModernBERT is the first true Pareto improvement over BERT since RoBERTa — better accuracy, better speed, and 16× longer context, all at once. It brings the architectural advances from modern LLMs (RoPE, Flash Attention 2, GLU activations) into the BERT-style encoder paradigm, trained on 2 trillion tokens including code.
+
+### Why ModernBERT is a Major Leap
+
+Previous encoder improvements always traded something off:
+
+- **DeBERTa:** Better GLUE, but 2× slower and 5× the memory of BERT
+- **ALBERT:** Far fewer parameters, but slower inference due to sequential shared layers
+- **RoBERTa:** Better training data, but same architecture and 512 context limit
+
+ModernBERT breaks the pattern: it is the **first base-size encoder to beat DeBERTa-v3 on GLUE** while using less than 1/5th of DeBERTa's memory and running 2–4× faster.
+
+### Architectural Innovations
+
+ModernBERT applies modern LLM techniques to the encoder-only paradigm:
+
+#### 1. Rotary Positional Embeddings (RoPE)
+
+Replaces BERT's absolute positional embeddings with RoPE, enabling:
+- Better relative position awareness
+- Generalization to longer sequences not seen during training
+- Native support for 8,192-token context (vs. 512 for vanilla BERT)
+
+#### 2. Alternating Attention (Local + Global)
+
+Instead of full attention on every layer, ModernBERT uses **alternating attention**:
+- **Local attention (most layers):** Each token attends only to the 128 nearest tokens. Complexity $O(n \cdot w)$ where $w = 128$.
+- **Global attention (every 3rd layer):** Full bidirectional attention across the entire sequence. Complexity $O(n^2)$.
+
+This allows long-context processing at drastically reduced cost:
+
+```
+Layer 1:  Local  → attend to window of 128 tokens
+Layer 2:  Local  → attend to window of 128 tokens
+Layer 3:  Global → attend to all 8192 tokens
+Layer 4:  Local  → attend to window of 128 tokens
+...
+```
+
+#### 3. GeGLU Activation Layers
+
+Replaces the original BERT's GeLU MLP layers with Gated Linear Units (GeGLU), as used in modern LLMs like PaLM. This consistently improves representational quality for equivalent parameter count.
+
+#### 4. Flash Attention 2 + Unpadding + Sequence Packing
+
+ModernBERT completely eliminates padding waste:
+
+- **Unpadding:** Remove all padding tokens before attention. Concatenate variable-length inputs into a single flat tensor.
+- **Sequence Packing:** Use greedy bin-packing to fill each batch as close to 8192 tokens as possible.
+- **Flash Attention 2:** Hardware-efficient attention that only needs standard Flash Attention (no xformers dependency).
+
+Result: 10–20% speedup over previous unpadding methods. For variable-length real-world inputs, ModernBERT is **2–4× faster** than DeBERTa.
+
+#### 5. Hardware-Aware Model Design
+
+Embedding dimensions (768 base, 1024 large) are **identical to original BERT** — enabling drop-in replacement. Internal dimensions were tuned for inference efficiency on common GPUs (RTX 3090/4090, A10, T4, L4) rather than benchmark hardware.
+
+### Training Details
+
+| Aspect | ModernBERT |
+|---|---|
+| Training tokens | 2 trillion (mostly unique) |
+| Data mix | Web text, code, scientific articles, math |
+| Masking rate | 30% (up from BERT's 15%) |
+| Pre-training objective | MLM only (NSP removed) |
+| Learning rate schedule | Warmup → constant → decay (trapezoid) |
+| Context phases | Phase 1: 1T tokens @ 1024 ctx; Phase 2: 250B @ 8192 ctx; Phase 3: 50B annealing |
+| Maximum context | 8,192 tokens |
+
+Training: 3-phase approach. The stable phases release intermediate checkpoints (Pythia-style), enabling domain-specific annealing from any checkpoint.
+
+### Performance Benchmarks
+
+#### GLUE (Natural Language Understanding)
+
+| Model | GLUE avg | Memory (relative) | Speed (variable-len) |
+|---|---|---|---|
+| BERT-base | 84.6 | 1.0× | 1.0× |
+| RoBERTa-base | 88.1 | 1.0× | 1.0× |
+| DeBERTa-v3-base | 91.9 | 5.0× | 0.5× |
+| **ModernBERT-base** | **92.1** | **0.9×** | **2.0×** |
+| **ModernBERT-large** | **93.4** | **1.2×** | **1.8×** |
+
+ModernBERT-base is **the first sub-200M encoder to exceed DeBERTa-v3-base on GLUE**.
+
+#### Long-Context Retrieval (ColBERT, 8k tokens)
+
+| Model | Max context | Long-context BEIR | Code retrieval (SQA) |
+|---|---|---|---|
+| DeBERTa-v3-base | 512 | N/A | N/A |
+| NomicBERT | 2048 | 52.1 | 48.3 |
+| GTE-en-MLM | 8192 | 55.4 | 62.1 |
+| **ModernBERT-large** | **8192** | **64.2** | **>80** |
+
+ModernBERT is the **state-of-the-art long-context encoder with ColBERT** — 9 percentage points above other long-context models. It is also the **only open encoder to score >80 on Stack Overflow QA**, a code+text hybrid dataset.
+
+#### RAG Implications
+
+ModernBERT's 8k context window is transformative for RAG:
+- **Larger chunks:** Process full documents instead of tiny 256-token fragments
+- **Better coherence:** Semantic meaning preserved across longer contexts
+- **Code search:** First encoder trained on significant code data — enables whole-repository indexing
+
+### Usage
+
+```python
+from transformers import AutoTokenizer, AutoModel
+import torch
+
+# Drop-in replacement for any BERT pipeline
+tokenizer = AutoTokenizer.from_pretrained("answerdotai/ModernBERT-base")
+model = AutoModel.from_pretrained("answerdotai/ModernBERT-base")
+
+text = "ModernBERT is a state-of-the-art encoder for NLP tasks."
+inputs = tokenizer(text, return_tensors="pt")
+outputs = model(**inputs)
+
+# outputs.last_hidden_state: [batch, seq_len, 768]
+cls_embedding = outputs.last_hidden_state[:, 0, :]  # [CLS] token
+```
+
+**For classification (fine-tuning):**
+
+```python
+from transformers import AutoModelForSequenceClassification
+
+model = AutoModelForSequenceClassification.from_pretrained(
+    "answerdotai/ModernBERT-base",
+    num_labels=2
+)
+```
+
+**For retrieval with Sentence Transformers:**
+
+```python
+from sentence_transformers import SentenceTransformer
+
+# Use ModernBERT-large as a powerful retrieval backbone
+model = SentenceTransformer("answerdotai/ModernBERT-large")
+embeddings = model.encode(["long document 1...", "long document 2..."])
+```
+
+### Ecosystem Status (as of April 2026)
+
+- **HuggingFace Transformers:** Full native support (v4.48+)
+- **Sentence Transformers:** Supported as backbone
+- **vLLM:** Added encoder support (April 2025)
+- **ONNX / TensorRT:** Community export scripts available
+- **GliNER NER:** ModernBERT-based zero-shot NER models published
+- **Multilingual:** mmBERT (September 2025) — ModernBERT goes multilingual
+
+---
+
 ## Head-to-Head Comparison
 
-| Model | Params | GLUE | Speed (rel) | Key innovation |
-|---|---|---|---|---|
-| BERT-base | 110 M | 84.6 | 1.0× | Original bidirectional encoder |
-| RoBERTa-base | 125 M | 88.1 | 1.0× | Better training recipe, more data |
-| DistilBERT | 66 M | 82.8 | 1.6× | Knowledge distillation |
-| ALBERT-base | 12 M | 84.6 | 0.9× | Parameter sharing, factored embeddings |
-| ALBERT-xxlarge | 235 M | 90.9 | 0.4× | SOP + large capacity |
-| DeBERTa-v3-base | 86 M | 91.9 | 0.85× | Disentangled attention + RTD |
+| Model | Params | GLUE | Max Context | Speed (variable-len) | Key innovation |
+|---|---|---|---|---|---|
+| BERT-base | 110 M | 84.6 | 512 | 1.0× | Original bidirectional encoder |
+| RoBERTa-base | 125 M | 88.1 | 512 | 1.0× | Better training recipe, more data |
+| DistilBERT | 66 M | 82.8 | 512 | 1.6× | Knowledge distillation |
+| ALBERT-base | 12 M | 84.6 | 512 | 0.9× | Parameter sharing, factored embeddings |
+| ALBERT-xxlarge | 235 M | 90.9 | 512 | 0.4× | SOP + large capacity |
+| DeBERTa-v3-base | 86 M | 91.9 | 512 | 0.5× | Disentangled attention + RTD |
+| **ModernBERT-base** | **149 M** | **92.1** | **8192** | **2.0×** | **RoPE + alternating attention + code** |
+| **ModernBERT-large** | **395 M** | **93.4** | **8192** | **1.8×** | **RoPE + alternating attention + code** |
 
 ---
 
 ## Practical Selection Guide
 
 ```
-Need best accuracy?            → DeBERTa-v3-large or DeBERTa-v3-base
-General production NLP?        → RoBERTa-base (robust, well-supported)
-Fast inference / edge?         → DistilBERT or DistilRoBERTa
-Parameter-efficient deployment → ALBERT-base (only 12M params)
-Multilingual?                  → bert-base-multilingual-cased or XLM-RoBERTa-base
+Best overall accuracy + speed?  → ModernBERT-base (new default choice)
+Long context (>512 tokens)?     → ModernBERT-base or ModernBERT-large
+Code retrieval / search?        → ModernBERT-large (only encoder trained on code)
+Kaggle NLP competition?         → ModernBERT-large (dethroned DeBERTa-v3 as champion choice)
+Best classification accuracy?   → ModernBERT-large (93.4 GLUE) or DeBERTa-v3-large
+General production NLP?         → ModernBERT-base (robust, fast, drop-in BERT replacement)
+Fast inference / edge?          → DistilBERT or DistilRoBERTa (smallest footprint)
+Parameter-efficient deployment  → ALBERT-base (only 12M params)
+Multilingual?                   → mmBERT (ModernBERT-based) or XLM-RoBERTa-base
 Domain-specific tasks?
   Biomedical:  BioBERT / PubMedBERT
   Legal:       legal-bert-base-uncased
   Financial:   FinBERT / FLANG-BERT
   Scientific:  SciBERT
+  Code:        ModernBERT-large
 ```
 
 ---

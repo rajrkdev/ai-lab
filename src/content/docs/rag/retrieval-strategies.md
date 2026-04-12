@@ -1,9 +1,11 @@
 ---
 title: Retrieval Strategies
-description: Complete guide to RAG retrieval — dense vector search, BM25 sparse retrieval, hybrid RRF fusion, HyDE, MMR, and cross-encoder reranking — with code examples and performance benchmarks.
+description: Complete 2025 guide to RAG retrieval — dense, BM25, hybrid RRF, HyDE, MMR, ColBERT v2 late interaction, FlashRank, RankGPT, Cohere Rerank v3, Voyage Reranker — with code examples and benchmarks.
 sidebar:
   order: 7
 ---
+
+> **Current as of April 2026.**
 
 ## Retrieval Overview
 
@@ -333,9 +335,272 @@ answer = llm.invoke(build_prompt(user_question, final_docs))
 
 ---
 
+---
+
+## 8. ColBERT v2 — Late Interaction
+
+**Paper:** Santhanam et al., "ColBERTv2: Effective and Efficient Retrieval via Lightweight Late Interaction" (2022)
+
+ColBERT is a fundamentally different retrieval paradigm — it sits between a bi-encoder (fast, one vector per text) and a cross-encoder (slow, scores pairs jointly).
+
+```
+  BI-ENCODER (standard dense retrieval):
+  Query  → encoder → single vector q
+  Doc    → encoder → single vector d
+  Score  = cosine(q, d)          ← one number, fast
+
+  CROSS-ENCODER (reranker):
+  [Query + Doc] → encoder → single score
+  Must run for EVERY candidate — very slow
+
+  COLBERT (late interaction):
+  Query  → encoder → one vector per TOKEN [q1, q2, ..., qm]
+  Doc    → encoder → one vector per TOKEN [d1, d2, ..., dn]
+  Score  = Σ max cosine(qi, dj)  ← sum of max-similarities
+            i    j
+  
+  The "late interaction": vectors stay separate until scoring.
+  Pre-computes document token vectors offline → fast at query time.
+  More expressive than bi-encoder, much faster than cross-encoder.
+```
+
+**Performance:** ColBERT v2 matches or exceeds cross-encoder accuracy on many benchmarks while being 10–100× faster at scale.
+
+```python
+# ColBERT via RAGatouille (simplest Python interface)
+# pip install ragatouille
+from ragatouille import RAGPretrainedModel
+
+RAG = RAGPretrainedModel.from_pretrained("colbert-ir/colbertv2.0")
+
+# Index documents
+RAG.index(
+    collection=["Refunds take 30 days.", "Shipping is 5-7 days.", "Returns need receipt."],
+    index_name="my_rag_index",
+    max_document_length=180,
+    split_documents=True,
+)
+
+# Search
+results = RAG.search(query="What is the refund window?", k=3)
+for r in results:
+    print(f"Score: {r['score']:.4f}: {r['content']}")
+```
+
+```python
+# ColBERT as a LangChain retriever
+from ragatouille import RAGPretrainedModel
+from langchain_core.retrievers import BaseRetriever
+from langchain_core.documents import Document
+from langchain_core.callbacks import CallbackManagerForRetrieverRun
+
+class ColBERTRetriever(BaseRetriever):
+    rag_model: RAGPretrainedModel
+    k: int = 5
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    def _get_relevant_documents(
+        self, query: str, *, run_manager: CallbackManagerForRetrieverRun
+    ) -> list[Document]:
+        results = self.rag_model.search(query=query, k=self.k)
+        return [
+            Document(
+                page_content=r["content"],
+                metadata={"score": r["score"], "rank": r["rank"]},
+            )
+            for r in results
+        ]
+
+RAG = RAGPretrainedModel.from_index(".ragatouille/colbert/indexes/my_rag_index")
+colbert_retriever = ColBERTRetriever(rag_model=RAG, k=5)
+```
+
+---
+
+## Advanced Reranking Options (2024–2025)
+
+### FlashRank — Fast Cross-Encoder Reranking
+
+**GitHub:** `PrithivirajDamodaran/FlashRank`
+
+FlashRank provides ultra-fast cross-encoder reranking with a tiny model footprint — designed for latency-sensitive production.
+
+```python
+# pip install flashrank
+from flashrank import Ranker, RerankRequest
+from langchain_core.documents import Document
+
+# Default model: ms-marco-MiniLM-L-12-v2 (~66MB, ~4ms per 100 passages)
+# Larger option: ms-marco-MultiBERT-L-12 (better quality, ~200ms)
+ranker = Ranker(model_name="ms-marco-MiniLM-L-12-v2", cache_dir="/tmp/flashrank")
+
+def flashrank_rerank(query: str, docs: list[Document], top_n: int = 5) -> list[Document]:
+    passages = [{"id": i, "text": d.page_content} for i, d in enumerate(docs)]
+    request = RerankRequest(query=query, passages=passages)
+    results = ranker.rerank(request)
+    # Results are sorted by relevance score descending
+    return [docs[r["id"]] for r in results[:top_n]]
+
+# Usage: retrieve broadly, rerank fast
+candidates = hybrid_retriever.invoke(query)   # 50 candidates
+final_docs = flashrank_rerank(query, candidates, top_n=5)
+```
+
+### RankGPT — LLM as Reranker
+
+**Paper:** Sun et al., "Is ChatGPT Good at Search? Investigating Large Language Models as Re-Ranking Agents" (2023)
+
+Use an LLM directly as a reranker via a sliding window permutation approach. More expensive than cross-encoders but can leverage language understanding not captured by embedding models.
+
+```python
+import anthropic
+
+client = anthropic.Anthropic()
+
+def rankgpt_rerank(
+    query: str,
+    docs: list[str],
+    top_n: int = 5,
+    window_size: int = 10,
+) -> list[str]:
+    """
+    Rerank documents using Claude as a listwise reranker.
+    Uses sliding window to handle > window_size docs.
+    """
+    if len(docs) <= window_size:
+        return _rankgpt_window(query, docs, top_n)
+
+    # Sliding window: process in overlapping batches
+    ranked = docs[:]
+    step = window_size // 2
+    for start in range(0, len(ranked) - window_size, step):
+        window = ranked[start : start + window_size]
+        ranked[start : start + window_size] = _rankgpt_window(query, window, len(window))
+
+    return ranked[:top_n]
+
+
+def _rankgpt_window(query: str, docs: list[str], top_n: int) -> list[str]:
+    doc_list = "\n".join(f"[{i+1}] {d[:300]}" for i, d in enumerate(docs))
+    response = client.messages.create(
+        model="claude-haiku-4-5-20251001",   # fast + cheap for reranking
+        max_tokens=200,
+        messages=[{
+            "role": "user",
+            "content": f"""Rank these passages by relevance to the query.
+Query: {query}
+
+Passages:
+{doc_list}
+
+Output ONLY the passage numbers in order from most to least relevant.
+Format: [3] > [1] > [4] > [2] > ...""",
+        }],
+    )
+    # Parse ranking from response
+    import re
+    numbers = re.findall(r'\[(\d+)\]', response.content[0].text)
+    ranked_indices = [int(n) - 1 for n in numbers if 0 < int(n) <= len(docs)]
+    # Fill in any missing indices
+    for i in range(len(docs)):
+        if i not in ranked_indices:
+            ranked_indices.append(i)
+    return [docs[i] for i in ranked_indices[:top_n]]
+```
+
+### Cohere Rerank v3
+
+```python
+import cohere
+from langchain_core.documents import Document
+
+co = cohere.Client("YOUR_API_KEY")
+
+def cohere_rerank(query: str, docs: list[Document], top_n: int = 5) -> list[Document]:
+    """Cohere Rerank v3 — strong cross-encoder performance via API."""
+    response = co.rerank(
+        model="rerank-english-v3.0",   # or rerank-multilingual-v3.0
+        query=query,
+        documents=[d.page_content for d in docs],
+        top_n=top_n,
+        return_documents=True,
+    )
+    return [
+        Document(
+            page_content=result.document.text,
+            metadata={"relevance_score": result.relevance_score},
+        )
+        for result in response.results
+    ]
+```
+
+### Voyage Reranker
+
+```python
+import voyageai
+
+vo = voyageai.Client()
+
+def voyage_rerank(query: str, docs: list[str], top_n: int = 5) -> list[dict]:
+    """Voyage Reranker-2 — strong performance, competitive pricing."""
+    result = vo.rerank(
+        query=query,
+        documents=docs,
+        model="rerank-2",       # or rerank-2-lite for speed
+        top_k=top_n,
+    )
+    return [
+        {"document": r.document, "relevance_score": r.relevance_score}
+        for r in result.results
+    ]
+```
+
+---
+
+## Reranker Comparison (August 2025)
+
+```
+  RERANKER OPTIONS — SPEED vs. QUALITY vs. COST
+  ─────────────────────────────────────────────────────────────────────
+  Model                     Latency   Quality   Cost      Self-host
+  ─────────────────────────────────────────────────────────────────────
+  ms-marco-MiniLM-L-6-v2    ~4ms      Good      Free      Yes
+  cross-encoder/ms-marco-L6  ~4ms     Good      Free      Yes
+  BAAI/bge-reranker-large   ~30ms     Very good Free      Yes
+  FlashRank MiniLM          ~4ms      Good      Free      Yes
+  FlashRank MultiBERT       ~200ms    Better    Free      Yes
+  Cohere Rerank v3          ~200ms    Excellent $2/1K     No
+  Voyage Rerank-2           ~200ms    Excellent $0.5/1K   No
+  RankGPT (Claude Haiku)    ~500ms    Excellent ~$0.02/Q  No
+  ─────────────────────────────────────────────────────────────────────
+  Recommendation: FlashRank for low-latency prod; Cohere/Voyage for
+  quality-critical prod; RankGPT when you need reasoning-based ranking.
+```
+
+---
+
+## Retrieval Strategy Comparison (Updated)
+
+| Strategy | Recall | Precision | Latency | Complexity | Best for |
+|---|---|---|---|---|---|
+| Dense (bi-encoder) | High | Medium | Very fast | Low | Prototypes, semantic queries |
+| BM25 | Medium | High (keywords) | Very fast | Low | Exact terms, IDs, codes |
+| Hybrid (RRF) | Very high | High | Fast | Medium | Production default |
+| HyDE | High | Medium | Medium (+LLM) | Medium | Short/ambiguous queries |
+| Multi-query | Very high | Medium | Medium (+LLM) | Medium | Broad topics |
+| MMR | High | Medium | Fast | Low | Diverse sources needed |
+| **ColBERT v2** | Very high | Very high | Medium | Medium | High-quality, no GPU reranker |
+| Cross-encoder rerank | Very high | Very high | Slow (+model) | High | Quality-critical pipelines |
+| **RankGPT** | Very high | Excellent | Slow (+LLM) | High | Complex reasoning needed |
+
+---
+
 ## See Also
 
-- [Embedding Models](../embedding-models) — choosing the bi-encoder
+- [Embedding Models](../embedding-models) — choosing the bi-encoder; Voyage AI, BGE-M3
 - [Vector Stores](../vector-stores) — FAISS, Weaviate, Qdrant implementations
+- [BM25 & Sparse Retrieval](../bm25-sparse-retrieval) — BM25 math, SPLADE, FTS engines
 - [Advanced RAG](../advanced-rag) — query rewriting, FLARE, step-back prompting
 - [BERT in RAG](../bert/bert-in-rag) — bi-encoder vs cross-encoder architecture details

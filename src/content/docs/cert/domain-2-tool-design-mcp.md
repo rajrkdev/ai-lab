@@ -710,6 +710,54 @@ Write("config.py", modified)
 
 ---
 
+## Task Statement 2.5b: Advanced MCP Features (2026)
+
+### MCP Elicitation — Servers Can Request User Input
+
+Introduced in **v2.1.76**, MCP Elicitation allows an MCP server to pause a tool call and request additional information directly from the user (not Claude). This enables interactive workflows without breaking the agentic loop.
+
+**How it works:**
+1. Server sends `elicitation/create` request with a schema for the required input
+2. Claude Code presents a dialog to the user
+3. User fills in the form and submits
+4. Result is passed back to the tool execution
+
+**Server-side configuration** (`plugin.json` or direct):
+```json
+{
+  "mcpServers": {
+    "my-server": {
+      "command": "node",
+      "args": ["server.js"],
+      "allowElicitation": true
+    }
+  }
+}
+```
+
+**Use cases:** OAuth credential capture, environment selection dialogs, confirmation prompts, and disambiguation when the server needs human judgment to proceed.
+
+### MCP Tool Result Size Override
+
+Introduced in **v2.1.91**, servers can override the default result size limit (32K chars) per-result by setting `_meta["anthropic/maxResultSizeChars"]` — up to **500,000 characters**.
+
+```python
+# MCP server returning a large result with override
+return {
+    "content": [{"type": "text", "text": large_document_content}],
+    "_meta": {
+        "anthropic/maxResultSizeChars": 500000  # Override up to 500K chars
+    },
+    "isError": False
+}
+```
+
+**Use cases:** Full source file dumps, large API responses, complete database exports where truncation would break downstream processing.
+
+> **Exam fact:** The default limit is ~32K characters. Without `_meta` override, results larger than the limit are silently truncated before Claude sees them.
+
+---
+
 ## Practice Questions — Domain 2
 
 ### Question 1
@@ -776,6 +824,9 @@ You need Claude to extract data from an unknown document type (invoice, receipt,
 | **${VAR} expansion** | Reads env var. Fails if unset. |
 | **${VAR:-default}** | Reads env var with fallback default value |
 | **MCP resources** | Read-only context data — reduces exploratory tool calls |
+| **MCP Elicitation** | v2.1.76: server requests user input mid-execution via `elicitation/create`; `allowElicitation: true` in server config |
+| **Tool result size override** | v2.1.91: server sets `_meta["anthropic/maxResultSizeChars"]` up to 500K chars per result |
+| **HTTP hook type** | v2.1.63: POSTs JSON payload to local/remote endpoint; use for SIEM, audit trails |
 | **Community servers** | Use for: GitHub, Jira, Slack, Postgres |
 | **Custom servers** | Build for team-specific workflows only |
 | **Grep** | Search file CONTENTS for patterns |

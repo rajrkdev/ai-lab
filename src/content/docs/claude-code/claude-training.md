@@ -32,13 +32,13 @@ The command surface has grown significantly. Beyond the essentials (`/compact`, 
 
 **Session management**: `/resume` opens an interactive session picker with metadata. `/rename` names sessions for retrieval. `/teleport` pulls a remote session (from claude.ai/code) into your terminal. `/desktop` hands off to the Desktop app.
 
-**New in 2025-2026**: `/output-style` configures response formatting (Default, Explanatory, or Learning modes). `/keybindings` opens keybinding configuration. `/bashes` shows running background processes. `/todos` displays current task items. `/changelog` shows release notes. `/stats` shows usage streaks. `/debug` helps troubleshoot sessions.
+**New in 2025-2026**: `/output-style` configures response formatting (Default, Explanatory, or Learning modes). `/keybindings` opens keybinding configuration. `/bashes` shows running background processes. `/todos` displays current task items. `/changelog` shows release notes. `/stats` shows usage streaks. `/debug` helps troubleshoot sessions. `/branch` creates a worktree branch (renamed from `/fork` in v2.1.49). `/insights` shows session analytics. `/color` customizes terminal color scheme. `/powerup` activates Max-tier upgrades. `/team-onboarding` generates an onboarding doc from CLAUDE.md. `/ultraplan` triggers maximum-depth planning mode. `/reload-plugins` hot-reloads installed plugins without restarting.
 
 **Custom commands** live in `.claude/commands/` (project) or `~/.claude/commands/` (personal). The newer **Skills system** (`.claude/skills/` with `SKILL.md` files) supersedes commands with auto-invocation capabilities, supporting files, and YAML frontmatter for `context: fork`, `agent: Explore`, and `disable-model-invocation`.
 
 ### Tool orchestration: built-in tools and when to use each
 
-Claude Code exposes **16+ built-in tools**. The critical rule: **always prefer native tools over shell equivalents**. Use `Read` instead of `cat`, `Edit` instead of `sed`, `Write` instead of `echo >`, `Glob` instead of `find`, `Grep` instead of `grep`.
+Claude Code exposes **20+ built-in tools**. The critical rule: **always prefer native tools over shell equivalents**. Use `Read` instead of `cat`, `Edit` instead of `sed`, `Write` instead of `echo >`, `Glob` instead of `find`, `Grep` instead of `grep`.
 
 | Tool | Purpose | Power-user tip |
 |------|---------|---------------|
@@ -50,6 +50,11 @@ Claude Code exposes **16+ built-in tools**. The critical rule: **always prefer n
 | **WebFetch** | URL content with AI extraction | Include a `prompt` parameter to focus extraction |
 | **TodoWrite** | Structured task tracking | Use for 3+ step tasks; tracks `pending/in_progress/completed` |
 | **Task** | Spawn sub-agents | `subagent_type: "Explore"` for read-only research |
+| **PowerShell** | Windows shell (v2.1.84) | Native PowerShell 5.1/7+ execution on Windows; use instead of Bash on Windows hosts |
+| **ExitWorktree** | Leave worktree context (v2.1.72) | Returns agent to main worktree after isolated branch work; used by Agent Teams |
+| **CronCreate** | Schedule recurring tasks (v2.1.71) | Registers cron-style jobs; pairs with `CLAUDE_CODE_DISABLE_CRON=1` to suppress |
+| **SendMessage** | Peer-to-peer agent messaging | Sends typed inbox messages to a named teammate; enables true Agent Teams coordination |
+| **Monitor** | Watch filesystem/processes (v2.1.98) | Background observation without polling Bash; alerts Claude when conditions are met |
 
 ### CLAUDE.md configuration hierarchy
 
@@ -82,9 +87,41 @@ CQRS with MediatR. Vertical slice per feature folder.
 
 Keep CLAUDE.md **ruthlessly concise**. Research from HumanLayer shows Claude's system prompt already contains ~50 instructions, and frontier models can follow roughly 150-200. Every instruction in CLAUDE.md must justify its token cost. Never put in CLAUDE.md what a linter or `.editorconfig` can enforce deterministically.
 
+### Plugin System — package and distribute configurations
+
+Introduced in **v2.1.83**, plugins bundle CLAUDE.md, rules, skills, MCP server configs, and hooks as a single versioned artifact. This is the preferred mechanism for sharing team-wide configurations.
+
+```bash
+claude plugin install <name-or-url>   # Install from registry or local path
+claude plugin list                    # List all installed plugins
+claude plugin enable <name>
+claude plugin disable <name>
+claude plugin validate <dir>          # Validate plugin structure before publishing
+claude plugin update                  # Pull latest versions of all plugins
+```
+
+**plugin.json manifest** (required at plugin root):
+```json
+{
+  "name": "dotnet-azure-ops",
+  "version": "2.0.0",
+  "components": {
+    "claudeMd": "CLAUDE.md",
+    "rules": ["rules/"],
+    "skills": ["skills/"],
+    "mcp": { "azureDevOps": { "command": "npx", "args": ["@az/mcp"] } },
+    "hooks": {
+      "PostToolUse": [{ "matcher": "Edit|Write", "type": "command", "command": "./validate.sh" }]
+    }
+  }
+}
+```
+
+Use `/reload-plugins` inside a session to pick up changes without restarting. For enterprise rollout: drop plugin configs into `.claude/managed-settings.d/` and deliver via MDM plist (macOS) or Windows Registry (`HKLM\SOFTWARE\Anthropic\ClaudeCode`). The `forceRemoteSettingsRefresh` policy (v2.1.92) triggers re-download on session start.
+
 ### Context window mastery
 
-The **200K token context window** is your most precious resource. Use `/context` to see the colored usage grid and `/cost` to monitor spending. The formula: `Context = System + CLAUDE.md + Rules + Skills + History + Tools + MCP schemas`. Response buffer reserves ~4K tokens.
+The **200K token context window** is your standard resource. Opus 4.6 on Max/Team/Enterprise tiers unlocks **1M token context** — use `CLAUDE_CODE_DISABLE_1M_CONTEXT=1` to opt out if needed. Use `/context` to see the colored usage grid and `/cost` to monitor spending. The formula: `Context = System + CLAUDE.md + Rules + Skills + History + Tools + MCP schemas`. Response buffer reserves ~4K tokens.
 
 **Token budgeting strategies**: Never exceed **75% utilization** — quality degrades noticeably past this point. Use `/compact focus on [topic]` proactively at 70%, not reactively at 95% when auto-compact triggers. Between distinct tasks, prefer `/clear` over `/compact`. Use `--max-turns` and `--max-budget-usd` flags in automation to prevent runaway costs.
 
@@ -109,7 +146,7 @@ Enable via settings (recommended) or environment variable:
 }
 ```
 
-This unlocks six tools: **TeamCreate, TaskCreate, TaskUpdate, TaskList, SendMessage, TeamDelete**. Requires Claude Code **v2.1.32+**. The feature works on Pro tier but practically demands Max tier ($100-200/month) or API billing because each teammate is a full ~200K token session — a 5-agent team consumes roughly **1M tokens per session**.
+This unlocks six core tools: **TeamCreate, TaskCreate, TaskUpdate, TaskList, SendMessage, TeamDelete** — plus **ExitWorktree** for teammates to leave worktree contexts and return to the main workspace. Requires Claude Code **v2.1.32+**. The feature works on Pro tier but practically demands Max tier ($100-200/month) or API billing because each teammate is a full ~200K token session — a 5-agent team consumes roughly **1M tokens per session**.
 
 ### SubAgent vs. TeammateTool: choosing the right pattern
 
@@ -159,7 +196,7 @@ Hooks transform Claude Code from an interactive assistant into a **governed deve
 
 ### Hook event types and lifecycle
 
-Claude Code provides **12+ hook events** spanning the full session lifecycle:
+Claude Code provides **25+ hook events** spanning the full session lifecycle:
 
 | Event | When | Can Block? |
 |-------|------|-----------|
@@ -167,10 +204,12 @@ Claude Code provides **12+ hook events** spanning the full session lifecycle:
 | **PostToolUse** | After tool completes | Yes — feed errors back to Claude |
 | **UserPromptSubmit** | Before Claude processes your input | Yes — exit 2 blocks the prompt |
 | **Stop** | When Claude finishes responding | Yes — exit 2 with reason forces continuation |
+| **StopFailure** | When the Stop hook itself fails | No — error logged |
 | **SubagentStop** | When a subagent finishes | Yes |
 | **SessionStart** | New/resumed session | No — but can inject context |
 | **Notification** | Permission prompts, idle alerts | No |
 | **PreCompact** | Before context compaction | Matcher: `manual` or `auto` |
+| **PermissionDenied** | User denies a permission prompt (v2.1.89) | No — but can log or alert |
 
 ### Configuration format and matchers
 
@@ -218,7 +257,12 @@ Matchers use regex against tool names: `"Edit|Write"` matches both, `"mcp__githu
 
 ### Three hook types
 
-Beyond standard **command** hooks (shell scripts), Claude Code supports **prompt** hooks (LLM evaluation using Haiku for fast, cheap assessment) and **agent** hooks (full subagent verification with tool access, up to 50 turns). Agent hooks are the most powerful — they can read files, run tests, and make informed decisions about whether Claude should stop or continue.
+Beyond standard **command** hooks (shell scripts), Claude Code supports:
+- **http** hooks (POST to a webhook/sidecar — v2.1.63): sends JSON payload to a local or remote HTTP endpoint; ideal for audit trails, SIEM integration, and long-running validators that shouldn't block the terminal.
+- **prompt** hooks (LLM evaluation using Haiku for fast, cheap assessment)
+- **agent** hooks (full subagent verification with tool access, up to 50 turns)
+
+Agent hooks are the most powerful — they can read files, run tests, and make informed decisions about whether Claude should stop or continue.
 
 ### Production .NET integration hooks
 
@@ -381,7 +425,7 @@ Return findings as a structured list with: file, line, severity, description, fi
 | "think hard" / "megathink" | ~10,000 tokens | Design work, caching strategy |
 | "think harder" / "ultrathink" | ~31,999 tokens | Architecture decisions, complex debugging |
 
-**Important Opus 4.6 update**: The latest model uses **adaptive reasoning** where Claude dynamically allocates thinking depth. The trigger words are being deprecated in favor of the `/effort` level setting (low, medium, high). For older models, the fixed-budget system still applies. Cost range: ~$0.06/task (basic) to ~$0.48/task (ultrathink). Reserve ultrathink for decisions where the cost of error exceeds $5 or time saved exceeds 1 hour.
+**Important Opus 4.6 update**: The latest model uses **adaptive reasoning** where Claude dynamically allocates thinking depth. The `/effort` level setting (low, medium, high) controls this — the `max` tier was removed in **v2.1.72**. Default effort is `high` for API/Bedrock/Vertex/Team/Enterprise tiers (v2.1.94). The trigger word system ("think hard", "ultrathink") is being deprecated in favor of `/effort`. For older models, the fixed-budget system still applies. Cost range: ~$0.06/task (basic) to ~$0.48/task (ultrathink). Reserve high-effort for decisions where the cost of error exceeds $5 or time saved exceeds 1 hour.
 
 ### Multi-shot anchoring and meta-prompting
 

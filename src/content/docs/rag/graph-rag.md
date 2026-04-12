@@ -1,9 +1,11 @@
 ---
 title: "GraphRAG & Knowledge Graphs"
-description: Microsoft GraphRAG (2024) community detection for global queries, LightRAG (2024) dual-level graph retrieval, Neo4j integration — when entity relationships beat vector similarity, with Anthropic SDK and LangChain implementations.
+description: Microsoft GraphRAG (2024), LightRAG (2024), NodeRAG (2025), Graph-R1 (2026) — community detection for global queries, dual-level graph retrieval, Neo4j integration — when entity relationships beat vector similarity, with Anthropic SDK and LangChain implementations.
 sidebar:
   order: 16
 ---
+
+> **Current as of April 2026.**
 
 ## Why Graphs for Retrieval?
 
@@ -846,6 +848,41 @@ def leiden_communities(G: nx.DiGraph, resolution: float = 1.0) -> list[list[str]
     print(f"Leiden found {len(communities)} communities")
     return communities
 ```
+
+---
+
+## NodeRAG (2025)
+
+**Paper:** NodeRAG — "Structuring Graph as Nodes for Retrieval-Augmented Generation" (2025)
+
+NodeRAG demonstrates performance advantages over both Microsoft GraphRAG and LightRAG in indexing time, query efficiency, and multi-hop QA accuracy. The key innovation: rather than treating communities as retrieval units, NodeRAG makes **individual graph nodes** (entities, relationships, passages) directly retrievable — enabling finer-grained retrieval without community summarization overhead.
+
+### NodeRAG vs. GraphRAG vs. LightRAG
+
+| Metric | Microsoft GraphRAG | LightRAG | NodeRAG |
+|---|---|---|---|
+| Indexing time | Very slow (community detection) | Fast | Fast |
+| Query latency | High (community summary lookup) | Medium | Low |
+| Multi-hop QA | Good | Good | **Best** |
+| Global synthesis | **Best** | Good | Good |
+| Setup complexity | High | Medium | Medium |
+| Storage overhead | High (summaries) | Medium | Low |
+
+NodeRAG is the recommended starting point for new graph RAG implementations in 2025–2026 when indexing speed and query efficiency matter.
+
+---
+
+## Graph-R1 — Reinforcement Learning GraphRAG (2026)
+
+**Paper:** "Graph-R1: Towards Agentic GraphRAG Framework via End-to-End Reinforcement Learning" (2026)
+
+Graph-R1 treats retrieval as a **multi-turn agent-environment interaction**, trained with reinforcement learning rather than supervised graph extraction. Key innovations:
+
+- **Lightweight knowledge hypergraph**: replaces heavy Leiden community detection with learned hyperedges
+- **RL-trained retrieval agent**: learns which graph paths to traverse for a given query — not hand-coded routing
+- **End-to-end training**: both graph construction and retrieval policy are jointly optimized
+
+Graph-R1 outperforms traditional GraphRAG in reasoning accuracy and retrieval efficiency, particularly on multi-hop reasoning benchmarks where static community summaries are insufficient.
 
 ---
 

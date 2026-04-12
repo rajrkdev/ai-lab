@@ -123,6 +123,26 @@ The session that generated code retains reasoning context — confirmation bias 
 
 ---
 
+### NEW: 2026 FEATURE RULES (v2.1.x — Exam Ready)
+
+**Rule 26: Effort Levels Are Now Low / Medium / High Only**  
+Since v2.1.72, the `max` effort level was removed. Valid values: `low`, `medium`, `high`. The `auto` keyword in some CLI contexts selects based on context. The default effort level is now **high** for API, Bedrock, Vertex, Team, and Enterprise tiers (v2.1.94) — NOT medium.
+
+**Rule 27: HTTP Hooks POST JSON to a URL (v2.1.63)**  
+Hook type `"http"` sends the same JSON payload as a `command` hook (via stdin) as an HTTP POST to a configured URL. Useful for enterprise webhook integrations, Slack notifications, audit systems. Returning `{ "permissionDecision": "deny" }` from an HTTP PreToolUse hook blocks the tool call identically to a `command` hook returning exit code 2.
+
+**Rule 28: PermissionDenied Hook Fires on Explicit Denials (v2.1.89)**  
+The `PermissionDenied` hook fires whenever Claude Code explicitly denies a tool invocation (due to deny rules or permission mode). It does NOT fire on ask prompts or allow-then-proceed. Use it for auditing denial events or alerting.
+
+**Rule 29: `--bare` Flag for Reproducible CI (v2.1.81)**  
+`claude -p "..." --bare` skips auto-discovery of all CLAUDE.md files and user memory. Combined with explicit `--system-prompt` or `--append-system-prompt`, this makes CI runs fully reproducible. Without `--bare`, different users' CLAUDE.md files would produce different CI results.
+
+**Rule 30: ExitWorktree vs. CronCreate Tool Semantics**  
+`ExitWorktree` — called by a teammate agent when finished; signals completion back to the lead and releases the worktree branch lock.  
+`CronCreate` — schedules a prompt to run on a recurring cron schedule within the current session (e.g., `"*/5 * * * *"` every 5 minutes). Both are non-interactive tools; neither takes user input.
+
+---
+
 ## DISTRACTOR PATTERNS
 
 When you see these in answer choices, they are very likely **wrong**:
@@ -140,6 +160,7 @@ When you see these in answer choices, they are very likely **wrong**:
 | `CLAUDE_HEADLESS=true` | Does not exist. Use `-p` flag. |
 | `--batch` flag | Does not exist. Use `-p` flag. |
 | `--headless` flag | Does not exist. Use `-p` flag. |
+| `--max` effort level | Removed in v2.1.72. Valid levels: `low`, `medium`, `high`. |
 | "Check if response contains 'I'm done'" | Never parse text for loop termination — use `stop_reason` |
 | "Use max_iterations as primary stop" | Safety limit, not primary mechanism — use `stop_reason` |
 | "Subagent inherits coordinator context" | Subagents start FRESH — no inherited history |
@@ -210,18 +231,25 @@ These always point to the **lowest-effort, highest-leverage fix** — not the mo
 | **Agent SDK loop** | `stop_reason`: `end_turn`, `tool_use`, `pause_turn`, `refusal`, `max_tokens` |
 | **Agent SDK options** | `allowedTools`, `permissionMode`, `maxTurns`, `maxBudgetUsd` |
 | **AgentDefinition** | `description`, `prompt`, `tools`, `model`, `disallowedTools`, `maxTurns` |
-| **Hooks** | `PreToolUse` (block/modify), `PostToolUse` (normalize), `PreCompact` |
+| **Hooks** | `PreToolUse` (block/modify), `PostToolUse` (normalize), `PreCompact`, `PermissionDenied` (v2.1.89), `StopFailure` |
+| **Hook types** | `command`, `http` (POST JSON to URL, v2.1.63), `prompt`, `agent` |
 | **Hook returns** | `permissionDecision`: `allow`\|`deny`\|`ask`, `updatedInput`, `additionalContext` |
 | **MCP errors** | `isError: true/false`, `errorCategory`, `isRetryable` |
 | **MCP config** | `.mcp.json` (project), `~/.claude.json` (user), `${VAR}`, `${VAR:-default}` |
+| **MCP elicitation** | Servers can request structured user input mid-task (v2.1.76); fires `Elicitation` + `ElicitationResult` hooks |
 | **Claude Code config** | `CLAUDE.md`, `.claude/rules/` (paths), `.claude/skills/SKILL.md` |
 | **Skills frontmatter** | `name`, `description`, `context: fork`, `allowed-tools`, `argument-hint`, `agent` |
-| **CLI flags** | `-p`, `--output-format json`, `--json-schema`, `--resume`, `--continue` |
-| **Session management** | `resume: sessionId`, `forkSession: true`, `/compact`, `/memory` |
+| **Plugins (v2.0.12+)** | `claude plugin install/list/enable/disable/validate/update`; `/reload-plugins` for hot-reload |
+| **Enterprise settings** | `managed-settings.d/` drop-in directory (v2.1.83); macOS plist / Windows Registry (v2.1.51) |
+| **CLI flags** | `-p`, `--output-format json`, `--json-schema`, `--resume`, `--continue`, `--bare` (v2.1.81), `-w/--worktree` (v2.1.49) |
+| **Effort levels** | `low` / `medium` / `high` only — `max` was removed in v2.1.72; default is HIGH for API/Bedrock/Vertex/Team/Enterprise (v2.1.94) |
+| **Session management** | `resume: sessionId`, `forkSession: true`, `/compact`, `/memory`, `/branch` (renamed from `/fork`, v2.1.80) |
+| **New tools (2026)** | `PowerShell` (Windows, v2.1.84), `Monitor` (v2.1.98), `ExitWorktree` (v2.1.72), `CronCreate` (v2.1.71), `SendMessage` (agent P2P) |
 | **API: structured output** | `tool_use` blocks, `tool_choice`: `auto`\|`any`\|`{type,name}` |
 | **API: stop_reasons** | `end_turn`, `tool_use`, `max_tokens`, `refusal`, `pause_turn`, `stop_sequence` |
 | **Batch API** | 50% cost, 24hr max, `custom_id`, no multi-turn tools, 100K max requests |
-| **Built-in tools** | Grep (content search), Glob (file patterns), Read, Write, Edit, Bash |
+| **Built-in tools** | Grep (content search), Glob (file patterns), Read, Write, Edit, Bash, PowerShell (Windows) |
 | **Edit fallback** | If text not unique → Read + Write instead |
 | **Context tools** | `/compact` (reduce), `/memory` (verify loaded config) |
-| **CI/CD** | `claude -p`, `--output-format json`, independent sessions, prior findings |
+| **CI/CD** | `claude -p`, `--output-format json`, `--bare` (skip CLAUDE.md auto-discovery for reproducibility), independent sessions, prior findings |
+| **Context window** | Opus 4.6: 1M tokens (Max/Team/Enterprise); Sonnet 4.6: 1M native; Haiku 4.5: 200K |

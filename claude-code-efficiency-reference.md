@@ -1,6 +1,6 @@
 # Claude Code: Context, Cost & Token Efficiency — Complete Reference
 
-> **Version:** April 2026 · Claude Code v2.1.92+  
+> **Version:** April 2026 · Claude Code v2.1.101 (latest)  
 > **CCA-F Domains:** D1 (Agentic Architecture), D2 (Claude Code Config), D3 (Prompt Engineering), D4 (Tool Design & MCP), D5 (Context Management & Reliability)  
 > **Target audience:** Developers optimizing Claude Code usage for cost and token efficiency
 
@@ -221,9 +221,10 @@ Effort levels control adaptive reasoning — dynamically allocating thinking tok
 | Level | Thinking tokens | Use cases | Token impact |
 |-------|----------------|-----------|-------------|
 | low | 0–500 (may skip entirely) | Formatting, linting, lookups, file moves | Saves thousands of output tokens per turn |
-| medium | Balanced (default) | Most coding: features, tests, docs, refactoring | Standard allocation |
+| medium | Balanced | Most coding: features, tests, docs, refactoring | Standard allocation |
 | high | Deep reasoning (2–4× more) | Complex debugging, architecture decisions | Expensive but justified |
-| max | Unconstrained (Opus 4.6 only) | Novel algorithms, research-grade problems | Maximum possible cost |
+
+> **⚠\ufe0f Removed in v2.1.72:** The `max` effort level was removed. Valid levels: `low`, `medium`, `high`. The default changed to **`high`** for API, Bedrock, Vertex, Team, and Enterprise tiers (v2.1.94). Only Free tier defaults to `medium`.
 
 ```yaml
 # In skill frontmatter: .claude/commands/quick-format.md
@@ -241,7 +242,15 @@ effort: low
 ---
 ```
 
-**Priority order:** `CLAUDE_CODE_EFFORT_LEVEL` env var (highest) → skill/subagent frontmatter → session `/effort` command → model default (medium). Including "ultrathink" in a prompt triggers high effort for that single turn only.
+**Priority order:** `CLAUDE_CODE_EFFORT_LEVEL` env var (highest) → skill/subagent frontmatter → session `/effort` command → model default (`high` for API/pro tiers, `medium` for Free). Including "ultrathink" in a prompt triggers high effort for that single turn only.
+
+---
+
+## 5b. OS CA Certificate Store (v2.1.101)
+
+As of **v2.1.101** (April 10, 2026), Claude Code automatically trusts certificates from the **operating system CA certificate store**. This means corporate proxy certificates, private CA certificates for internal services, and enterprise root certificates no longer need to be explicitly configured — they are picked up automatically from the system trust store on macOS, Linux, and Windows.
+
+If you need to opt out, set `CLAUDE_CODE_DISABLE_OS_CA_CERT_STORE=1`.
 
 ---
 

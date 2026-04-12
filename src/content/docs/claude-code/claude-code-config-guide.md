@@ -603,19 +603,19 @@ Here is the complete lifecycle of how all three mechanisms work together during 
 
 ## 6. Side-by-Side Comparison Table
 
-| Dimension | CLAUDE.md | Rules (.claude/rules/) | Skills (.claude/skills/) |
-|-----------|-----------|------------------------|--------------------------|
-| **When loaded** | Always at session start | Global: always at start. Path-scoped: on demand | Frontmatter only at start. Body: on invocation |
-| **Priority** | High (authoritative) | High (same as CLAUDE.md) | Normal (tool result) |
-| **Token cost** | Permanent overhead every session | Global = permanent. Path-scoped = conditional | Minimal overhead (~description tokens). Full cost only on use |
-| **Invocation** | Automatic | Automatic (global) or file-pattern triggered (path-scoped) | Model-decided or user `/slash-command` |
-| **Scope** | Entire project | Per-domain or per-path | Per-task or per-capability |
-| **Supports scripts?** | No | No | Yes (supporting files) |
-| **Supports templates?** | No (just text) | No (just text) | Yes (full folder structure) |
-| **Path filtering** | Via directory hierarchy | Yes (`paths:` frontmatter with glob patterns) | No (matched by description, not file path) |
-| **Git-shared** | Yes (CLAUDE.md) / No (CLAUDE.local.md) | Yes | Yes (project skills) / No (personal skills) |
-| **Best for** | Project identity, universal conventions, key commands | Domain-specific rules, coding patterns scoped to file types | Complex workflows, deployment, code generation, analysis tasks |
-| **Edit command** | `/memory` or direct edit | Direct edit | Direct edit |
+| Dimension | CLAUDE.md | Rules (.claude/rules/) | Skills (.claude/skills/) | Plugins (.claude/plugins/) |
+|-----------|-----------|------------------------|--------------------------|--------------------------|
+| **When loaded** | Always at session start | Global: always at start. Path-scoped: on demand | Frontmatter only at start. Body: on invocation | Manifest at start; skills/hooks/CLAUDE.md content merged on load |
+| **Priority** | High (authoritative) | High (same as CLAUDE.md) | Normal (tool result) | Depends on content type |
+| **Token cost** | Permanent overhead every session | Global = permanent. Path-scoped = conditional | Minimal overhead (~description tokens). Full cost only on use | Depends on bundled CLAUDE.md size |
+| **Invocation** | Automatic | Automatic (global) or file-pattern triggered (path-scoped) | Model-decided or user `/slash-command` | Enabled per-user; `/reload-plugins` to hot-reload |
+| **Scope** | Entire project | Per-domain or per-path | Per-task or per-capability | Cross-project (user-installed) or enterprise-distributed |
+| **Supports scripts?** | No | No | Yes (supporting files) | Yes (via bundled skills) |
+| **Supports templates?** | No (just text) | No (just text) | Yes (full folder structure) | Yes |
+| **Path filtering** | Via directory hierarchy | Yes (`paths:` frontmatter with glob patterns) | No (matched by description, not file path) | No |
+| **Git-shared** | Yes (CLAUDE.md) / No (CLAUDE.local.md) | Yes | Yes (project skills) / No (personal skills) | Via `managed-settings.d/` (enterprise) |
+| **Best for** | Project identity, universal conventions, key commands | Domain-specific rules, coding patterns scoped to file types | Complex workflows, deployment, code generation, analysis tasks | Reusable tooling packages, enterprise-wide standards |
+| **Edit command** | `/memory` or direct edit | Direct edit | Direct edit | `claude plugin install/enable/disable` |
 | **Max recommended size** | ~120 lines | ~50 lines per file | ~500 lines in SKILL.md (unbounded with supporting files) |
 
 ---
@@ -720,8 +720,12 @@ START: "I have instructions/knowledge for Claude"
   │                 │
   │                 YES → Create a Skill (reference content type)
   │                 │
-  │                 NO → Add it as an @imported file from CLAUDE.md
-  │                       or use a path-scoped rule
+  │                 NO → Do you need to bundle & distribute this to a team?
+  │                       │
+  │                       YES → Package as a Plugin (.claude/plugin.json)
+  │                       │
+  │                       NO → Add it as an @imported file from CLAUDE.md
+  │                             or use a path-scoped rule
 ```
 
 ---
@@ -754,19 +758,57 @@ During a session, start your input with `#` to quickly add a memory:
 
 Claude Code will prompt you to choose which memory file to store it in (CLAUDE.md, CLAUDE.local.md, user memory, etc.).
 
-### 10.2 Hooks (Complementary Mechanism)
+### 10.2 Plugin System (Complementary Mechanism)
+
+Introduced in Claude Code **v2.1.83**, the Plugin System provides a package manager for bundling and distributing CLAUDE.md, rules, skills, MCP server configurations, and hooks as a single versioned artifact.
+
+**CLI commands:**
+```bash
+claude plugin install <name-or-url>   # Install from registry or URL
+claude plugin list                    # List installed plugins
+claude plugin enable <name>           # Enable a plugin
+claude plugin disable <name>          # Disable a plugin
+claude plugin validate <dir>          # Validate local plugin structure
+claude plugin update                  # Update all installed plugins
+```
+
+**Plugin structure** (`plugin.json` manifest required):
+```json
+{
+  "name": "dotnet-azure-ops",
+  "version": "1.2.0",
+  "description": "Production .NET/Azure workflow pack",
+  "components": {
+    "claudeMd": "CLAUDE.md",
+    "rules": ["rules/"],
+    "skills": ["skills/"],
+    "mcp": {"azureDevOps": {"command": "npx", "args": ["@az/mcp"]}},
+    "hooks": {"PreToolUse": [{"matcher": "Bash", "type": "command", "command": "./validate.sh"}]}
+  }
+}
+```
+
+**Enterprise distribution** (v2.1.51+): Use `managed-settings.d/` drop-in directory under `.claude/`. On macOS this is delivered via MDM plist; on Windows via Registry (`HKLM\SOFTWARE\Anthropic\ClaudeCode`). The `forceRemoteSettingsRefresh` policy (v2.1.92) triggers re-download on launch.
+
+Use `/reload-plugins` inside a session to pick up plugin changes without restarting.
+
+### 10.3 Hooks (Complementary Mechanism)
 
 Hooks are shell scripts that run automatically at specific lifecycle points (before/after commands, before/after responses). They are NOT the same as rules or skills — they are code execution triggers. Use hooks for mechanical checks (file exists? lint passes?) and rules/skills for nuanced judgment.
 
-### 10.3 MCP Servers (Complementary Mechanism)
+**Hook types (2026):** `command` (shell script), `http` (POST to webhook endpoint — v2.1.63), `prompt` (LLM evaluation), `agent` (full subagent with tool access).
+
+**New events (2026):** `PermissionDenied` (v2.1.89 — fires when user denies a permission prompt), `StopFailure` (fires when the Stop hook itself fails or exits non-zero).
+
+### 10.4 MCP Servers (Complementary Mechanism)
 
 MCP (Model Context Protocol) servers add new tools Claude can use. Skills can reference MCP tools. Each MCP server adds ~500–2000 tokens of tool schema to your context, so disable unused servers with `/mcp` to conserve tokens.
 
-### 10.4 Subagents and Skills
+### 10.5 Subagents and Skills
 
 Skills with `context: fork` run in a forked subagent with its own context window. This keeps your main conversation thread clean — the subagent does the work, summarizes results, and returns them. This is particularly valuable for research-heavy skills that would otherwise bloat your main context.
 
-### 10.5 The /memory Command
+### 10.6 The /memory Command
 
 Run `/memory` at any time to see what memory files are currently loaded, verify path-scoped rules are activating correctly, and open any memory file for editing in your system editor.
 

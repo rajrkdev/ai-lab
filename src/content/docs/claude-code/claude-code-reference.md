@@ -198,8 +198,8 @@ claude doctor   # Diagnose health
 |--------|-------|----------|
 | **Claude Pro/Max/Team/Enterprise** | Browser OAuth on `claude` first run | Individual/team use |
 | **Anthropic Console** | `ANTHROPIC_API_KEY` env var | API access with credits |
-| **Amazon Bedrock** | `CLAUDE_CODE_USE_BEDROCK=true` + AWS creds | AWS infrastructure |
-| **Google Vertex AI** | `CLAUDE_CODE_USE_VERTEX=true` + GCP creds | GCP infrastructure |
+| **Amazon Bedrock** | `CLAUDE_CODE_USE_BEDROCK=true` + AWS creds; interactive wizard: `claude --bedrock-setup` (v2.1.92) | AWS infrastructure |
+| **Google Vertex AI** | `CLAUDE_CODE_USE_VERTEX=true` + GCP creds; interactive wizard: `claude --vertex-setup` (v2.1.98) | GCP infrastructure |
 | **Azure AI Foundry** | `CLAUDE_CODE_USE_FOUNDRY=1` + Azure creds | Azure infrastructure |
 | **Custom helper** | `apiKeyHelper` setting → shell script | Enterprise SSO |
 
@@ -272,7 +272,7 @@ Claude Code walks **up** the directory tree from CWD, checking each directory fo
 | `/compact [focus]` | — | Compresses context; optional focus area |
 | `/exit` | `/quit` | Exits CLI |
 | `/resume [session]` | `/continue` | Resume by ID, name, or picker |
-| `/fork [name]` | — | Creates conversation fork |
+| `/branch [name]` | `/fork` | Creates conversation fork / branch (renamed v2.1.80) |
 | `/rename [name]` | — | Renames session |
 | `/rewind` | `/checkpoint` | Restores code to previous point |
 | `/export [filename]` | — | Export conversation as text |
@@ -290,6 +290,9 @@ Claude Code walks **up** the directory tree from CWD, checking each directory fo
 | `/commands` | List available commands |
 | `/skills` | List available skills |
 | `/debug [desc]` | Enable debug logging (bundled skill) |
+| `/insights` | Session analytics and productivity stats |
+| `/changelog` | View what changed in latest Claude Code update |
+| `/todos` | View and manage current task list |
 
 ### Configuration
 | Command | Description |
@@ -297,14 +300,17 @@ Claude Code walks **up** the directory tree from CWD, checking each directory fo
 | `/config` / `/settings` | Opens settings interface |
 | `/permissions` / `/allowed-tools` | Manage tool permissions |
 | `/model [model]` | Switch AI model (←/→ adjust effort) |
-| `/effort [level]` | Set effort: low/medium/high/max/auto |
-| `/fast [on/off]` | Toggle fast mode (Opus 4.6) |
+| `/effort [level]` | Set effort: `low` / `medium` / `high` (v2.1.72: `max` removed) |
+| `/fast [on/off]` | Toggle fast mode for Opus 4.6 (v2.1.36) |
 | `/output-style [style]` | Set output style |
 | `/theme` | Change color theme |
+| `/color` | Set Claude's response accent color (v2.1.75) |
 | `/vim` | Toggle Vim editing mode |
 | `/terminal-setup` | Configure keybindings |
+| `/keybindings` | Interactive keybinding editor |
 | `/sandbox` | Toggle sandbox mode |
 | `/status` | Session status: version, model, account |
+| `/reload-plugins` | Hot-reload installed plugins without restarting (v2.0.12+) |
 
 ### Project & Memory
 | Command | Description |
@@ -324,6 +330,7 @@ Claude Code walks **up** the directory tree from CWD, checking each directory fo
 | `/desktop` / `/app` | Continue in Desktop app |
 | `/mobile` | QR code for mobile app |
 | `/remote-control` / `/rc` | Make session controllable from claude.ai |
+| `/team-onboarding` | Generate team onboarding guide for your codebase (v2.1.101) |
 
 ### Code & Review
 | Command | Description |
@@ -339,9 +346,12 @@ Claude Code walks **up** the directory tree from CWD, checking each directory fo
 |---------|-------------|
 | `/batch <instruction>` | Parallel large-scale changes (5-30 units) |
 | `/claude-api` | Load Claude API reference |
-| `/loop [interval] <prompt>` | Run prompt on schedule |
+| `/loop [interval] <prompt>` | Run prompt on recurring schedule (v2.1.71) |
 | `/simplify [focus]` | Three parallel review agents |
 | `/btw <question>` | Side question (no context impact) |
+| `/ultraplan [desc]` | Invoke extended planning mode for complex tasks |
+| `/powerup` | Load all available skills into context (v2.1.90) |
+| `/bashes` | List all Bash commands approved this session |
 
 ### Account
 | Command | Description |
@@ -473,10 +483,16 @@ Local Settings → allow: [...], deny: [...], ask: [...]
 |----------|---------|-------------|
 | `CLAUDE_CODE_MAX_OUTPUT_TOKENS` | — | Max output tokens per response |
 | `CLAUDE_CODE_MAX_RETRIES` | 10 | Max API retries |
-| `CLAUDE_CODE_EFFORT_LEVEL` | — | low/medium/high/max/auto |
+| `CLAUDE_CODE_EFFORT_LEVEL` | — | Effort level: `low` / `medium` / `high` (`max` removed in v2.1.72) |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | 83.5 | Auto-compact trigger (1-100) |
 | `BASH_DEFAULT_TIMEOUT_MS` | — | Bash command timeout |
 | `API_TIMEOUT_MS` | 600000 | API request timeout |
+| `CLAUDE_CODE_NO_FLICKER=1` | — | Flicker-free alt-screen rendering (v2.1.89) |
+| `CLAUDE_CODE_PERFORCE_MODE=1` | — | Enable Perforce VCS integration (v2.1.98) |
+| `CLAUDE_STREAM_IDLE_TIMEOUT_MS` | — | Timeout for idle streaming connections |
+| `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` | — | Env vars to scrub from subprocesses |
+| `CLAUDE_CODE_DISABLE_1M_CONTEXT=1` | — | Force 200K context even when 1M is available |
+| `CLAUDE_CODE_DISABLE_CRON=1` | — | Disable CronCreate scheduling tool |
 
 ### Model Pinning
 | Variable | Description |
@@ -501,7 +517,8 @@ Local Settings → allow: [...], deny: [...], ask: [...]
 | `DISABLE_PROMPT_CACHING=1` | Disable prompt caching |
 | `DISABLE_AUTOUPDATER=1` | Disable auto-updates |
 | `CLAUDE_CODE_SIMPLE=1` | Minimal prompt (Bash/Read/Edit only) |
-| `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` | Enable agent teams |
+| `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` | Enable agent teams (still flag-gated) |
+| `CLAUDE_CODE_ENABLE_POWERSHELL=1` | Enable opt-in PowerShell tool (Windows, v2.1.84) |
 
 ---
 
@@ -528,6 +545,7 @@ Local Settings → allow: [...], deny: [...], ask: [...]
 | Tool | Permission | Description |
 |------|-----------|-------------|
 | **Bash** | Required | Persistent shell; configurable timeout; background execution |
+| **PowerShell** | Required | Windows-native PowerShell tool; opt-in preview (v2.1.84, enable via `CLAUDE_CODE_ENABLE_POWERSHELL=1`) |
 | **WebSearch** | Required | Web search for current information |
 | **WebFetch** | Required | Fetch and analyze web pages; domain-controllable |
 
@@ -536,9 +554,18 @@ Local Settings → allow: [...], deny: [...], ask: [...]
 | Tool | Permission | Description |
 |------|-----------|-------------|
 | **Agent** (prev. Task) | None | Spawn subagents: description, prompt, type, model, background, max_turns |
+| **ExitWorktree** | None | Exit current worktree and return to parent session (v2.1.72) |
+| **CronCreate** | None | Schedule recurring task: cron expression + prompt; runs within session (v2.1.71) |
+| **SendMessage** | None | Send message to another agent in the same team; P2P communication (Agent Teams) |
 | **TodoWrite** | None | Task lists: id, content, status, priority |
 | **NotebookEdit** | Required | Edit Jupyter notebook cells |
 | **LSP** | None | Code intelligence: go-to-def, find refs, hover, symbols, call hierarchy |
+
+### Monitoring & Observability
+
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| **Monitor** | None | Stream and filter events from background scripts/agents in real-time (v2.1.98) |
 
 ### Extension Tools
 
@@ -554,21 +581,21 @@ Local Settings → allow: [...], deny: [...], ask: [...]
 ### Overview
 Hooks are **deterministic guarantees** — unlike CLAUDE.md instructions which are advisory. User-defined shell commands, HTTP endpoints, or LLM prompts that execute at specific lifecycle points.
 
-### Hook Events (21+)
+### Hook Events (25+)
 
 ```
 SESSION LIFECYCLE          TOOL LIFECYCLE           AGENT LIFECYCLE
 ├── SessionStart           ├── PreToolUse *         ├── SubagentStart
 ├── SessionEnd             ├── PostToolUse          ├── SubagentStop
 ├── UserPromptSubmit *     ├── PostToolUseFailure   ├── TaskCreated
-├── Stop *                 │                        ├── TaskCompleted
-├── Notification           CONTEXT & CONFIG         ├── TeammateIdle
-│                          ├── InstructionsLoaded
-WORKSPACE                  ├── ConfigChange         COMPACTION
-├── CwdChanged             ├── FileChanged          ├── PreCompact
-├── WorktreeCreate                                  ├── PostCompact
-├── WorktreeRemove
-                           INTERACTION
+├── Stop *                 ├── PermissionDenied *   ├── TaskCompleted
+├── StopFailure            │   (v2.1.89)            ├── TeammateIdle
+├── Notification           CONTEXT & CONFIG
+│                          ├── InstructionsLoaded   COMPACTION
+WORKSPACE                  ├── ConfigChange         ├── PreCompact
+├── CwdChanged             ├── FileChanged          ├── PostCompact
+├── WorktreeCreate
+├── WorktreeRemove         INTERACTION
                            ├── Elicitation
                            ├── ElicitationResult
 
@@ -605,6 +632,30 @@ WORKSPACE                  ├── ConfigChange         COMPACTION
   }
 }
 ```
+
+### Hook Types
+
+| Type | Description | Added |
+|------|-------------|-------|
+| `command` | Run a shell command; stdin receives JSON context | Original |
+| `http` | POST JSON to a URL endpoint (v2.1.63); response controls flow | v2.1.63 |
+| `prompt` | Pass hook context to Claude as an LLM prompt | Original |
+| `agent` | Spawn a full subagent to handle the event | Original |
+
+**HTTP Hook Configuration (v2.1.63):**
+```jsonc
+{
+  "PostToolUse": [{
+    "matcher": "Write|Edit",
+    "hooks": [{
+      "type": "http",
+      "url": "https://your-webhook.example.com/claude-hook",
+      "timeout_ms": 5000          // Optional; default is 30000
+    }]
+  }]
+}
+```
+The HTTP endpoint receives the same JSON body as the `stdin` of a `command` hook. Returning `{"permissionDecision": "deny"}` from a `PreToolUse` HTTP hook blocks execution.
 
 ### Hook Input (JSON on stdin)
 ```json
@@ -753,6 +804,23 @@ claude mcp remove <name>
 
 > **Output limit:** 25,000 tokens default (configurable via `MAX_MCP_OUTPUT_TOKENS`)
 
+### MCP Elicitation (v2.1.76)
+
+MCP servers can now request structured input from the user mid-task via the **Elicitation** protocol. When a server sends an elicitation request (e.g., asking for credentials, a confirmation, or a form value), Claude Code pauses and presents the request to the user. Hooks `Elicitation` (pre) and `ElicitationResult` (post) fire around each request.
+
+### MCP Tool Result Size Override (v2.1.91)
+
+MCP tools can opt-in to returning up to **500K tokens** per result by including `_meta["anthropic/maxResultSizeChars"]` in their response. This is critical for tools that return large files, database dumps, or long logs:
+
+```json
+{
+  "content": [{ "type": "text", "text": "...large content..." }],
+  "_meta": { "anthropic/maxResultSizeChars": 500000 }
+}
+```
+
+The default cap is still 25,000 tokens unless overridden.
+
 ---
 
 ## 14. Subagents Deep Dive
@@ -849,6 +917,19 @@ export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
 - Start with **research before parallel implementation**
 - **Avoid same-file edits** across teammates
 - Cost: **~3-7× single session**
+
+### SendMessage Tool (Agent P2P)
+
+Teammates can communicate directly via `SendMessage` without routing through the lead. This is useful for progress updates and dependency notifications:
+
+```
+// Teammate 1 notifies Teammate 2 that shared library is ready
+SendMessage(to="teammate-2", message="auth module complete at src/auth/index.ts")
+```
+
+### ExitWorktree (v2.1.72)
+
+When a teammate finishes its work in an isolated worktree, it calls **ExitWorktree** to release the branch lock and signal completion back to the lead. The lead receives the result and can proceed with merging.
 
 ---
 
@@ -1191,7 +1272,9 @@ cat error.log | claude -p "find root cause"
 | `--allowedTools` | Scoped tool permissions |
 | `--permission-mode` | `default`, `acceptEdits`, `plan`, `dontAsk`, `bypassPermissions` |
 | `--max-turns` | Iteration limit |
-| `--bare` | Skip auto-discovery (reproducible) |
+| `--bare` | Skip auto-discovery of CLAUDE.md + memory (reproducible CI; v2.1.81) |
+| `--channels` | Subscribe to named event channels for pub/sub messaging (v2.1.80) |
+| `-w` / `--worktree <path>` | Start session in specified Git worktree (v2.1.49) |
 | `--append-system-prompt` | Inject instructions |
 | `--system-prompt` | Full system prompt override |
 
@@ -1240,8 +1323,73 @@ Enable: `/sandbox`
 - Web fetch uses separate context (anti-prompt-injection)
 - First-time codebase runs require verification
 - New MCP servers require verification
+- OS CA certificate store trusted by default (v2.1.101) — no need to configure custom CA bundles
 
 > ⚠️ **`--dangerously-skip-permissions`** should ONLY be used in Docker containers without internet. A documented incident resulted in total file loss via `rm -rf`.
+
+---
+
+## 23b. Plugin System (v2.0.12+)
+
+> Introduced October 2025. Plugins extend Claude Code with new slash commands, tools, hooks, and CLAUDE.md content — without modifying core files.
+
+### Plugin Installation
+```bash
+# Install from the marketplace
+claude plugin install anthropic/git-utils
+claude plugin install anthropic/test-runner
+
+# List installed plugins
+claude plugin list
+
+# Enable / disable without uninstalling
+claude plugin enable git-utils
+claude plugin disable git-utils
+
+# Validate plugin integrity
+claude plugin validate git-utils
+
+# Update all plugins
+claude plugin update
+
+# Hot-reload without restarting session
+/reload-plugins
+```
+
+### Plugin Structure
+A plugin is a directory with a `plugin.json` manifest:
+
+```jsonc
+// .claude/plugins/my-plugin/plugin.json
+{
+  "name": "my-plugin",
+  "version": "1.0.0",
+  "description": "Adds project-specific commands",
+  "skills": ["./skills/"],       // auto-load all SKILL.md files in directory
+  "claude_md": "./CLAUDE.md",    // appended to root CLAUDE.md
+  "hooks": {                      // merged into session hooks
+    "PostToolUse": [...]
+  }
+}
+```
+
+### Enterprise Plugin Distribution
+
+Enterprise admins can pre-install plugins via **managed-settings.d/** (v2.1.83) — a drop-in directory of JSON fragments that are merged at startup without overwriting user settings:
+
+```
+/etc/claude/managed-settings.d/
+├── 01-org-policy.json      # allow/deny rules
+├── 02-approved-plugins.json # auto-install list
+└── 03-mcp-servers.json     # shared MCP servers
+```
+
+Each `.json` file follows the same schema as `settings.json`. Files are processed in lexicographic order. Managed settings take highest precedence and cannot be overridden by user or project settings.
+
+**Enterprise MDM delivery:**
+- **macOS:** `com.anthropic.claudecode` preference domain via `defaults write` or profiles
+- **Windows:** `HKLM\SOFTWARE\Anthropic\ClaudeCode` registry keys (v2.1.51)
+- **`forceRemoteSettingsRefresh`** policy (v2.1.92): forces pull of latest managed settings on every session start
 
 ---
 
@@ -1395,25 +1543,33 @@ Enable: `/sandbox`
 | Feb 2025 | Launch as limited research preview |
 | May 22, 2025 | GA (v1.0.0): Opus 4, Sonnet 4, GH Actions, VS Code + JetBrains |
 | Sep 29, 2025 | Sonnet 4.5 (SWE 77.2%): checkpoints, subagents, hooks, Agent SDK |
-| Oct 2025 | Web version + iOS app; Agent Skills system |
+| Oct 2025 | Web version + iOS app; Agent Skills system (v2.0.12) + plugin marketplace |
 | Nov 1, 2025 | Opus 4.5 (SWE 80.9%); surpassed $1B ARR |
-| Dec 2025 | `.claude/rules/`, named sessions, plugin marketplace, agentskills.io |
+| Dec 2025 | `.claude/rules/`, named sessions, agentskills.io |
 
 ### 2026
 | Date | Milestone |
 |------|-----------|
 | Jan 2026 | SKILL.md hot-reload (v2.1.0), session forking, Claude Cowork |
 | Feb 5, 2026 | Opus 4.6 (SWE 80.8%, 1M beta), agent teams, auto memories, remote control |
-| Mar 2026 | Sonnet 4.6 (SWE 79.6%, 1M native), /loop, /voice, computer use macOS |
-| Apr 2026 | /powerup tutorials, 60% faster Write diffs, sandbox improvements |
+| Feb 28, 2026 | Task tool renamed to Agent tool (v2.1.63); HTTP hooks; `--worktree` flag |
+| Mar 2026 | Sonnet 4.6 (SWE 79.6%, 1M native), /loop (v2.1.71), effort simplified to low/medium/high (v2.1.72) |
+| Mar 2026 | 1M context for Opus 4.6 on Max/Team/Enterprise (v2.1.75); MCP elicitation (v2.1.76) |
+| Mar 2026 | `--channels` pub/sub flag (v2.1.80); `--bare` CI flag (v2.1.81); `managed-settings.d/` (v2.1.83) |
+| Mar 2026 | PowerShell tool opt-in preview for Windows (v2.1.84); `CLAUDE_CODE_NO_FLICKER` (v2.1.89); `/powerup` (v2.1.90) |
+| Apr 2026 | Bedrock setup wizard (v2.1.92); `forceRemoteSettingsRefresh` policy; default effort → high for professional tiers (v2.1.94) |
+| Apr 2026 | Monitor tool (v2.1.98); Vertex AI setup wizard; `CLAUDE_CODE_PERFORCE_MODE` |
+| Apr 10, 2026 | OS CA certificate store trusted by default (v2.1.101); `/team-onboarding` command |
+
+### Current Version: v2.1.101 (April 10, 2026)
 
 ### Current Models
 
-| Model | SWE-bench | Context | Input / Output |
-|-------|-----------|---------|---------------|
-| Opus 4.6 | 80.8% | 1M tokens | $5 / $25 per MTok |
-| Sonnet 4.6 | 79.6% | 1M tokens | $3 / $15 per MTok |
-| Haiku 4.5 | — | 200K tokens | Lowest tier |
+| Model | SWE-bench | Context | Input / Output | Notes |
+|-------|-----------|---------|---------------|-------|
+| Opus 4.6 | 80.8% | 1M tokens (Max/Team/Enterprise) | $5 / $25 per MTok | Default for API/Bedrock/Vertex/Team/Enterprise (v2.1.94) |
+| Sonnet 4.6 | 79.6% | 1M tokens native | $3 / $15 per MTok | Default for Pro plan |
+| Haiku 4.5 | — | 200K tokens | Lowest tier | Fast mode subagents |
 
 ---
 

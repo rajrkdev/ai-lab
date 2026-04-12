@@ -71,7 +71,7 @@ The **coordinator's three responsibilities** are task decomposition (breaking qu
 
 **Risks of overly narrow task decomposition.** Without detailed task descriptions, agents duplicate work, leave gaps, or misinterpret tasks. An early failure mode was agents spawning 50 subagents for simple queries. The recommended scaling rules: simple fact-finding = **1 agent with 3–10 tool calls**; direct comparisons = **2–4 subagents with 10–15 calls each**; complex research = **10+ subagents**.
 
-**Iterative refinement loops** allow the lead researcher to synthesize results, determine if more research is needed, and spawn additional subagents or refine strategy. The system dynamically adapts, following leads that emerge during investigation. When context exceeds 200K tokens, a memory tool persists the research plan.
+**Iterative refinement loops** allow the lead researcher to synthesize results, determine if more research is needed, and spawn additional subagents or refine strategy. The system dynamically adapts, following leads that emerge during investigation. When context exceeds 200K tokens (or 1M tokens on Opus 4.6 Max/Team/Enterprise), a memory tool persists the research plan.
 
 ### Task 1.3 — Subagent invocation and context passing
 
@@ -220,6 +220,10 @@ When `tool_choice` is `any` or `tool`, the API **prefills the assistant message*
 **Local (default)**: Available only to you in the current project. Added with `--scope local` (or no scope flag).
 
 **Enterprise managed**: `managed-mcp.json` — users cannot add servers through CLI or config files.
+
+**MCP Elicitation** (v2.1.76): An MCP server can pause execution and request user input directly via `elicitation/create`. Enable per-server with `allowElicitation: true` in MCP config. Use for OAuth flows, disambiguation dialogs, and confirmation prompts.
+
+**Tool Result Size Override** (v2.1.91): Servers may override the default 32K-char result limit by setting `_meta["anthropic/maxResultSizeChars"]` up to 500,000 characters per result — essential for large document dumps.
 
 Standard configuration format:
 
@@ -380,7 +384,7 @@ claude -p "Extract function names from auth.py" \
 
 **Session context isolation**: Each `-p` call without `--continue` or `--resume` starts a **fresh context**, improving review quality (no bias toward previously written code). Chain reviews with `--resume "$session_id"`. Pass prior findings by continuing the same session to avoid duplicate reports.
 
-Key flags for CI: `--allowedTools` for permission scoping, `--max-turns` for cost control, `--append-system-prompt` for role customization, and `--dangerously-skip-permissions` (only in isolated CI containers).
+Key flags for CI: `--allowedTools` for permission scoping, `--max-turns` for cost control, `--append-system-prompt` for role customization, and `--dangerously-skip-permissions` (only in isolated CI containers). The `--bare` flag (v2.1.81) disables all interactive UI elements and MCP output — ideal for reproducible CI pipelines where you want deterministic, decoration-free output.
 
 ---
 

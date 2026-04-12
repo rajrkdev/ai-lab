@@ -708,7 +708,7 @@ Check for security issues and misconfigurations.
 
 **Execution limits:** `--max-turns` (integer), `--max-budget-usd` (decimal).
 
-**Other notable flags:** `--add-dir` (additional working directories), `--mcp-config` (MCP server JSON file), `--worktree` / `-w` (git worktree isolation), `--debug` (debug logging with optional category filter), `--betas` (beta feature headers), `--effort` (`low`/`medium`/`high`).
+**Other notable flags:** `--add-dir` (additional working directories), `--mcp-config` (MCP server JSON file), `--worktree` / `-w` (git worktree isolation), `--debug` (debug logging with optional category filter), `--betas` (beta feature headers), `--effort` (`low`/`medium`/`high`), `--bare` (v2.1.81 — disables UI decorations and MCP output; use in CI for reproducible, decoration-free output), `--channels` (v2.1.80 — subscribe to multiple output channels).
 
 ---
 
@@ -1156,3 +1156,70 @@ Research shows verbalized confidence (asking the model to state a number) often 
 ## Conclusion: the five highest-yield study areas
 
 The exam weights **agentic architecture at 27%**, making the Agent SDK's `query()` loop, permission pipeline (`disallowedTools` → `allowedTools` → hooks → `canUseTool` → `permissionMode`), and session management the single most important study area. The **tool_use five-step flow** and **structured outputs** (GA with `output_config.format` and `strict: true`) together dominate Domain 4's 20% weight — memorize the exact JSON structures and the three complexity limits (20 strict tools, 24 optional params, 16 union-typed params). For Domain 3's configuration questions, the SKILL.md frontmatter fields and their interaction with `context: fork`/`inherit` and the invocation control matrix are the most likely testable specifics. In Domain 2, the MCP error duality (protocol-level in `error` field vs tool-level with `isError: true`) is a classic exam distinction. Finally, Domain 5's crash recovery pattern — progress files, feature lists, git checkpoints, and the initializer/coder agent split — represents Anthropic's official recommended architecture for production agents.
+
+---
+
+## Gap 29: MCP Elicitation (v2.1.76)
+
+MCP Elicitation allows an MCP server to **pause a tool call and request additional information directly from the user** (not from Claude). This enables human-in-the-loop flows without breaking the agentic loop.
+
+**Flow:**
+1. Tool execution begins on the MCP server
+2. Server sends elicitation/create with a JSON schema for the required input
+3. Claude Code displays a dialog to the user
+4. User fills out the form and submits
+5. Result is passed back to the tool execution as structured data
+
+**Enable per-server:**
+`json
+{
+  "mcpServers": {
+    "my-server": {
+      "command": "node",
+      "args": ["server.js"],
+      "allowElicitation": true
+    }
+  }
+}
+`
+
+**Key exam fact:** Elicitation requests user input at the **server level** — different from Claude asking clarifying questions in the chat. The user's response bypasses Claude's context window.
+
+---
+
+## Gap 30: MCP Tool Result Size Override (v2.1.91)
+
+MCP servers have a default result size limit of **~32,000 characters** per tool response. Results exceeding this limit are **silently truncated** before Claude sees them.
+
+**Override the limit** using _meta["anthropic/maxResultSizeChars"] in the tool result:
+
+`python
+# MCP tool handler returning a large result
+return {
+    "content": [{"type": "text", "text": large_document_text}],
+    "_meta": {
+        "anthropic/maxResultSizeChars": 500000  # Up to 500K chars
+    },
+    "isError": False
+}
+`
+
+**Maximum override value:** 500,000 characters.
+
+**Use cases:** Full source file dumps, complete API responses, database exports where truncation breaks downstream processing.
+
+**Key exam trap:** Without _meta override, a result exceeding 32K chars is silently truncated — Claude does not know the result was cut off and cannot report the truncation.
+
+---
+
+## Gap 31: New 2026 Built-in Tools
+
+| Tool | Version | Purpose |
+|------|---------|---------|
+| **PowerShell** | v2.1.84 | Native PowerShell 5.1/7+ execution on Windows hosts |
+| **ExitWorktree** | v2.1.72 | Agent Teams: teammate exits the current worktree and returns to main workspace |
+| **CronCreate** | v2.1.71 | Registers a recurring background task; suppress with CLAUDE_CODE_DISABLE_CRON=1 |
+| **SendMessage** | — | Peer-to-peer messaging between Agent Team members; JSON inbox files on filesystem |
+| **Monitor** | v2.1.98 | Background filesystem/process watcher; alerts Claude when a condition is met |
+
+**Key exam fact:** The Agent tool was renamed from Task in v2.1.63. Both Task(...) and Agent(...) work as aliases — existing configurations do not need updating.

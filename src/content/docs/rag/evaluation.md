@@ -1,9 +1,11 @@
 ---
 title: RAG Evaluation
-description: Complete guide to RAG evaluation — RAGAS framework metrics, faithfulness, answer relevancy, context precision/recall, the evaluation triad, benchmark datasets, and unit testing patterns.
+description: Complete 2026 guide to RAG evaluation — RAGAS v0.2, DeepEval, TruLens, ARES, RAGXplain, faithfulness, answer relevancy, context precision/recall, BEIR/FinanceBench benchmarks, unit testing, and CI/CD patterns.
 sidebar:
   order: 11
 ---
+
+> **Current as of April 2026.**
 
 ## Why Evaluate RAG Systems?
 
@@ -345,8 +347,283 @@ response = rag_chain.invoke("What is RAG?")
 
 ---
 
+---
+
+## DeepEval — Modern RAG Testing Framework
+
+**GitHub:** `confident-ai/deepeval`  
+**Website:** deepeval.com
+
+DeepEval (2024) is a pytest-native RAG evaluation framework with a wider metric set than RAGAS, built-in CI/CD support, and cleaner APIs.
+
+```python
+# pip install deepeval
+import pytest
+from deepeval import assert_test
+from deepeval.metrics import (
+    AnswerRelevancyMetric,
+    FaithfulnessMetric,
+    ContextualPrecisionMetric,
+    ContextualRecallMetric,
+    ContextualRelevancyMetric,
+    HallucinationMetric,
+    BiasMetric,
+    ToxicityMetric,
+)
+from deepeval.test_case import LLMTestCase
+
+# ── Individual metric evaluation ──────────────────────────────
+
+faithfulness_metric = FaithfulnessMetric(
+    threshold=0.8,
+    model="gpt-4o",
+    include_reason=True,
+)
+
+test_case = LLMTestCase(
+    input="What is the refund policy?",
+    actual_output="Refunds are processed within 30 days of purchase.",
+    expected_output="Refunds take 30 days.",              # ground truth
+    retrieval_context=[
+        "Our refund policy allows returns within 30 days of the purchase date.",
+        "Shipping takes 5-7 business days.",
+    ],
+)
+
+faithfulness_metric.measure(test_case)
+print(f"Faithfulness: {faithfulness_metric.score:.2f}")
+print(f"Reason:       {faithfulness_metric.reason}")
+
+
+# ── pytest integration ─────────────────────────────────────────
+
+@pytest.mark.parametrize("test_case", load_test_cases())
+def test_rag_pipeline(test_case):
+    actual_output = rag_chain.invoke(test_case.input)
+    test_case.actual_output = actual_output
+    test_case.retrieval_context = [
+        d.page_content for d in retriever.invoke(test_case.input)
+    ]
+
+    assert_test(test_case, [
+        AnswerRelevancyMetric(threshold=0.7),
+        FaithfulnessMetric(threshold=0.8),
+        ContextualPrecisionMetric(threshold=0.7),
+        ContextualRecallMetric(threshold=0.7),
+        HallucinationMetric(threshold=0.3),  # lower = better (hallucination rate)
+    ])
+
+
+# ── Batch evaluation ──────────────────────────────────────────
+
+from deepeval import evaluate
+
+test_cases = [
+    LLMTestCase(
+        input=q["question"],
+        actual_output=rag_chain.invoke(q["question"]),
+        expected_output=q["ground_truth"],
+        retrieval_context=[d.page_content for d in retriever.invoke(q["question"])],
+    )
+    for q in test_questions
+]
+
+results = evaluate(
+    test_cases=test_cases,
+    metrics=[
+        AnswerRelevancyMetric(threshold=0.7),
+        FaithfulnessMetric(threshold=0.8),
+        ContextualPrecisionMetric(threshold=0.7),
+        ContextualRecallMetric(threshold=0.7),
+    ],
+    run_async=True,    # parallel evaluation
+    show_indicator=True,
+)
+```
+
+**DeepEval vs. RAGAS:**
+```
+  Feature                    DeepEval        RAGAS v0.2
+  ─────────────────────────────────────────────────────
+  pytest native              ✓               ✗
+  CI/CD assert thresholds    ✓               Manual
+  Hallucination metric       ✓               Faithfulness
+  Bias / Toxicity metrics    ✓               ✗
+  Async evaluation           ✓               Partial
+  Cloud dashboard            ✓ (Confident AI) ✗
+  Custom LLM judge           ✓               ✓
+  Open source                ✓               ✓
+```
+
+---
+
+## TruLens — Evaluation with Feedback Functions
+
+**GitHub:** `truera/trulens`  
+**Website:** trulens.org  
+**Maintained by:** Snowflake (acquired TruEra 2024)
+
+TruLens instruments your LangChain/LlamaIndex chains, records every call as a "record", and evaluates it with "feedback functions" — LLM-as-judge evaluators that run asynchronously.
+
+```python
+# pip install trulens-eval trulens-apps-langchain
+from trulens.core import TruSession, Feedback
+from trulens.apps.langchain import TruChain
+from trulens.providers.openai import OpenAI as TruOpenAI
+import numpy as np
+
+session = TruSession()
+session.reset_database()  # clear previous runs
+
+provider = TruOpenAI(model_engine="gpt-4o")
+
+# Define feedback functions
+f_answer_relevance = (
+    Feedback(provider.relevance_with_cot_reasons, name="Answer Relevance")
+    .on_input_output()
+)
+
+f_context_relevance = (
+    Feedback(provider.context_relevance_with_cot_reasons, name="Context Relevance")
+    .on_input()
+    .on(TruChain.select_context(rag_chain))
+    .aggregate(np.mean)
+)
+
+f_groundedness = (
+    Feedback(provider.groundedness_measure_with_cot_reasons, name="Groundedness")
+    .on(TruChain.select_context(rag_chain).collect())
+    .on_output()
+)
+
+# Wrap your LangChain chain
+tru_rag = TruChain(
+    rag_chain,
+    app_name="production-rag",
+    app_version="v1.2",
+    feedbacks=[f_answer_relevance, f_context_relevance, f_groundedness],
+)
+
+# Run with automatic evaluation
+with tru_rag as recording:
+    for question in test_questions:
+        tru_rag.invoke(question)
+
+# View results
+session.get_leaderboard()   # pandas DataFrame of app versions + metrics
+# Or open the TruLens dashboard
+session.run_dashboard()     # http://localhost:8501
+```
+
+---
+
+## RAGAS v0.2 API Changes
+
+RAGAS v0.2 (2024) introduced a new `SingleTurnSample`-based API. The old `Dataset.from_dict()` pattern still works but is deprecated.
+
+```python
+# RAGAS v0.2 — new async API
+from ragas import evaluate, EvaluationDataset
+from ragas.metrics import LLMContextPrecisionWithReference, Faithfulness, AnswerRelevancy
+from ragas.llms import LangchainLLMWrapper
+from langchain_anthropic import ChatAnthropic
+
+# Use Claude as the judge LLM
+judge_llm = LangchainLLMWrapper(ChatAnthropic(model="claude-sonnet-4-6"))
+
+# New: EvaluationDataset API
+from ragas import SingleTurnSample
+
+samples = [
+    SingleTurnSample(
+        user_input="What is the refund policy?",
+        response="Refunds are processed within 30 days.",
+        retrieved_contexts=[
+            "Our refund policy allows returns within 30 days.",
+            "Shipping takes 5-7 business days.",
+        ],
+        reference="Refunds take 30 days from purchase.",
+    )
+]
+
+dataset = EvaluationDataset(samples=samples)
+
+results = evaluate(
+    dataset=dataset,
+    metrics=[
+        Faithfulness(llm=judge_llm),
+        AnswerRelevancy(llm=judge_llm),
+        LLMContextPrecisionWithReference(llm=judge_llm),
+    ],
+)
+print(results)
+```
+
+---
+
+## ARES — Automated RAG Evaluation System
+
+**GitHub:** `stanford-futuredata/ARES`
+
+ARES is a modular framework for domain-specific evaluation — define your own scoring schema using YAML or Python rather than relying on fixed metrics. Ideal for teams working on specialized corpora (legal, biomedical, finance) where standard RAGAS metrics don't capture domain nuance.
+
+```python
+# ARES uses a YAML config for evaluation pipeline definition
+# ares_config.yaml:
+# evaluation_datasets: ["test_set.jsonb"]
+# few_shot_examples_filepath: "few_shot.tsv"
+# llm_judge: "meta-llama/llama-3.1-8b-instruct"
+# documents_filepath: "corpus.tsv"
+# rag_type: "closed_book"
+# labels: ["context_relevance", "answer_faithfulness", "answer_relevance"]
+
+from ares import ARES
+
+ares_module = ARES(
+    in_domain_scorer_settings={
+        "training_set": [{"few_shot_examples_filepath": "few_shot.tsv"}],
+        "llm_judge": "meta-llama/llama-3.1-8b-instruct",
+        "labels": ["context_relevance", "answer_faithfulness", "answer_relevance"],
+    }
+)
+results = ares_module.evaluate_RAG(["test_set.jsonb"])
+print(results)
+```
+
+**When to use ARES:**
+- Domain-specific corpora where generic metrics don't generalize
+- Teams wanting to define custom scoring criteria (YAML-based)
+- Research settings requiring reproducible evaluation with open-source judges
+
+---
+
+## RAGXplain — Evaluation with Explanations (2025)
+
+RAGXplain extends standard RAG evaluation by providing **natural-language explanations for each score** — not just a 0–1 number but a human-readable reason why a retrieval or answer failed. Built for teams that need transparency and accountability in their evaluation pipeline.
+
+Key differentiator: each metric score comes with an explanation like "The retrieved passage mentions pricing but fails to include the exception clause relevant to the question, reducing faithfulness to 0.4."
+
+---
+
+## Evaluation Framework Comparison (2026)
+
+**Recommended workflow:** RAGAS for metric exploration, DeepEval for CI/CD gates, TruLens for production dashboards.
+
+| Framework | Interface | Best for | Judge LLM | Dashboard | Explanations | Cost |
+|---|---|---|---|---|---|---|
+| **RAGAS v0.2** | Python/async | Standard RAG metrics | Any | No | No | Per-LLM-call |
+| **DeepEval** | pytest native | CI/CD, threshold testing | Any | Yes (Confident AI) | Via `@observe` | Per-LLM-call |
+| **TruLens** | Instrumented chains | Production monitoring | OpenAI/Cohere | Yes (localhost) | No | Per-LLM-call |
+| **ARES** | YAML/Python config | Domain-specific custom metrics | Open-source | No | No | Per-LLM-call |
+| **RAGXplain** | Python | Transparency/accountability | Any | No | **Yes** | Per-LLM-call |
+| **Phoenix Arize** | Tracing + eval | Observability + eval | Any | Yes (localhost) | No | Free |
+| **LangSmith** | LangChain native | LangChain tracing | Any | Yes (cloud) | No | Free tier |
+
+---
+
 ## See Also
 
 - [Advanced RAG](../advanced-rag) — improvements likely to raise context precision and recall
 - [Retrieval Strategies](../retrieval-strategies) — targeting specific retrieval failures
 - [Production RAG](../production-rag) — evaluation in CI/CD pipelines and monitoring in production
+- [Vectorless RAG](./pageindex-vectorless-rag) — FinanceBench benchmark results in context

@@ -1,11 +1,13 @@
 ---
 title: Embedding Models
-description: Complete 2025 guide to embedding models for RAG — Voyage AI, BGE-M3, Nomic Embed, jina-embeddings-v3, NV-Embed-v2, Cohere Embed v3, OpenAI text-embedding-3 — MTEB benchmarks, dimensions, cost, and code examples with Anthropic SDK and LangChain.
+description: Complete 2026 guide to embedding models for RAG — Qwen3, Gemini Embedding 2, NV-Embed-v2, Voyage AI, BGE-M3, Nomic Embed, jina-embeddings-v3, Cohere Embed v3, OpenAI text-embedding-3 — MTEB benchmarks, dimensions, cost, and code examples with Anthropic SDK and LangChain.
 sidebar:
   order: 5
 ---
 
-> **Benchmarks current as of August 2025.** MTEB scores evolve rapidly — always verify at [huggingface.co/spaces/mteb/leaderboard](https://huggingface.co/spaces/mteb/leaderboard) before choosing a model for production.
+> **Benchmarks current as of April 2026.** MTEB scores evolve rapidly — always verify at [huggingface.co/spaces/mteb/leaderboard](https://huggingface.co/spaces/mteb/leaderboard) before choosing a model for production.
+>
+> **Key shift (2025–2026):** Open-source models now lead MTEB benchmarks outright. The top five models by raw score are all open-weight or very cheap — commercial APIs are no longer the quality leaders.
 
 ## What Embedding Models Do
 
@@ -32,7 +34,9 @@ The embedding model is the **most consequential choice** in a RAG pipeline — i
 
 **MTEB** (Massive Text Embedding Benchmark, Muennighoff et al., 2022) is the standard benchmark — 56 tasks across 8 categories: retrieval, clustering, classification, reranking, STS, and more.
 
-Scores below are **MTEB Retrieval (NDCG@10)** on the BEIR benchmark subset. Higher is better. BEIR covers 18 heterogeneous retrieval datasets (MS-MARCO, TREC-COVID, NQ, HotpotQA, FiQA, ArguAna, etc.).
+**MTEB v2** (2025) extended the benchmark with 10 new tasks and refreshed datasets to reduce contamination. Scores on MTEB v2 are not directly comparable to old MTEB scores.
+
+Scores in the comparison table below are **MTEB Retrieval (NDCG@10)** unless noted as MTEB v2. BEIR covers 18 heterogeneous retrieval datasets (MS-MARCO, TREC-COVID, NQ, HotpotQA, FiQA, ArguAna, etc.).
 
 ---
 
@@ -368,7 +372,7 @@ def embed_openai(texts: list[str], model="text-embedding-3-large", dims=1024) ->
 | Dimensions | 768 (reducible to 1–768) |
 | Max tokens | 2048 |
 | MTEB Retrieval | 55.7 |
-| Pricing | $0.025/1M chars (~0.006/1M tokens) |
+| Pricing | $0.025/1M chars (~$0.006/1M tokens) |
 
 ```python
 from google.cloud import aiplatform
@@ -383,23 +387,141 @@ embeddings = model.get_embeddings(
 )
 ```
 
+### Google Gemini Embedding 001 (2025)
+
+**Provider:** Google (Gemini API / Vertex AI)  
+**GA:** Mid-2025
+
+| Property | Value |
+|---|---|
+| Dimensions | 3072 (Matryoshka) |
+| Max tokens | 8192 |
+| MTEB Multilingual | **68.32** (top commercial API, mid-2025) |
+| MTEB Retrieval | 67.71 |
+| Pricing | $0.00001/1K chars |
+
+```python
+import google.generativeai as genai
+
+genai.configure(api_key="YOUR_API_KEY")
+
+result = genai.embed_content(
+    model="models/gemini-embedding-001",
+    content="What is quantum entanglement?",
+    task_type="RETRIEVAL_QUERY",   # or RETRIEVAL_DOCUMENT, SEMANTIC_SIMILARITY
+    output_dimensionality=1024,    # Matryoshka: reduce from 3072
+)
+embedding = result["embedding"]
+```
+
+### Google Gemini Embedding 2 — Multimodal (March 2026)
+
+**Provider:** Google (Gemini API)  
+**Released:** March 2026 (Preview)
+
+The first all-modality embedding model — embeds text, images, video, audio, and PDFs in a **shared embedding space**. Cross-modal retrieval is now native (e.g., query an image collection with a text query using the same model).
+
+| Property | Value |
+|---|---|
+| Dimensions | 3072 (Matryoshka, native MRL) |
+| Modalities | Text, image, video, audio, PDF |
+| Languages | 100+ |
+| Context | 8192 tokens / equivalent for other modalities |
+
+```python
+import google.generativeai as genai
+import PIL.Image
+
+genai.configure(api_key="YOUR_API_KEY")
+
+# Text embedding
+text_result = genai.embed_content(
+    model="models/gemini-embedding-2-preview",
+    content="A photograph of a golden retriever",
+    task_type="RETRIEVAL_QUERY",
+)
+
+# Image embedding (same model, same space)
+image = PIL.Image.open("dog.jpg")
+image_result = genai.embed_content(
+    model="models/gemini-embedding-2-preview",
+    content=image,
+    task_type="RETRIEVAL_DOCUMENT",
+)
+
+# Cross-modal similarity (text query → image results)
+import numpy as np
+t_emb = np.array(text_result["embedding"])
+i_emb = np.array(image_result["embedding"])
+similarity = float(np.dot(t_emb, i_emb) / (np.linalg.norm(t_emb) * np.linalg.norm(i_emb)))
+print(f"Text-to-image similarity: {similarity:.4f}")
+```
+
 ---
 
-## Large LLM-based Models (SOTA as of August 2025)
+## Large LLM-based Models (SOTA as of April 2026)
 
-These use decoder LLMs as backbone, achieving top MTEB scores at the cost of higher latency and GPU memory.
+These use decoder LLMs as backbone, achieving top MTEB scores at the cost of higher latency and GPU memory. Open-source models now lead the leaderboard outright.
 
-| Model | Backbone | Dims | MTEB Retrieval | License | Notes |
+| Model | Backbone | Dims | MTEB Score | License | Notes |
 |---|---|---|---|---|---|
+| `Qwen/Qwen3-Embedding-8B` | Qwen3 8B | 7168 (Matryoshka) | **70.58** (multilingual) | Apache 2.0 | #1 multilingual (2025), 32k ctx, 100+ langs |
+| `microsoft/Harrier-OSS-v1-27B` | — | — | **74.3** (MTEB v2) | MIT | Highest MTEB v2 (27B); 8B variant: 71.5 |
+| `nvidia/Llama-Embed-Nemotron-8B` | Llama 8B | 4096 | 72.31 (English avg) | CC-BY-4.0 | NVIDIA, leads English MTEB |
 | `nvidia/NV-Embed-v2` | Mistral 7B | 4096 | 62.7 | CC-BY-4.0 | MTEB #1 open-source (2024) |
+| `dunzhang/stella_en_1.5B_v5` | Qwen 1.5B | 8192 | 65.0 | MIT | Best efficiency:quality ratio |
 | `intfloat/e5-mistral-7b-instruct` | Mistral 7B | 4096 | 56.9 | MIT | Instruction-tuned |
-| `Salesforce/SFR-Embedding-Mistral` | Mistral 7B | 4096 | 59.0 | CC-BY-NC 4.0 | |
-| `dunzhang/stella_en_1.5B_v5` | Qwen 1.5B | 8192 | 65.0 | MIT | Efficient large model |
+
+### Qwen3-Embedding-8B (2025 Multilingual Leader)
 
 ```python
 from sentence_transformers import SentenceTransformer
 
-# NV-Embed-v2: highest quality open-source embedding
+model = SentenceTransformer("Qwen/Qwen3-Embedding-8B", trust_remote_code=True)
+model.max_seq_length = 32768   # 32k token context
+
+# Qwen3-Embedding uses instruction-style prompting
+task_instruct = "Given a web search query, retrieve relevant passages that answer the query"
+
+def embed_qwen3(queries: list[str], is_query: bool = True) -> list:
+    if is_query:
+        # Prepend instruction for queries
+        prefixed = [f"Instruct: {task_instruct}\nQuery: {q}" for q in queries]
+    else:
+        prefixed = queries   # no instruction for documents
+    return model.encode(
+        prefixed,
+        normalize_embeddings=True,
+        batch_size=2,     # 8B model — small batch
+    )
+
+# Matryoshka: reduce from 7168 to 1024 dims
+def embed_qwen3_reduced(queries: list[str], dims: int = 1024) -> list:
+    full = embed_qwen3(queries)
+    return [v[:dims] / (sum(x**2 for x in v[:dims])**0.5) for v in full]
+```
+
+### Microsoft Harrier-OSS-v1 (MTEB v2 Leader)
+
+```python
+from sentence_transformers import SentenceTransformer
+
+# 8B variant — practical for most deployments
+model = SentenceTransformer("microsoft/Harrier-OSS-v1-8B", trust_remote_code=True)
+
+embeddings = model.encode(
+    ["What is retrieval-augmented generation?"],
+    normalize_embeddings=True,
+    batch_size=4,
+)
+```
+
+### NV-Embed-v2 / Llama-Embed-Nemotron-8B (NVIDIA)
+
+```python
+from sentence_transformers import SentenceTransformer
+
+# NV-Embed-v2: solid English retrieval, broad availability
 model = SentenceTransformer("nvidia/NV-Embed-v2", trust_remote_code=True)
 model.max_seq_length = 4096
 model.tokenizer.padding_side = "right"
@@ -411,7 +533,7 @@ def embed_with_instruct(queries: list[str]) -> list:
         queries,
         instruction=task_instruct,
         normalize_embeddings=True,
-        batch_size=4,   # large model, small batch
+        batch_size=4,
     )
 ```
 
@@ -471,9 +593,9 @@ np.save("corpus_embeddings.npy", all_embeddings)
 
 ---
 
-## Complete Model Comparison (August 2025)
+## Complete Model Comparison (April 2026)
 
-| Model | Dims | Max tokens | MTEB Retrieval | Params | Cost | Self-host |
+| Model | Dims | Max tokens | MTEB Score | Params | Cost | Self-host |
 |---|---|---|---|---|---|---|
 | all-MiniLM-L6-v2 | 384 | 256 | 41.9 | 22M | Free | Yes |
 | BGE-small-en-v1.5 | 384 | 512 | 51.7 | 33M | Free | Yes |
@@ -482,14 +604,21 @@ np.save("corpus_embeddings.npy", all_embeddings)
 | E5-large-v2 | 1024 | 512 | 55.3 | 335M | Free | Yes |
 | **Nomic Embed v1.5** | 768 | **8192** | 53.8 | 137M | Free | Yes |
 | **jina-embeddings-v3** | 1024 | **8192** | 54.3 | 570M | Free* | Yes |
+| **jina-v5-text-small** | 1024 | 8192 | **71.7** (MTEB v2) | 677M | Free | Yes |
 | Cohere embed-v3 | 1024 | 512 | 55.9 | API | $0.10/1M | No |
 | OpenAI embed-3-small | 1536 | 8191 | 44.0 | API | $0.02/1M | No |
 | OpenAI embed-3-large | 3072 | 8191 | 54.9 | API | $0.13/1M | No |
-| Google text-emb-004 | 768 | 2048 | 55.7 | API | $0.025/1M | No |
-| **Voyage-3** | 1024 | **32,000** | **70.3** | API | $0.06/1M | No |
+| Google text-emb-004 | 768 | 2048 | 55.7 | API | $0.006/1M | No |
+| **Google Gemini Emb-001** | 3072 | 8192 | **68.32** (multilingual) | API | $0.01/1M | No |
+| **Google Gemini Emb-2** | 3072 | 8192 | — (multimodal) | API | TBD (preview) | No |
+| **Voyage-3** | 1024 | **32,000** | 70.3 | API | $0.06/1M | No |
 | **Voyage-3-lite** | 512 | **32,000** | 67.1 | API | $0.02/1M | No |
 | NV-Embed-v2 | 4096 | 4096 | 62.7 | 7B | Free | Yes (GPU) |
 | stella_en_1.5B_v5 | 8192 | 512 | 65.0 | 1.5B | Free | Yes (GPU) |
+| **Llama-Embed-Nemotron-8B** | 4096 | 4096 | **72.31** (English avg) | 8B | Free | Yes (GPU) |
+| **Qwen3-Embedding-8B** | 7168 | **32,768** | **70.58** (multilingual) | 8B | Free | Yes (GPU) |
+| **Harrier-OSS-v1-8B** | — | — | **71.5** (MTEB v2) | 8B | Free | Yes (GPU) |
+| **Harrier-OSS-v1-27B** | — | — | **74.3** (MTEB v2) | 27B | Free | Yes (GPU) |
 
 *jina-embeddings-v3 is free for self-host but CC BY-NC (non-commercial via API)
 
@@ -498,43 +627,51 @@ np.save("corpus_embeddings.npy", all_embeddings)
 ## Choosing the Right Model
 
 ```
-  DECISION GUIDE
+  DECISION GUIDE (April 2026)
   ──────────────────────────────────────────────────────────────
 
   Prototype / dev:
-    → all-MiniLM-L6-v2 (fast, zero cost, easy)
+    → all-MiniLM-L6-v2     (fast, zero cost, easy)
 
   Production English RAG, self-hosted, no GPU:
-    → BGE-large-en-v1.5  (best MTEB at BERT size)
+    → BGE-large-en-v1.5    (best MTEB at BERT size, proven)
+    → Nomic Embed v1.5     (8192 tokens, fully open, auditable)
 
   Production, need long document chunks (>512 tokens):
-    → BGE-M3             (8192 tokens, open source)
-    → Nomic Embed v1.5   (8192 tokens, fully open)
-    → Voyage-3           (32,000 tokens, API)
+    → Qwen3-Embedding-8B   (32k tokens, MTEB 70.58, open-source)
+    → BGE-M3               (8192 tokens, dense+sparse+ColBERT)
+    → Voyage-3             (32,000 tokens, managed API)
 
   Production, managed API, best accuracy:
-    → Voyage-3           (MTEB 70.3, $0.06/1M)
-    → Voyage-3-lite      (MTEB 67.1, $0.02/1M, most cost-effective)
+    → Google Gemini Emb-001 (MTEB 68.32 multilingual, competitive pricing)
+    → Voyage-3              (MTEB 70.3, $0.06/1M — best for retrieval)
+    → Voyage-3-lite         (MTEB 67.1, $0.02/1M — most cost-effective API)
 
   Production, managed API, lowest cost:
-    → Voyage-3-lite      ($0.02/1M, MTEB 67.1)
-    → OpenAI embed-3-small ($0.02/1M, but MTEB only 44.0)
+    → Voyage-3-lite         ($0.02/1M, MTEB 67.1 — beats all OpenAI options)
+    → Google Gemini Emb-001 (~$0.01/1M, MTEB 68.32)
 
-  Multilingual:
-    → BGE-M3             (100+ languages, open source)
-    → Cohere multilingual-v3  (API, 100+ languages)
-    → jina-embeddings-v3 (89 languages)
+  Multilingual (2026 leaders):
+    → Qwen3-Embedding-8B   (MTEB 70.58 multilingual, 100+ langs, open)
+    → Google Gemini Emb-001 (MTEB 68.32 multilingual, managed API)
+    → BGE-M3               (100+ languages, also sparse+ColBERT output)
+    → jina-embeddings-v3   (89 languages, CC BY-NC)
+
+  Multimodal (text + images + video + audio):
+    → Google Gemini Emb-2  (March 2026, only all-modality model)
 
   Code search:
-    → Voyage-code-3      (code-specific model)
-    → jina-embeddings-v3 (supports code)
+    → Voyage-code-3        (code-specific, $0.18/1M)
+    → jina-embeddings-v3   (supports code, 8k context)
 
   Domain-specific (finance, legal):
     → Voyage-finance-2, voyage-law-2
 
-  Highest quality, GPU available:
-    → NV-Embed-v2        (7B, MTEB 62.7)
-    → stella_en_1.5B_v5  (1.5B, MTEB 65.0 — better efficiency)
+  Highest quality, GPU available (MTEB v2 leaders):
+    → Harrier-OSS-v1-27B   (MTEB v2: 74.3, MIT — best in class)
+    → Harrier-OSS-v1-8B    (MTEB v2: 71.5, MIT — practical size)
+    → Llama-Embed-Nemotron-8B (72.31 English, NVIDIA)
+    → Qwen3-Embedding-8B   (70.58 multilingual, 32k context)
 ```
 
 ---

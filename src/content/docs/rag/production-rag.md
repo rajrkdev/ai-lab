@@ -1,9 +1,11 @@
 ---
 title: Production RAG
-description: Operating RAG systems at scale — latency optimization, semantic caching, async retrieval, cost control, observability, guardrails, and CI/CD for RAG pipelines.
+description: Operating RAG systems at scale — latency optimization, Anthropic prompt caching, semantic caching, vLLM, LiteLLM, async retrieval, cost control, W&B Weave observability, guardrails, and CI/CD for RAG pipelines.
 sidebar:
   order: 12
 ---
+
+> **Current as of April 2026.**
 
 ## Production RAG vs Prototype RAG
 
@@ -442,8 +444,359 @@ jobs:
 
 ---
 
+---
+
+## 11. Anthropic Prompt Caching
+
+Prompt caching dramatically reduces cost and latency when the same large context (system prompt, documents, few-shot examples) is reused across queries.
+
+**2026 updates:**
+- **Workspace-level isolation** (February 2026): caches are now isolated per API workspace — data never bleeds between workspaces within the same org
+- **1-hour cache duration** available at 2× the write price (vs. 5-min at 1.25×)
+- **Automatic caching**: Anthropic now automatically caches system prompt static parts without requiring explicit `cache_control` markers
+- **Latency reduction**: up to **85%** for long prompts (100K-token example: 11.5s → 2.4s)
+
+**Cache pricing (all active Claude models):**
+
+| Cache type | Write price | Read price |
+|---|---|---|
+| Standard (5-min TTL) | 1.25× base input | 0.10× base input |
+| Extended (1-hour TTL) | 2.00× base input | 0.10× base input |
+
+```
+  WITHOUT CACHING:
+  ─────────────────────────────────────────────────────────────
+  Query 1: system_prompt (2000 tok) + docs (8000 tok) + question (50 tok)
+  Query 2: system_prompt (2000 tok) + docs (8000 tok) + question (48 tok)
+  Query 3: system_prompt (2000 tok) + docs (8000 tok) + question (55 tok)
+
+  Total input billed: 3 × 10,050 = 30,150 tokens at full price
+
+  WITH CACHING (mark first 10,000 tokens as cacheable):
+  ─────────────────────────────────────────────────────────────
+  Query 1: 10,000 tokens (cache WRITE) + 50 tokens = 10,050 tokens billed
+  Query 2: 50 tokens (cache HIT, 10,000 at 10% = 1,000 effective) + 48 tokens
+  Query 3: 50 tokens (cache HIT) + 55 tokens
+
+  Savings on queries 2+: ~90% reduction on the cached portion
+```
+
+```python
+import anthropic
+
+client = anthropic.Anthropic()
+
+# Pattern 1: Cache the system prompt + retrieved documents
+def rag_with_caching(question: str, context_docs: list[str]) -> str:
+    context = "\n\n---\n\n".join(context_docs)
+
+    response = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=1024,
+        system=[
+            {
+                "type": "text",
+                "text": "You are a precise document assistant. Answer questions using only the provided context. Cite sources.",
+                "cache_control": {"type": "ephemeral"},   # cache system prompt (5-min TTL)
+            }
+        ],
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"<context>\n{context}\n</context>",
+                        "cache_control": {"type": "ephemeral"},   # cache the retrieved docs
+                    },
+                    {
+                        "type": "text",
+                        "text": f"Question: {question}",
+                    },
+                ],
+            }
+        ],
+    )
+
+    # Check cache performance
+    usage = response.usage
+    print(f"Cache read tokens:  {usage.cache_read_input_tokens}")
+    print(f"Cache write tokens: {usage.cache_creation_input_tokens}")
+    print(f"New input tokens:   {usage.input_tokens}")
+
+    return response.content[0].text
+
+
+# Pattern 2: Cache a large static knowledge base (batch RAG)
+# When the same corpus is queried repeatedly, cache the entire corpus
+def batch_rag_with_cached_corpus(
+    questions: list[str],
+    corpus: str,   # entire knowledge base as text
+) -> list[str]:
+    answers = []
+    for i, question in enumerate(questions):
+        response = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=512,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"<knowledge_base>\n{corpus}\n</knowledge_base>",
+                        "cache_control": {"type": "ephemeral"},   # cached after first call
+                    },
+                    {
+                        "type": "text",
+                        "text": f"Question: {question}",
+                    },
+                ],
+            }],
+        )
+        answers.append(response.content[0].text)
+        if i == 0:
+            print(f"Cache written: {response.usage.cache_creation_input_tokens} tokens")
+        else:
+            print(f"Cache hit: {response.usage.cache_read_input_tokens} tokens reused")
+    return answers
+```
+
+**Cost impact example:** A RAG system with 10k token context, 10k queries/day:
+```
+  Without caching: 10k × 10k tok × $3/1M = $300/day
+  With caching:    10k × (10k × $0.30/1M + 50 × $3/1M) = ~$31.50/day
+  Savings: ~$268.50/day (89%)
+```
+
+---
+
+## 12. vLLM — High-Throughput Self-Hosted Inference
+
+**GitHub:** `vllm-project/vllm`  
+**Website:** vllm.ai
+
+vLLM is the default inference engine for self-hosted LLMs in production. **V1 architecture** (default since v0.8.0, January 2025) rewrote the core engine into a multi-process design with scheduler, engine core, and GPU workers communicating via ZeroMQ — delivering up to **1.7× higher throughput** over the original. **Model Runner V2 (MRV2)** (March 2026) further optimizes block tables and M-RoPE.
+
+**Proven at scale:** Stripe (73% inference cost reduction, 50M daily API calls on 1/3 the GPU fleet), Amazon Rufus (250M customers), Roblox (4B tokens/week).
+
+**Hardware support:** NVIDIA GPUs, AMD GPUs, x86/ARM CPUs, Google TPUs, Intel Gaudi, Apple Silicon, and more.
+
+```python
+# Start vLLM server (run in terminal)
+# vllm serve meta-llama/Llama-3.1-8B-Instruct --port 8000
+
+# Use via OpenAI-compatible API
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:8000/v1",
+    api_key="not-needed",  # vLLM doesn't require a key by default
+)
+
+def rag_with_vllm(question: str, context: str) -> str:
+    response = client.chat.completions.create(
+        model="meta-llama/Llama-3.1-8B-Instruct",
+        messages=[
+            {"role": "system", "content": "Answer using only the provided context."},
+            {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {question}"},
+        ],
+        temperature=0,
+        max_tokens=512,
+    )
+    return response.choices[0].message.content
+
+# Streaming (for UI)
+def rag_stream_vllm(question: str, context: str):
+    stream = client.chat.completions.create(
+        model="meta-llama/Llama-3.1-8B-Instruct",
+        messages=[
+            {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {question}"},
+        ],
+        stream=True,
+        max_tokens=512,
+    )
+    for chunk in stream:
+        delta = chunk.choices[0].delta.content
+        if delta:
+            yield delta
+```
+
+**vLLM throughput vs. naive HuggingFace (Llama 3.1 8B, A100):**
+```
+  HuggingFace Transformers:      ~20 tokens/sec   (1 request)
+  vLLM V0 (continuous batching): ~500 tokens/sec  (concurrent requests)
+  vLLM V1 (ZeroMQ, default):    ~850 tokens/sec  (1.7× V0 improvement)
+  vLLM + speculative decoding:   ~1100 tokens/sec (with draft model)
+```
+
+---
+
+## 13. LiteLLM — Unified Multi-Provider API
+
+**GitHub:** `BerriAI/litellm`  
+**Website:** litellm.ai
+
+LiteLLM gives you a single OpenAI-compatible API across 100+ LLM providers — swap between Anthropic, OpenAI, Cohere, vLLM, and others without changing application code. Critical for cost optimization and provider fallback.
+
+```python
+from litellm import completion
+import litellm
+
+# Enable cost tracking and fallback logging
+litellm.success_callback = ["langfuse"]   # observability
+
+# Single interface for all providers
+def rag_generate(question: str, context: str, model: str = "claude-sonnet-4-6") -> str:
+    response = completion(
+        model=model,
+        messages=[
+            {"role": "system", "content": "Answer using only the provided context."},
+            {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {question}"},
+        ],
+        temperature=0,
+        max_tokens=512,
+    )
+    return response.choices[0].message.content
+
+
+# Automatic fallback: try primary, fall back to secondary on failure/timeout
+from litellm import Router
+
+router = Router(
+    model_list=[
+        {
+            "model_name": "primary",
+            "litellm_params": {
+                "model": "claude-sonnet-4-6",
+                "api_key": "YOUR_ANTHROPIC_KEY",
+            },
+        },
+        {
+            "model_name": "primary",              # same name = fallback pool
+            "litellm_params": {
+                "model": "gpt-4o",
+                "api_key": "YOUR_OPENAI_KEY",
+            },
+        },
+        {
+            "model_name": "cheap",
+            "litellm_params": {
+                "model": "claude-haiku-4-5-20251001",
+                "api_key": "YOUR_ANTHROPIC_KEY",
+            },
+        },
+    ],
+    fallbacks=[{"primary": ["cheap"]}],    # if primary fails, use cheap
+    num_retries=2,
+    timeout=30,
+)
+
+response = router.completion(model="primary", messages=[...])
+
+
+# Cost tiering: route to cheap model for simple queries
+def tiered_rag(question: str, context: str) -> str:
+    complexity = estimate_complexity(question)   # your classifier
+    model = "primary" if complexity > 0.7 else "cheap"
+    return router.completion(
+        model=model,
+        messages=[{"role": "user", "content": f"Context:\n{context}\n\nQ: {question}"}],
+    ).choices[0].message.content
+```
+
+---
+
+## 14. Weights & Biases Weave — Production Observability
+
+**Website:** weave.wandb.ai  
+**GitHub:** `wandb/weave`
+
+W&B Weave (2024) is an observability platform for LLM applications — traces every call, evaluates outputs, and enables dataset-driven iteration.
+
+```python
+# pip install weave
+import weave
+import anthropic
+
+weave.init("my-rag-project")   # connects to W&B
+
+client = anthropic.Anthropic()
+
+# Decorate functions to trace them automatically
+@weave.op()
+def retrieve(question: str) -> list[str]:
+    docs = retriever.invoke(question)
+    return [d.page_content for d in docs]
+
+@weave.op()
+def generate(question: str, context: list[str]) -> str:
+    context_str = "\n\n---\n\n".join(context)
+    response = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=512,
+        messages=[{
+            "role": "user",
+            "content": f"Context:\n{context_str}\n\nQuestion: {question}",
+        }],
+    )
+    return response.content[0].text
+
+@weave.op()
+def rag_pipeline(question: str) -> str:
+    context = retrieve(question)
+    return generate(question, context)
+
+
+# Evaluation with Weave datasets
+eval_dataset = weave.Dataset(
+    name="rag-test-set",
+    rows=[
+        {"question": "What is the refund policy?", "expected": "30 days"},
+        {"question": "How long does shipping take?", "expected": "5-7 days"},
+    ]
+)
+
+@weave.op()
+def faithfulness_scorer(question: str, model_output: str, expected: str) -> dict:
+    """Custom scorer — returns a score dict."""
+    score = 1.0 if expected.lower() in model_output.lower() else 0.0
+    return {"score": score, "passed": score > 0.5}
+
+evaluation = weave.Evaluation(
+    dataset=eval_dataset,
+    scorers=[faithfulness_scorer],
+)
+
+import asyncio
+results = asyncio.run(evaluation.evaluate(rag_pipeline))
+# Results visible at https://weave.wandb.ai/your-project
+```
+
+---
+
+## Updated Production Checklist
+
+- [ ] Embedding model pinned to a specific version (model drift = index invalidation)
+- [ ] Vector index persisted and backed up
+- [ ] **Anthropic prompt caching enabled** for repeated large contexts (→ 89% cost reduction)
+- [ ] Semantic cache deployed (Redis/GPTCache) for repeated queries
+- [ ] Async retrieval implemented
+- [ ] Response streaming enabled
+- [ ] **vLLM** deployed for self-hosted inference (if using open-source models)
+- [ ] **LiteLLM Router** configured with fallback providers
+- [ ] LangSmith, Phoenix, or **W&B Weave** tracing active
+- [ ] **DeepEval** or RAGAS evaluation in CI/CD pipeline
+- [ ] Input validation and prompt injection detection
+- [ ] Output grounding verification
+- [ ] Fallback responses for retrieval failures
+- [ ] Cost monitoring and alerting per provider
+- [ ] Nightly re-indexing job for updated documents
+
+---
+
 ## See Also
 
-- [Evaluation](../evaluation) — RAGAS metrics and testing patterns
+- [Evaluation](../evaluation) — RAGAS, DeepEval, TruLens metrics and testing patterns
 - [Retrieval Strategies](../retrieval-strategies) — the retrieval optimizations that most affect latency
 - [Agentic RAG](../agentic-rag) — when latency trade-offs of agentic approaches are acceptable
+- [Contextual Retrieval](./contextual-retrieval) — Anthropic prompt caching for chunk contextualization

@@ -1,11 +1,11 @@
----
+﻿---
 title: "LangChain: Deep Reference Guide"
 ---
 
 # LangChain: Deep Reference Guide
-### Architecture · Patterns · Production · v1.1
+### Architecture Â· Patterns Â· Production Â· v1.1
 
-> **Audience:** This guide assumes Python proficiency, familiarity with LLM APIs, and working knowledge of RAG systems. It does not hand-hold on Python syntax — it goes directly into LangChain mechanics, decision rationale, and production trade-offs. Every section connects back to real production use cases.
+> **Audience:** This guide assumes Python proficiency, familiarity with LLM APIs, and working knowledge of RAG systems. It does not hand-hold on Python syntax â€” it goes directly into LangChain mechanics, decision rationale, and production trade-offs. Every section connects back to real production use cases.
 
 ---
 
@@ -13,7 +13,7 @@ title: "LangChain: Deep Reference Guide"
 
 ### What LangChain Actually Is
 
-LangChain is not a magical AI framework — it is a **standardisation layer** over patterns that already exist in every LLM application. If you have ever written code that: formats a string prompt, calls an LLM API, extracts text from the response, passes that text to a vector database query, and feeds the results back into another prompt — you have already implemented LangChain. You just did it without the vocabulary.
+LangChain is not a magical AI framework â€” it is a **standardisation layer** over patterns that already exist in every LLM application. If you have ever written code that: formats a string prompt, calls an LLM API, extracts text from the response, passes that text to a vector database query, and feeds the results back into another prompt â€” you have already implemented LangChain. You just did it without the vocabulary.
 
 The framework's value is in three areas. First, **interface standardisation**: every model provider, every vector store, every retriever, every loader exposes the same Python interface regardless of the underlying vendor. You can swap Claude for GPT-4, or ChromaDB for Pinecone, with a one-line change. Second, **composition primitives**: the `|` pipe operator and the `Runnable` interface let you chain arbitrarily complex pipelines without writing glue code. Third, **battle-tested abstractions**: patterns like hybrid search, multi-query retrieval, and contextual compression have been implemented, tested, and optimised once so you don't have to.
 
@@ -35,29 +35,29 @@ Most RAG applications primarily operate in the data and orchestration layers. Ag
 
 ## 2. Ecosystem & Package Architecture
 
-### The Package Split (v1.1 — Current as of March 2026)
+### The Package Split (v1.1 â€” Current as of March 2026)
 
 LangChain v1.0, released October 2025 (v1.1 March 2026), completed a major restructuring that had been underway since v0.1. Understanding this split is mandatory before writing any code, because importing from the wrong package is a frequent source of `ImportError` and unexpected behaviour.
 
 ```
 langchain-core          # Base abstractions: Runnable, BaseMessage, BaseLanguageModel, BaseRetriever
-    │                   # Pure interfaces — no concrete implementations, minimal dependencies
-    │
-    ├── langchain       # Chains, retrievers, memory, agents (high-level composition)
-    │       │
-    │       ├── langchain-anthropic     # Claude-specific: ChatAnthropic, AnthropicEmbeddings
-    │       ├── langchain-openai        # OpenAI-specific: ChatOpenAI, OpenAIEmbeddings
-    │       ├── langchain-voyageai      # Voyage AI embeddings
-    │       ├── langchain-chroma        # ChromaDB vectorstore
-    │       ├── langchain-google-*      # Google integrations
-    │       └── (30+ first-party partner packages)
-    │
-    ├── langchain-community  # 500+ community integrations (loaders, tools, vectorstores)
-    │                        # Less stable, higher maintenance burden, slower updates
-    │
-    ├── langchain-text-splitters  # Document chunking utilities (separated for lighter install)
-    │
-    └── langgraph           # Stateful, cyclic graph execution — separate from langchain
+    â”‚                   # Pure interfaces â€” no concrete implementations, minimal dependencies
+    â”‚
+    â”œâ”€â”€ langchain       # Chains, retrievers, memory, agents (high-level composition)
+    â”‚       â”‚
+    â”‚       â”œâ”€â”€ langchain-anthropic     # Claude-specific: ChatAnthropic, AnthropicEmbeddings
+    â”‚       â”œâ”€â”€ langchain-openai        # OpenAI-specific: ChatOpenAI, OpenAIEmbeddings
+    â”‚       â”œâ”€â”€ langchain-voyageai      # Voyage AI embeddings
+    â”‚       â”œâ”€â”€ langchain-chroma        # ChromaDB vectorstore
+    â”‚       â”œâ”€â”€ langchain-google-*      # Google integrations
+    â”‚       â””â”€â”€ (30+ first-party partner packages)
+    â”‚
+    â”œâ”€â”€ langchain-community  # 500+ community integrations (loaders, tools, vectorstores)
+    â”‚                        # Less stable, higher maintenance burden, slower updates
+    â”‚
+    â”œâ”€â”€ langchain-text-splitters  # Document chunking utilities (separated for lighter install)
+    â”‚
+    â””â”€â”€ langgraph           # Stateful, cyclic graph execution â€” separate from langchain
                             # Built on langchain-core but architecturally independent
 ```
 
@@ -74,12 +74,12 @@ For an MyApp-like stack, the minimal production install is:
 pip install langchain langchain-core langchain-text-splitters  # 1.0.3 / 1.2.20
 
 # Your specific providers
-pip install langchain-anthropic      # 1.4 — Claude claude-3-7-sonnet-latest, etc. (Sonnet for generation, Haiku for classification)
+pip install langchain-anthropic      # 1.4 â€” Claude claude-3-7-sonnet-latest, etc. (Sonnet for generation, Haiku for classification)
 pip install langchain-voyageai       # voyage-3.5 embeddings
 pip install langchain-chroma         # 1.1.0
 
 # Advanced workflows
-pip install langgraph                # 1.1.0 — type-safe streaming v2, CRAG, multi-agent
+pip install langgraph                # 1.1.0 â€” type-safe streaming v2, CRAG, multi-agent
 
 # Community integrations (loaders, BM25)
 pip install langchain-community      # PyPDFLoader, BM25Retriever, etc.
@@ -91,24 +91,42 @@ pip install langchain-community      # PyPDFLoader, BM25Retriever, etc.
 pip install sentence-transformers    # cross-encoder/ms-marco-MiniLM-L-6-v2
 ```
 
-You can verify the installed versions with `pip show langchain langchain-core langgraph`. Version alignment matters — `langchain` and `langchain-core` should be from the same release cycle.
+You can verify the installed versions with `pip show langchain langchain-core langgraph`. Version alignment matters â€” `langchain` and `langchain-core` should be from the same release cycle.
 
-### Version Compatibility Matrix (v1.1 — March 2026)
+### Version Compatibility Matrix (v1.1 â€” March 2026)
 
 | langchain | langchain-core | langgraph  | Python  |
 |-----------|---------------|-----------|--------|
 | 1.0.x     | 1.2.x         | 1.1.x     | 3.10+  |
 | 0.3.x     | 0.3.x         | 0.2.x     | 3.9+   |
 
-The old `LLMChain`, `SequentialChain`, `ConversationalRetrievalChain`, and `RetrievalQA` classes have been **moved to `langchain-classic`** as of v1.0. They are no longer in the main `langchain` package. Every guide that uses these is outdated — LCEL and `create_agent` replace all of them.
+The old `LLMChain`, `SequentialChain`, `ConversationalRetrievalChain`, and `RetrievalQA` classes have been **moved to `langchain-classic`** as of v1.0. They are no longer in the main `langchain` package. Every guide that uses these is outdated â€” LCEL and `create_agent` replace all of them.
+
+### Recommended Model IDs (April 2026)
+
+| Task | Model | Package |
+|------|-------|--------|
+| Main agent / complex reasoning | `claude-sonnet-4-6` | `langchain-anthropic` |
+| High-stakes / long doc analysis | `claude-opus-4-6` | `langchain-anthropic` |
+| Fast classification / grading | `claude-haiku-4-5` | `langchain-anthropic` |
+| Embeddings | `voyage-3.5` | `langchain-voyageai` |
+
+```python
+from langchain.chat_models import init_chat_model
+
+# Standard pattern (April 2026)
+sonnet = init_chat_model("anthropic:claude-sonnet-4-6", temperature=0.0)
+opus   = init_chat_model("anthropic:claude-opus-4-6",  temperature=0.0)
+haiku  = init_chat_model("anthropic:claude-haiku-4-5", temperature=0.0)
+```
 
 ---
 
-## 3. The Runnable Interface — LCEL Core
+## 3. The Runnable Interface â€” LCEL Core
 
 ### What a Runnable Is
 
-Every component in LangChain — models, prompts, output parsers, retrievers, custom functions — implements the `Runnable` abstract base class from `langchain_core.runnables`. This is the single most important concept in modern LangChain because it is what makes the `|` pipe operator work.
+Every component in LangChain â€” models, prompts, output parsers, retrievers, custom functions â€” implements the `Runnable` abstract base class from `langchain_core.runnables`. This is the single most important concept in modern LangChain because it is what makes the `|` pipe operator work.
 
 The `Runnable` interface specifies these methods:
 
@@ -117,13 +135,13 @@ from langchain_core.runnables import Runnable
 from typing import Any, AsyncIterator, Iterator
 
 class Runnable:
-    # Synchronous execution — single input, single output
+    # Synchronous execution â€” single input, single output
     def invoke(self, input: Any, config: RunnableConfig | None = None) -> Any: ...
     
-    # Synchronous streaming — yields chunks progressively
+    # Synchronous streaming â€” yields chunks progressively
     def stream(self, input: Any, config: RunnableConfig | None = None) -> Iterator[Any]: ...
     
-    # Parallel batch execution — list of inputs, list of outputs
+    # Parallel batch execution â€” list of inputs, list of outputs
     def batch(self, inputs: list[Any], config: RunnableConfig | None = None) -> list[Any]: ...
     
     # Async variants of all three
@@ -136,32 +154,32 @@ class Runnable:
     def __ror__(self, other: Runnable) -> RunnableSequence: ...  # enables dict | runnable
 ```
 
-When you write `prompt | model | parser`, Python calls `prompt.__or__(model)` which returns a `RunnableSequence(steps=[prompt, model])`. Then it calls `RunnableSequence.__or__(parser)` which returns `RunnableSequence(steps=[prompt, model, parser])`. Nothing executes during composition — it is purely declarative. Execution happens when you call `.invoke()`, `.stream()`, or `.batch()`.
+When you write `prompt | model | parser`, Python calls `prompt.__or__(model)` which returns a `RunnableSequence(steps=[prompt, model])`. Then it calls `RunnableSequence.__or__(parser)` which returns `RunnableSequence(steps=[prompt, model, parser])`. Nothing executes during composition â€” it is purely declarative. Execution happens when you call `.invoke()`, `.stream()`, or `.batch()`.
 
 ### Type Flow Through a Chain
 
 One of the most important debugging skills in LangChain is knowing what type flows out of each component. Mismatched types are the most common source of `TypeError` in chains.
 
 ```
-ChatPromptTemplate.invoke(dict) → ChatPromptValue
+ChatPromptTemplate.invoke(dict) â†’ ChatPromptValue
 ChatPromptValue is automatically converted to List[BaseMessage] by the model
 
-ChatAnthropic.invoke(List[BaseMessage]) → AIMessage
+ChatAnthropic.invoke(List[BaseMessage]) â†’ AIMessage
 AIMessage has fields: .content (str), .tool_calls (list), .response_metadata (dict)
 
-StrOutputParser.invoke(AIMessage) → str
-JsonOutputParser.invoke(AIMessage) → dict
-PydanticOutputParser.invoke(AIMessage) → YourPydanticModel
+StrOutputParser.invoke(AIMessage) â†’ str
+JsonOutputParser.invoke(AIMessage) â†’ dict
+PydanticOutputParser.invoke(AIMessage) â†’ YourPydanticModel
 
-VectorStoreRetriever.invoke(str) → List[Document]
+VectorStoreRetriever.invoke(str) â†’ List[Document]
 Document has fields: .page_content (str), .metadata (dict)
 
-RunnableLambda(fn).invoke(any) → fn(any)  # whatever your function returns
+RunnableLambda(fn).invoke(any) â†’ fn(any)  # whatever your function returns
 ```
 
 ### LCEL Composition Patterns
 
-**Linear sequence** — the fundamental pattern:
+**Linear sequence** â€” the fundamental pattern:
 
 ```python
 from langchain_anthropic import ChatAnthropic
@@ -170,7 +188,7 @@ from langchain_core.output_parsers import StrOutputParser
 
 chain = (
     ChatPromptTemplate.from_template("Answer: {question}")
-    | ChatAnthropic(model="claude-3-5-sonnet-20241022")
+    | ChatAnthropic(model="claude-sonnet-4-6")
     | StrOutputParser()
 )
 
@@ -179,7 +197,7 @@ result = chain.invoke({"question": "What is product domain?"})
 result = chain.invoke("What is product domain?")  # single-variable templates accept str directly
 ```
 
-**Dict passthrough** — runs branches in parallel before merging. This is the idiomatic RAG pattern:
+**Dict passthrough** â€” runs branches in parallel before merging. This is the idiomatic RAG pattern:
 
 ```python
 from langchain_core.runnables import RunnablePassthrough
@@ -197,7 +215,7 @@ rag_chain = (
 
 The dict shorthand `{key: runnable}` is syntactic sugar for `RunnableParallel({key: runnable})`. Both branches execute concurrently.
 
-**Assign** — adds fields to a dict without replacing:
+**Assign** â€” adds fields to a dict without replacing:
 
 ```python
 from langchain_core.runnables import RunnablePassthrough
@@ -215,7 +233,7 @@ chain = (
 )
 ```
 
-**Configuration** — pass runtime configuration without changing chain structure:
+**Configuration** â€” pass runtime configuration without changing chain structure:
 
 ```python
 from langchain_core.runnables import RunnableConfig
@@ -259,7 +277,7 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 
 model = ChatAnthropic(
-    model="claude-3-5-sonnet-20241022",   # model identifier
+    model="claude-sonnet-4-6",   # model identifier
     api_key=os.getenv("ANTHROPIC_API_KEY"),  # or set ANTHROPIC_API_KEY env var
     temperature=0.0,          # 0.0 for factual/RAG, 0.3-0.7 for creative
     max_tokens=4096,          # max output tokens
@@ -280,16 +298,16 @@ print(response.usage_metadata)    # {"input_tokens": 42, "output_tokens": 156}
 ```
 
 
-### `init_chat_model` — Provider-Agnostic Factory (v1.0+)
+### `init_chat_model` â€” Provider-Agnostic Factory (v1.0+)
 
 LangChain 1.0 introduced `init_chat_model` as the preferred provider-agnostic way
-to instantiate models — particularly useful in multi-provider or A/B-testing setups:
+to instantiate models â€” particularly useful in multi-provider or A/B-testing setups:
 
 ```python
 from langchain.chat_models import init_chat_model
 
 # Infers provider from model string prefix
-model = init_chat_model("anthropic:claude-3-5-sonnet-20241022", temperature=0.0)
+model = init_chat_model("anthropic:claude-sonnet-4-6", temperature=0.0)
 model = init_chat_model("openai:gpt-4o", temperature=0.0)
 model = init_chat_model("google_genai:gemini-2.0-flash", temperature=0.0)
 
@@ -302,11 +320,11 @@ provider-specific parameters (e.g., `thinking`, `betas`).
 
 ### Model Selection Strategy for MyApp
 
-Claude 3.5 Sonnet is the right choice for primary response generation — it has the best instruction following, longest effective context, and best structured output compliance. Claude 3 Haiku is the right choice for classification, query rewriting, and document grading — it is 13× cheaper and nearly as good for short structured tasks.
+Claude 3.5 Sonnet is the right choice for primary response generation â€” it has the best instruction following, longest effective context, and best structured output compliance. Claude 3 Haiku is the right choice for classification, query rewriting, and document grading â€” it is 13Ã— cheaper and nearly as good for short structured tasks.
 
 ```python
 # For RAG generation, complex reasoning, structured extraction
-sonnet = ChatAnthropic(model="claude-3-5-sonnet-20241022", temperature=0.0)
+sonnet = ChatAnthropic(model="claude-sonnet-4-6", temperature=0.0)
 
 # For intent classification, query rewriting, document grading
 haiku = ChatAnthropic(model="claude-3-haiku-20240307", temperature=0.0)
@@ -316,7 +334,7 @@ haiku = ChatAnthropic(model="claude-3-haiku-20240307", temperature=0.0)
 # MyApp generation step: ~2000 input tokens, ~500 output = $0.009 per call (Sonnet)
 ```
 
-### Structured Output — `.with_structured_output()`
+### Structured Output â€” `.with_structured_output()`
 
 This is the most reliable way to get structured data from Claude. It uses Claude's native tool-calling mechanism (which is constrained at the API level) rather than prompting the model to format its output (which it can deviate from).
 
@@ -331,33 +349,33 @@ class InsuranceIntent(BaseModel):
     sub_intent: Optional[str] = Field(default=None, description="More specific intent label if applicable")
     requires_agent: bool = Field(description="Whether this needs a human agent")
 
-# Bind the schema to the model — uses function calling under the hood
+# Bind the schema to the model â€” uses function calling under the hood
 structured_haiku = ChatAnthropic(model="claude-3-haiku-20240307").with_structured_output(
     InsuranceIntent,
     method="function_calling",  # default for Claude; also "json_mode" supported
     include_raw=False,          # True returns {"raw": AIMessage, "parsed": model, "parsing_error": ...}
 )
 
-# Returns an InsuranceIntent object — guaranteed to be valid or raises ValidationError
+# Returns an InsuranceIntent object â€” guaranteed to be valid or raises ValidationError
 intent: InsuranceIntent = structured_haiku.invoke(
     "I had an accident last night and I need to file a request urgently"
 )
 
-print(intent.intent)           # → "REQUESTS"
-print(intent.confidence)       # → 0.97
-print(intent.requires_agent)   # → True
+print(intent.intent)           # â†’ "REQUESTS"
+print(intent.confidence)       # â†’ 0.97
+print(intent.requires_agent)   # â†’ True
 ```
 
 When `include_raw=True`, you get access to the underlying `AIMessage` so you can inspect token usage even when structured output is active. This is useful for cost tracking.
 
-### Configurable Models — Runtime Switching
+### Configurable Models â€” Runtime Switching
 
 For cases where you want to expose the model choice as a configurable parameter (useful for A/B testing or multi-tenant scenarios):
 
 ```python
 from langchain_core.runnables import ConfigurableField
 
-model = ChatAnthropic(model="claude-3-5-sonnet-20241022").configurable_fields(
+model = ChatAnthropic(model="claude-sonnet-4-6").configurable_fields(
     model=ConfigurableField(
         id="model",
         name="Claude Model",
@@ -377,11 +395,11 @@ result = chain.invoke(
 
 ---
 
-## 5. Prompt Templates — All Patterns
+## 5. Prompt Templates â€” All Patterns
 
 ### Template Types and When to Use Each
 
-`PromptTemplate` produces a single formatted string — it is the pre-chat-model pattern and you will rarely use it directly with Claude. `ChatPromptTemplate` produces a list of `BaseMessage` objects with roles, which is the correct format for all modern chat models. `FewShotChatMessagePromptTemplate` injects example input/output pairs. `MessagesPlaceholder` inserts a variable-length message list (for conversation history).
+`PromptTemplate` produces a single formatted string â€” it is the pre-chat-model pattern and you will rarely use it directly with Claude. `ChatPromptTemplate` produces a list of `BaseMessage` objects with roles, which is the correct format for all modern chat models. `FewShotChatMessagePromptTemplate` injects example input/output pairs. `MessagesPlaceholder` inserts a variable-length message list (for conversation history).
 
 ### ChatPromptTemplate in Depth
 
@@ -434,10 +452,10 @@ messages = prompt_with_history.invoke({
 })
 
 print(messages.to_messages())
-# → [SystemMessage(...), HumanMessage("What is my threshold?"), AIMessage("..."), HumanMessage("What about non-fault?")]
+# â†’ [SystemMessage(...), HumanMessage("What is my threshold?"), AIMessage("..."), HumanMessage("What about non-fault?")]
 ```
 
-### FewShotChatMessagePromptTemplate — For Classification
+### FewShotChatMessagePromptTemplate â€” For Classification
 
 This is the cleanest way to implement few-shot classification. It is superior to manually constructing example strings because it respects the chat message format (the model sees examples as real turns, not embedded strings):
 
@@ -477,7 +495,7 @@ classifier_prompt = ChatPromptTemplate.from_messages([
 # Compose with Haiku (cheap, fast for classification)
 classifier = classifier_prompt | ChatAnthropic(model="claude-3-haiku-20240307") | StrOutputParser()
 label = classifier.invoke({"query": "I need to add my wife to my product record"})
-# → "COVERAGE"
+# â†’ "COVERAGE"
 ```
 
 ### Dynamic Example Selection with SemanticSimilarityExampleSelector
@@ -504,7 +522,7 @@ few_shot_prompt = FewShotChatMessagePromptTemplate(
 )
 ```
 
-### Partial Templates — Pre-filling Variables
+### Partial Templates â€” Pre-filling Variables
 
 Partial templates let you lock in some variables at build time (computed once) while leaving others for runtime:
 
@@ -517,7 +535,7 @@ base_prompt = ChatPromptTemplate.from_messages([
     ("human", "{question}"),
 ])
 
-# Pre-fill date and environment at startup — these don't change per request
+# Pre-fill date and environment at startup â€” these don't change per request
 request_prompt = base_prompt.partial(
     date=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
     env=os.getenv("ENVIRONMENT", "production"),
@@ -531,7 +549,7 @@ messages = request_prompt.invoke({
 })
 ```
 
-### Prompt Serialisation — Saving and Loading
+### Prompt Serialisation â€” Saving and Loading
 
 LangChain prompts can be serialised to JSON/YAML for version control. This is valuable for production prompt management:
 
@@ -546,7 +564,7 @@ loaded_prompt = load_prompt("prompts/rag_prompt_v3.json")
 
 ---
 
-## 6. Output Parsers — All Types
+## 6. Output Parsers â€” All Types
 
 ### The Parser Taxonomy
 
@@ -568,7 +586,7 @@ Output parsers sit at the end of a chain and transform raw `AIMessage` output in
 | `DatetimeOutputParser` | Date extraction from text | Moderate | Low |
 | `PandasDataFrameOutputParser` | Tabular data extraction | Moderate | Moderate |
 
-### StrOutputParser — The Default
+### StrOutputParser â€” The Default
 
 ```python
 from langchain_core.output_parsers import StrOutputParser
@@ -577,12 +595,12 @@ from langchain_core.output_parsers import StrOutputParser
 parser = StrOutputParser()
 
 # Behaviour with different input types:
-parser.invoke(AIMessage(content="Hello"))           # → "Hello"
-parser.invoke("Already a string")                   # → "Already a string" (pass-through)
-parser.invoke(AIMessage(content=[{"type": "text", "text": "Hi"}]))  # → "Hi" (handles list content)
+parser.invoke(AIMessage(content="Hello"))           # â†’ "Hello"
+parser.invoke("Already a string")                   # â†’ "Already a string" (pass-through)
+parser.invoke(AIMessage(content=[{"type": "text", "text": "Hi"}]))  # â†’ "Hi" (handles list content)
 ```
 
-### PydanticOutputParser — Validated Structured Extraction
+### PydanticOutputParser â€” Validated Structured Extraction
 
 ```python
 from langchain_core.output_parsers import PydanticOutputParser
@@ -620,14 +638,14 @@ prompt = ChatPromptTemplate.from_messages([
     ("human", "Extract the coverage clause from: {text}"),
 ]).partial(format_instructions=format_instructions)
 
-chain = prompt | ChatAnthropic(model="claude-3-5-sonnet-20241022") | parser
+chain = prompt | ChatAnthropic(model="claude-sonnet-4-6") | parser
 
 result: RecordClause = chain.invoke({
     "text": "Section 5.2: The standard threshold for at-fault request handling is $500."
 })
 ```
 
-### JsonOutputParser — Streaming-Compatible Structured Output
+### JsonOutputParser â€” Streaming-Compatible Structured Output
 
 `JsonOutputParser` is particularly useful when you need to stream structured output, because it is a **partial JSON parser** that yields incremental Python objects as chunks arrive:
 
@@ -666,7 +684,7 @@ def get_record(record_id: str) -> str:
     return f"Record {record_id}: Motor Comprehensive"
 
 # Bind tools to model (explicit tool calling, not agent mode)
-model_with_tools = ChatAnthropic(model="claude-3-5-sonnet-20241022").bind_tools(
+model_with_tools = ChatAnthropic(model="claude-sonnet-4-6").bind_tools(
     [get_record],
     tool_choice="auto",   # "auto" | "any" | "none" | {"type": "tool", "name": "..."}
 )
@@ -680,7 +698,7 @@ chain = prompt | model_with_tools | parser
 
 ## 7. Runnable Primitives
 
-### RunnablePassthrough — Transparent Data Flow
+### RunnablePassthrough â€” Transparent Data Flow
 
 `RunnablePassthrough` passes its input to the output unchanged. Its primary use is in the parallel dict pattern where you need the original input alongside computed values:
 
@@ -695,7 +713,7 @@ rag_input = {
 }
 # Output of this dict: {"context": "Section 5.2...", "question": "What is my threshold?"}
 
-# RunnablePassthrough.assign() — adds keys to an existing dict without replacing
+# RunnablePassthrough.assign() â€” adds keys to an existing dict without replacing
 enriched = RunnablePassthrough.assign(
     context=lambda x: retriever.invoke(x["question"]),    # adds "context" key
     date=lambda x: datetime.now().isoformat(),            # adds "date" key
@@ -703,9 +721,9 @@ enriched = RunnablePassthrough.assign(
 )
 ```
 
-### RunnableLambda — Arbitrary Python Functions
+### RunnableLambda â€” Arbitrary Python Functions
 
-`RunnableLambda` wraps any Python callable as a `Runnable`. This is your primary tool for injecting custom logic — PII masking, logging, format conversion, business logic — into a chain:
+`RunnableLambda` wraps any Python callable as a `Runnable`. This is your primary tool for injecting custom logic â€” PII masking, logging, format conversion, business logic â€” into a chain:
 
 ```python
 from langchain_core.runnables import RunnableLambda
@@ -713,7 +731,7 @@ from langchain_core.runnables import RunnableLambda
 # Simple wrapping
 format_docs = RunnableLambda(lambda docs: "\n\n".join(d.page_content for d in docs))
 
-# With error handling — important for production
+# With error handling â€” important for production
 def safe_parse_date(text: str) -> str:
     try:
         from dateutil import parser
@@ -723,7 +741,7 @@ def safe_parse_date(text: str) -> str:
 
 safe_date_parser = RunnableLambda(safe_parse_date)
 
-# The @chain decorator — equivalent to RunnableLambda but with type annotation support
+# The @chain decorator â€” equivalent to RunnableLambda but with type annotation support
 from langchain_core.runnables import chain
 
 @chain
@@ -734,7 +752,7 @@ def mask_pii(text: str) -> str:
 
 @chain
 async def async_db_lookup(record_id: str) -> dict:
-    """Async database lookup — works with ainvoke/astream."""
+    """Async database lookup â€” works with ainvoke/astream."""
     async with AsyncSession() as session:
         result = await session.get(Record, record_id)
         return result.to_dict()
@@ -743,7 +761,7 @@ async def async_db_lookup(record_id: str) -> dict:
 chain = mask_pii | rag_chain | async_db_lookup
 ```
 
-### RunnableParallel — Concurrent Execution
+### RunnableParallel â€” Concurrent Execution
 
 `RunnableParallel` executes multiple Runnables simultaneously and returns a dict of their results. It is IO-bound, so concurrent HTTP calls (to APIs, vector stores) happen in parallel threads:
 
@@ -757,9 +775,9 @@ dual_retrieval = RunnableParallel({
     "question": RunnablePassthrough(),
 })
 
-# Both retrieval calls execute in parallel — ~2× faster than sequential
+# Both retrieval calls execute in parallel â€” ~2Ã— faster than sequential
 result = dual_retrieval.invoke("What is covered under comprehensive product?")
-# → {"app_docs": [...], "faq_docs": [...], "question": "What is covered..."}
+# â†’ {"app_docs": [...], "faq_docs": [...], "question": "What is covered..."}
 
 # Merge the results before passing to prompt
 def merge_docs(x):
@@ -772,7 +790,7 @@ def merge_docs(x):
 chain = dual_retrieval | RunnableLambda(merge_docs) | rag_prompt | model | StrOutputParser()
 ```
 
-### RunnableBranch — Conditional Routing
+### RunnableBranch â€” Conditional Routing
 
 `RunnableBranch` evaluates conditions in order and routes to the first matching branch:
 
@@ -781,24 +799,24 @@ from langchain_core.runnables import RunnableBranch
 
 # Route between specialised prompts based on classified intent
 branch = RunnableBranch(
-    # (condition_function, runnable_if_true) — evaluated in order
+    # (condition_function, runnable_if_true) â€” evaluated in order
     (lambda x: x.get("intent") == "REQUESTS",    requests_chain),
     (lambda x: x.get("intent") == "PRICING",   pricing_chain),
     (lambda x: x.get("intent") == "RENEWAL",   renewal_chain),
-    general_rag_chain,  # default — no condition, always matches
+    general_rag_chain,  # default â€” no condition, always matches
 )
 
 # Input must be a dict with "intent" key
 result = branch.invoke({"intent": "REQUESTS", "question": "How do I file?"})
 ```
 
-### RunnableWithFallbacks — Resilience
+### RunnableWithFallbacks â€” Resilience
 
 `RunnableWithFallbacks` tries the primary Runnable and falls back to alternatives on failure. Essential for production reliability:
 
 ```python
 # Primary: Claude 3.5 Sonnet; fallback: Claude 3 Haiku
-resilient_model = ChatAnthropic(model="claude-3-5-sonnet-20241022").with_fallbacks(
+resilient_model = ChatAnthropic(model="claude-sonnet-4-6").with_fallbacks(
     [ChatAnthropic(model="claude-3-haiku-20240307")],
     exceptions_to_handle=(anthropic.RateLimitError, anthropic.APIStatusError),
 )
@@ -810,7 +828,7 @@ resilient_rag = rag_chain.with_fallbacks(
 )
 ```
 
-### RunnableRetry — Automatic Retries
+### RunnableRetry â€” Automatic Retries
 
 ```python
 # Retry flaky external tool calls
@@ -834,7 +852,7 @@ Every loader in LangChain returns `List[Document]` where each `Document` contain
 
 Loaders come in two variants: `BaseLoader` (synchronous, `.load()`) and `BaseLoader` with async support (`.alazy_load()` for memory-efficient streaming). For large document sets, prefer lazy loading.
 
-### PDF Loaders — Comparison
+### PDF Loaders â€” Comparison
 
 Multiple PDF loaders exist, each with different extraction capabilities:
 
@@ -847,7 +865,7 @@ from langchain_community.document_loaders import (
     AmazonTextractPDFLoader, # for scanned PDFs via AWS Textract OCR
 )
 
-# PyPDFLoader — recommended for standard record PDFs
+# PyPDFLoader â€” recommended for standard record PDFs
 loader = PyPDFLoader(
     file_path="docs/spec_comprehensive_2024.pdf",
     extract_images=False,   # True uses pytesseract for OCR on embedded images
@@ -860,12 +878,12 @@ docs = loader.load()
 for doc in loader.lazy_load():
     process_document(doc)
 
-# PyMuPDFLoader — better for PDFs with tables or formatted text
+# PyMuPDFLoader â€” better for PDFs with tables or formatted text
 loader = PyMuPDFLoader("docs/requests_guide.pdf")
 docs = loader.load()
 # metadata includes more detail: {"source": ..., "page": 0, "author": "...", "creationDate": ...}
 
-# UnstructuredPDFLoader — best quality extraction, requires extra dependencies
+# UnstructuredPDFLoader â€” best quality extraction, requires extra dependencies
 # pip install "unstructured[pdf]"
 loader = UnstructuredPDFLoader(
     "docs/complex_record.pdf",
@@ -907,7 +925,7 @@ from langchain_community.document_loaders import (
     PlaywrightURLLoader,        # JavaScript-rendered pages (headless browser)
 )
 
-# WebBaseLoader — best for simple HTML pages
+# WebBaseLoader â€” best for simple HTML pages
 loader = WebBaseLoader(
     web_paths=["https://api.yourinsurer.com/docs", "https://api.yourinsurer.com/changelog"],
     header_template={"User-Agent": "MyApp/3.0 (RAG Indexer)"},
@@ -915,7 +933,7 @@ loader = WebBaseLoader(
     bs_get_text_kwargs={"separator": "\n", "strip": True},  # BeautifulSoup text extraction kwargs
 )
 
-# RecursiveUrlLoader — crawl entire documentation site
+# RecursiveUrlLoader â€” crawl entire documentation site
 from langchain_community.document_loaders.recursive_url_loader import RecursiveUrlLoader
 
 loader = RecursiveUrlLoader(
@@ -945,7 +963,7 @@ loader = JSONLoader(
     metadata_func=lambda record, metadata: {**metadata, "product_id": record.get("id")},
 )
 
-# CSVLoader — one document per row
+# CSVLoader â€” one document per row
 loader = CSVLoader(
     file_path="faq.csv",
     csv_args={"delimiter": ",", "quotechar": '"'},
@@ -954,13 +972,13 @@ loader = CSVLoader(
     encoding="utf-8",
 )
 
-# DataFrameLoader — from a pandas DataFrame (useful for database query results)
+# DataFrameLoader â€” from a pandas DataFrame (useful for database query results)
 import pandas as pd
 df = pd.read_sql("SELECT * FROM record_faq WHERE active = 1", db_conn)
 loader = DataFrameLoader(df, page_content_column="answer")
 ```
 
-### Custom Loader — Implementing BaseLoader
+### Custom Loader â€” Implementing BaseLoader
 
 For any data source not covered by existing loaders:
 
@@ -978,7 +996,7 @@ class MyAppRecordLoader(BaseLoader):
         self.record_ids = record_ids
     
     def lazy_load(self) -> Iterator[Document]:
-        """Yield Documents one at a time — memory efficient."""
+        """Yield Documents one at a time â€” memory efficient."""
         for record_id in self.record_ids:
             response = requests.get(
                 f"{self.api_url}/policies/{record_id}",
@@ -1003,11 +1021,11 @@ class MyAppRecordLoader(BaseLoader):
 
 ---
 
-## 9. Text Splitters — Strategy Guide
+## 9. Text Splitters â€” Strategy Guide
 
 ### Why Chunking Strategy Matters More Than People Think
 
-Chunking is not a preprocessing detail — it is a fundamental architectural decision that affects retrieval precision, context quality, and ultimately answer quality. The classic failure modes are:
+Chunking is not a preprocessing detail â€” it is a fundamental architectural decision that affects retrieval precision, context quality, and ultimately answer quality. The classic failure modes are:
 
 **Chunks too large**: each chunk contains multiple topics, so when retrieved it brings noise alongside signal. The retriever gives a high score to the chunk because part of it is relevant, but the model receives diluted context.
 
@@ -1017,7 +1035,7 @@ Chunking is not a preprocessing detail — it is a fundamental architectural dec
 
 **Wrong separator strategy**: splitting on fixed character counts can split sentences, which destroys semantic coherence. `RecursiveCharacterTextSplitter` tries larger separators first (paragraphs, then sentences, then words, then characters), preserving semantics as much as possible.
 
-### RecursiveCharacterTextSplitter — The Gold Standard
+### RecursiveCharacterTextSplitter â€” The Gold Standard
 
 ```python
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -1030,7 +1048,7 @@ splitter = RecursiveCharacterTextSplitter(
     # Separator list: tries each in order, falls back to next if chunk would be too large
     # Default covers most English text well:
     separators=[
-        "\n\n",   # paragraph break (highest preference — best semantic boundary)
+        "\n\n",   # paragraph break (highest preference â€” best semantic boundary)
         "\n",     # line break
         " ",      # word boundary
         "",       # character boundary (last resort)
@@ -1049,7 +1067,7 @@ print(f"Count: {len(chunks)}, Mean: {statistics.mean(sizes):.0f}, "
       f"Stdev: {statistics.stdev(sizes):.0f}, Max: {max(sizes)}")
 ```
 
-### Token-Based Splitting — For Embedding Model Alignment
+### Token-Based Splitting â€” For Embedding Model Alignment
 
 Character-based splitting is an approximation. Token-based splitting aligns precisely with your embedding model's context window. This matters when chunks are near the model's maximum input length:
 
@@ -1057,10 +1075,10 @@ Character-based splitting is an approximation. Token-based splitting aligns prec
 from langchain_text_splitters import TokenTextSplitter
 from langchain_text_splitters import SentenceTransformersTokenTextSplitter
 
-# Basic token splitter (uses tiktoken — optimised for OpenAI/similar tokenisers)
+# Basic token splitter (uses tiktoken â€” optimised for OpenAI/similar tokenisers)
 token_splitter = TokenTextSplitter(
     encoding_name="cl100k_base",  # tiktoken encoding
-    chunk_size=256,               # 256 tokens ≈ ~1000 characters for English
+    chunk_size=256,               # 256 tokens â‰ˆ ~1000 characters for English
     chunk_overlap=32,
 )
 
@@ -1075,7 +1093,7 @@ st_splitter = SentenceTransformersTokenTextSplitter(
 # For Voyage AI (voyage-3.5):
 # - Context window: 32,000 tokens
 # - Optimal chunk: 256-512 tokens for most RAG tasks
-# - voyage-3.5 doesn't have a published tokeniser, so character-based (1 token ≈ 4 chars) is a reasonable approximation
+# - voyage-3.5 doesn't have a published tokeniser, so character-based (1 token â‰ˆ 4 chars) is a reasonable approximation
 ```
 
 ### Structure-Aware Splitters
@@ -1089,14 +1107,14 @@ from langchain_text_splitters import (
     RecursiveJsonSplitter,
 )
 
-# MarkdownHeaderTextSplitter — best for API documentation, README files
+# MarkdownHeaderTextSplitter â€” best for API documentation, README files
 md_splitter = MarkdownHeaderTextSplitter(
     headers_to_split_on=[
-        ("#",   "h1"),    # H1 → metadata["h1"]
-        ("##",  "h2"),    # H2 → metadata["h2"]
-        ("###", "h3"),    # H3 → metadata["h3"]
+        ("#",   "h1"),    # H1 â†’ metadata["h1"]
+        ("##",  "h2"),    # H2 â†’ metadata["h2"]
+        ("###", "h3"),    # H3 â†’ metadata["h3"]
     ],
-    strip_headers=False,          # keep headers in content (recommended — adds context)
+    strip_headers=False,          # keep headers in content (recommended â€” adds context)
     return_each_line=False,       # True = one doc per line (rarely useful)
 )
 
@@ -1107,7 +1125,7 @@ md_chunks = md_splitter.split_text(markdown_text)
 final_chunks = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=100).split_documents(md_chunks)
 # Result: metadata contains both header hierarchy AND start_index
 
-# HTMLHeaderTextSplitter — for web-scraped content
+# HTMLHeaderTextSplitter â€” for web-scraped content
 html_splitter = HTMLHeaderTextSplitter(
     headers_to_split_on=[
         ("h1", "section"),
@@ -1123,27 +1141,27 @@ This table is derived from empirical testing across reference document types. Us
 
 | Document Type | chunk_size | chunk_overlap | Splitter | Notes |
 |--------------|-----------|--------------|----------|-------|
-| spec / Record Wording | 800–1200 chars | 150–200 | Recursive | Prefer paragraph boundaries |
-| API Documentation (.md) | 600–900 chars | 100–150 | MarkdownHeader → Recursive | Preserves endpoint context |
-| FAQ (Q&A pairs) | 300–500 chars | 50–80 | Recursive | One Q&A pair per chunk ideally |
-| Legal / Regulatory text | 1200–1500 chars | 250–300 | Recursive | Dense text needs more context |
-| Product brochures | 500–800 chars | 100–150 | Recursive | Mix of tables and prose |
-| Requests guides | 700–1000 chars | 150–200 | Recursive | Step-by-step instructions |
-| Financial schedules / tables | 400–600 chars | 50–100 | Custom | Preserve row/column structure |
+| spec / Record Wording | 800â€“1200 chars | 150â€“200 | Recursive | Prefer paragraph boundaries |
+| API Documentation (.md) | 600â€“900 chars | 100â€“150 | MarkdownHeader â†’ Recursive | Preserves endpoint context |
+| FAQ (Q&A pairs) | 300â€“500 chars | 50â€“80 | Recursive | One Q&A pair per chunk ideally |
+| Legal / Regulatory text | 1200â€“1500 chars | 250â€“300 | Recursive | Dense text needs more context |
+| Product brochures | 500â€“800 chars | 100â€“150 | Recursive | Mix of tables and prose |
+| Requests guides | 700â€“1000 chars | 150â€“200 | Recursive | Step-by-step instructions |
+| Financial schedules / tables | 400â€“600 chars | 50â€“100 | Custom | Preserve row/column structure |
 
-### The Parent Document Pattern — Deferred to Module 11
+### The Parent Document Pattern â€” Deferred to Module 11
 
 For hierarchical RAG (your MyApp Phase 3), you index small chunks but retrieve larger parent chunks. The `ParentDocumentRetriever` implements this. See Section 12.
 
 ---
 
-## 10. Embeddings — Deep Reference
+## 10. Embeddings â€” Deep Reference
 
 ### How Embeddings Work in LangChain
 
 Every LangChain embedding class implements `BaseEmbeddings` which specifies two methods: `.embed_documents(texts: list[str]) -> list[list[float]]` for batch embedding documents during indexing, and `.embed_query(text: str) -> list[float]` for embedding a single query during retrieval. The distinction matters for asymmetric embedding models like Voyage AI, where the model uses different encodings for documents vs queries to optimise semantic alignment.
 
-### VoyageAIEmbeddings — Your Stack
+### VoyageAIEmbeddings â€” Your Stack
 
 ```python
 from langchain_voyageai import VoyageAIEmbeddings
@@ -1172,7 +1190,7 @@ query_embedder = VoyageAIEmbeddings(
 # Similarity function: cosine (recommended)
 # Context: optimised for retrieval-augmented generation
 
-# Dimension reduction (256d) — much faster storage and search, ~5% quality loss
+# Dimension reduction (256d) â€” much faster storage and search, ~5% quality loss
 compact_embedder = VoyageAIEmbeddings(
     model="voyage-3-5",
     output_dimension=256,         # 256 | 512 | 1024 (default)
@@ -1192,7 +1210,7 @@ compact_embedder = VoyageAIEmbeddings(
 
 For MyApp, `voyage-finance-2` or `voyage-3-5` are the top two choices. `voyage-finance-2` has domain-specific training on financial documents (which overlaps heavily with domain) and may give better recall on terminology-heavy queries. Test both with your actual documents.
 
-### CacheBackedEmbeddings — Cost Optimisation
+### CacheBackedEmbeddings â€” Cost Optimisation
 
 Recomputing embeddings is expensive. `CacheBackedEmbeddings` wraps any embedder and caches results to avoid redundant API calls:
 
@@ -1200,7 +1218,7 @@ Recomputing embeddings is expensive. `CacheBackedEmbeddings` wraps any embedder 
 from langchain.embeddings import CacheBackedEmbeddings
 from langchain.storage import LocalFileStore, InMemoryByteStore
 
-# File-based cache — persists across sessions
+# File-based cache â€” persists across sessions
 file_store = LocalFileStore("./embedding_cache/")
 cached_embedder = CacheBackedEmbeddings.from_bytes_store(
     underlying_embeddings=doc_embedder,
@@ -1240,7 +1258,7 @@ eval_questions = [
 
 ---
 
-## 11. Vectorstores — Complete Reference
+## 11. Vectorstores â€” Complete Reference
 
 ### Chroma in Depth
 
@@ -1250,7 +1268,7 @@ from langchain_voyageai import VoyageAIEmbeddings
 
 embeddings = VoyageAIEmbeddings(model="voyage-3-5", input_type="document")
 
-# ─── Creating from documents ──────────────────────────────────────────────
+# â”€â”€â”€ Creating from documents â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 vectorstore = Chroma.from_documents(
     documents=chunks,
     embedding=embeddings,
@@ -1264,7 +1282,7 @@ vectorstore = Chroma.from_documents(
     },
 )
 
-# ─── Loading existing vectorstore ─────────────────────────────────────────
+# â”€â”€â”€ Loading existing vectorstore â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 vectorstore = Chroma(
     collection_name="app_docs_v3",
     embedding_function=embeddings,
@@ -1273,13 +1291,13 @@ vectorstore = Chroma(
     # The stored vectors were embedded at index time
 )
 
-# ─── Similarity search variants ───────────────────────────────────────────
+# â”€â”€â”€ Similarity search variants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-# Basic — returns List[Document]
+# Basic â€” returns List[Document]
 results = vectorstore.similarity_search("product domain threshold", k=5)
 
-# With scores — returns List[Tuple[Document, float]]
-# Score is cosine similarity [0, 1] — higher is more similar
+# With scores â€” returns List[Tuple[Document, float]]
+# Score is cosine similarity [0, 1] â€” higher is more similar
 scored_results = vectorstore.similarity_search_with_relevance_scores(
     query="threshold product comprehensive",
     k=5,
@@ -1288,7 +1306,7 @@ scored_results = vectorstore.similarity_search_with_relevance_scores(
 for doc, score in scored_results:
     print(f"{score:.3f}: {doc.page_content[:80]}")
 
-# With metadata filtering — filter documents BEFORE similarity search
+# With metadata filtering â€” filter documents BEFORE similarity search
 filtered_results = vectorstore.similarity_search(
     query="request process",
     k=5,
@@ -1301,7 +1319,7 @@ filtered_results = vectorstore.similarity_search(
 
 # Chroma filter operators: $eq, $ne, $gt, $gte, $lt, $lte, $in, $nin, $and, $or
 
-# MMR (Maximal Marginal Relevance) — diversity-aware retrieval
+# MMR (Maximal Marginal Relevance) â€” diversity-aware retrieval
 mmr_results = vectorstore.max_marginal_relevance_search(
     query="domain exclusions",
     k=4,           # return k results
@@ -1327,7 +1345,7 @@ support_store = Chroma(
     persist_directory="./chroma_db",
 )
 
-# Index versioning — never overwrite a running collection
+# Index versioning â€” never overwrite a running collection
 def reindex_collection(new_chunks: list[Document], version: str) -> Chroma:
     """Create a new versioned collection for zero-downtime reindexing."""
     new_name = f"insure_customer_portal_{version}"
@@ -1366,13 +1384,13 @@ print(f"Collection has {collection.count()} documents")
 
 ---
 
-## 12. Retrievers — Basic to Advanced
+## 12. Retrievers â€” Basic to Advanced
 
 ### The Retriever Interface
 
 All retrievers implement `BaseRetriever` which has one method: `.invoke(query: str) -> List[Document]`. This single method is what makes retrievers composable in LCEL chains and interchangeable with one another. The async variant is `.ainvoke()`.
 
-### Vectorstore Retriever — All Configuration Options
+### Vectorstore Retriever â€” All Configuration Options
 
 ```python
 # Convert a vectorstore to a retriever
@@ -1382,8 +1400,8 @@ retriever = vectorstore.as_retriever(
         "k": 5,                         # number of results to return
         "filter": {"year": {"$gte": 2024}},  # metadata filter
         "score_threshold": 0.65,        # for "similarity_score_threshold" mode only
-        "fetch_k": 20,                  # for "mmr" mode only — candidate pool size
-        "lambda_mult": 0.5,             # for "mmr" mode only — diversity weight
+        "fetch_k": 20,                  # for "mmr" mode only â€” candidate pool size
+        "lambda_mult": 0.5,             # for "mmr" mode only â€” diversity weight
     },
 )
 
@@ -1394,9 +1412,9 @@ docs: list[Document] = retriever.invoke("What is the threshold for request handl
 chain = {"context": retriever | format_docs, "question": RunnablePassthrough()} | prompt | model | StrOutputParser()
 ```
 
-### BM25Retriever — Keyword / Sparse Retrieval
+### BM25Retriever â€” Keyword / Sparse Retrieval
 
-BM25 is a lexical retrieval algorithm based on term frequency and inverse document frequency. It excels at retrieving documents that contain the exact terminology used in the query — critical for domain queries where precise terms like "threshold", "spec", "third-party liability" must match exactly:
+BM25 is a lexical retrieval algorithm based on term frequency and inverse document frequency. It excels at retrieving documents that contain the exact terminology used in the query â€” critical for domain queries where precise terms like "threshold", "spec", "third-party liability" must match exactly:
 
 ```python
 from langchain_community.retrievers import BM25Retriever
@@ -1417,7 +1435,7 @@ bm25_retriever = BM25Retriever.from_texts(
     k=5,
 )
 
-# BM25 persistence — save to disk (in-memory by default, lost on restart)
+# BM25 persistence â€” save to disk (in-memory by default, lost on restart)
 import pickle
 with open("bm25_index.pkl", "wb") as f:
     pickle.dump(bm25_retriever, f)
@@ -1426,7 +1444,7 @@ with open("bm25_index.pkl", "rb") as f:
     bm25_retriever = pickle.load(f)
 ```
 
-### EnsembleRetriever — Hybrid Search with RRF
+### EnsembleRetriever â€” Hybrid Search with RRF
 
 This is your BM25 + semantic hybrid. `EnsembleRetriever` merges results from multiple retrievers using Reciprocal Rank Fusion (RRF). RRF combines ranked lists by assigning scores of `1/(k + rank)` where `k=60` is a stabilising constant, then summing scores across retrievers. Results are re-ranked by combined score.
 
@@ -1450,7 +1468,7 @@ triple_hybrid = EnsembleRetriever(
 )
 ```
 
-### MultiQueryRetriever — Query Expansion
+### MultiQueryRetriever â€” Query Expansion
 
 The LLM generates multiple rephrasings of the original query. Each rephrasing is used for an independent retrieval pass. All results are deduplicated and returned. This dramatically improves recall when the user's phrasing doesn't match the document's phrasing:
 
@@ -1470,7 +1488,7 @@ mq_retriever = MultiQueryRetriever.from_llm(
     include_original=True,               # also retrieve for the original query
 )
 
-# Custom prompt for query generation (optional — override default)
+# Custom prompt for query generation (optional â€” override default)
 from langchain_core.prompts import PromptTemplate
 
 QUERY_PROMPT = PromptTemplate(
@@ -1492,7 +1510,7 @@ mq_retriever = MultiQueryRetriever.from_llm(
 )
 ```
 
-### HyDE — Hypothetical Document Embeddings
+### HyDE â€” Hypothetical Document Embeddings
 
 HyDE generates a hypothetical answer to the query, then embeds that hypothetical answer (rather than the raw query) for retrieval. The rationale is that a hypothetical answer is semantically closer to real document chunks than the short user query. Implement it as an LCEL chain:
 
@@ -1528,7 +1546,7 @@ robust_retriever = EnsembleRetriever(
 )
 ```
 
-### ContextualCompressionRetriever — Re-ranking and Filtering
+### ContextualCompressionRetriever â€” Re-ranking and Filtering
 
 This wrapper adds a post-processing step after retrieval. The "compressor" takes the retrieved documents and either filters out irrelevant ones, extracts relevant passages, or reorders them by relevance to the query:
 
@@ -1544,7 +1562,7 @@ from langchain.retrievers.document_compressors import (
 )
 from langchain_community.cross_encoders import HuggingFaceCrossEncoder
 
-# ─── Option 1: Cross-encoder re-ranking (recommended for MyApp) ───────────
+# â”€â”€â”€ Option 1: Cross-encoder re-ranking (recommended for MyApp) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Cross-encoders jointly encode query+document, giving a relevance score
 # Much more accurate than bi-encoder (embedding) similarity
 cross_encoder = HuggingFaceCrossEncoder(
@@ -1565,13 +1583,13 @@ compression_retriever = ContextualCompressionRetriever(
     base_retriever=hybrid_retriever,  # or any retriever
 )
 
-# ─── Option 2: LLM-based extraction (highest precision, expensive) ──────────────
+# â”€â”€â”€ Option 2: LLM-based extraction (highest precision, expensive) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 extractor = LLMChainExtractor.from_llm(
     ChatAnthropic(model="claude-3-haiku-20240307")
 )
 # Extracts ONLY the relevant passage from each document, discarding irrelevant content
 
-# ─── Option 3: Pipeline — deduplicate then rerank ────────────────────────────────
+# â”€â”€â”€ Option 3: Pipeline â€” deduplicate then rerank â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 pipeline_compressor = DocumentCompressorPipeline(
     transformers=[
         EmbeddingsRedundantFilter(
@@ -1588,7 +1606,7 @@ full_pipeline = ContextualCompressionRetriever(
 )
 ```
 
-### ParentDocumentRetriever — Hierarchical RAG
+### ParentDocumentRetriever â€” Hierarchical RAG
 
 Index small chunks (for precision), but retrieve large parent chunks (for context). The retriever maintains a mapping from small chunk IDs to their parent document IDs:
 
@@ -1618,12 +1636,12 @@ retriever = ParentDocumentRetriever(
 retriever.add_documents(docs, ids=None)
 
 # Retrieval: queries match child chunks, but return parent documents
-# Query on a small, specific clause → get back the full record section
+# Query on a small, specific clause â†’ get back the full record section
 results = retriever.invoke("threshold $500 product comprehensive")
 # Results are the PARENT chunks (large), not the small child chunks that matched
 ```
 
-### MultiVectorRetriever — Multiple Representations
+### MultiVectorRetriever â€” Multiple Representations
 
 Index multiple vector representations per document (full text, summary, hypothetical questions). At retrieval time, any representation can match:
 
@@ -1693,13 +1711,13 @@ chain_with_history = RunnableWithMessageHistory(
     output_messages_key="answer",          # optional: if chain returns dict with this key
 )
 
-# Invoke with session config — history is automatically loaded and saved
+# Invoke with session config â€” history is automatically loaded and saved
 response = chain_with_history.invoke(
     {"question": "What is my threshold?", "context": "..."},
     config={"configurable": {"session_id": "user-001-session-42"}},
 )
 
-# Second turn — history automatically includes first turn
+# Second turn â€” history automatically includes first turn
 response = chain_with_history.invoke(
     {"question": "And what about non-fault requests?", "context": "..."},
     config={"configurable": {"session_id": "user-001-session-42"}},
@@ -1728,7 +1746,7 @@ async def chat(session_id: str, message: str):
     return {"answer": response}
 ```
 
-### Conversation Summarisation — Managing Long Contexts
+### Conversation Summarisation â€” Managing Long Contexts
 
 For long conversations, the full history may exceed the model's context window. Summarisation compresses old history while retaining key facts:
 
@@ -1765,7 +1783,7 @@ Conversation:
 
 ---
 
-## 14. Agents — ReAct & Tool Calling
+## 14. Agents â€” ReAct & Tool Calling
 
 ### What an Agent Is and Isn't
 
@@ -1825,7 +1843,7 @@ def calculate_price_estimate(
 # Create agent with InMemorySaver for conversation persistence
 agent = create_agent(
     model=ChatAnthropic(
-        model="claude-3-5-sonnet-20241022",
+        model="claude-sonnet-4-6",
         max_tokens=4096,
     ),
     tools=[retrieve_record_info, get_record_by_number, calculate_price_estimate],
@@ -1836,7 +1854,7 @@ Guidelines:
 - Always retrieve record information before answering specific coverage questions
 - For request-related queries, ask for the record ID if not provided
 - Quote specific record sections when answering
-- Never invent coverage details — only use information from retrieved documents
+- Never invent coverage details â€” only use information from retrieved documents
 - For pricing, always clarify that estimates are indicative and final prices may vary
 - Escalate to a human agent when: the customer is distressed, the request is complex, or you're unsure""",
 )
@@ -1883,7 +1901,7 @@ async def stream_agent_response(user_message: str, session_id: str):
                 yield {"type": "token", "content": chunk.content}
         
         elif kind == "on_tool_start":
-            # Tool is about to be called — show in UI
+            # Tool is about to be called â€” show in UI
             yield {
                 "type": "tool_call",
                 "tool": event["name"],
@@ -1901,13 +1919,13 @@ async def stream_agent_response(user_message: str, session_id: str):
 
 ---
 
-## 15. Tools — Design Patterns & Best Practices
+## 15. Tools â€” Design Patterns & Best Practices
 
 ### The Tool Contract with the LLM
 
-A tool in LangChain is not just a Python function — it is a contract between you and the LLM. The LLM reads the tool's name, description, and argument schema to decide: does this tool address my current need? What arguments should I pass? The quality of your tool design directly determines the quality of your agent's decisions. A tool with a vague description will be called inappropriately. A tool with ambiguous arguments will be called with wrong values.
+A tool in LangChain is not just a Python function â€” it is a contract between you and the LLM. The LLM reads the tool's name, description, and argument schema to decide: does this tool address my current need? What arguments should I pass? The quality of your tool design directly determines the quality of your agent's decisions. A tool with a vague description will be called inappropriately. A tool with ambiguous arguments will be called with wrong values.
 
-### @tool Decorator — Comprehensive Usage
+### @tool Decorator â€” Comprehensive Usage
 
 ```python
 from langchain_core.tools import tool
@@ -2031,7 +2049,7 @@ def _submit_request(
     incident_description: str,
     estimated_loss_sgd: Optional[float] = None,
 ) -> dict:
-    """Actual implementation — separate from schema for testability."""
+    """Actual implementation â€” separate from schema for testability."""
     # In production: call your operations API
     request_id = f"REQ-{request_type[:3].upper()}-{incident_date[:7]}-{random.randint(1000, 9999)}"
     return {
@@ -2055,14 +2073,14 @@ submit_request_tool = StructuredTool.from_function(
 )
 ```
 
-### handle_tool_error — Graceful Failure
+### handle_tool_error â€” Graceful Failure
 
 ```python
 # When handle_tool_error=True, any exception is converted to an error string
 # that the agent receives as the tool result and can reason about
 
 def handle_error(error: Exception) -> str:
-    """Custom error handler — called when the tool raises an exception."""
+    """Custom error handler â€” called when the tool raises an exception."""
     if isinstance(error, ValueError):
         return f"Invalid input: {str(error)}. Please ask the user to correct their information."
     elif isinstance(error, ConnectionError):
@@ -2075,7 +2093,7 @@ tool_with_error_handling = submit_request_tool.copy(
 )
 ```
 
-### Tool Annotations — Injected (Hidden) Parameters
+### Tool Annotations â€” Injected (Hidden) Parameters
 
 Sometimes a tool needs parameters that should be injected by the system (like user ID, session ID, request context) rather than generated by the LLM. Use `InjectedToolArg` for this:
 
@@ -2086,7 +2104,7 @@ from typing import Annotated
 @tool
 def get_my_requests(
     status_filter: Optional[str],
-    # user_id is INJECTED — not visible to the LLM, not in the schema
+    # user_id is INJECTED â€” not visible to the LLM, not in the schema
     user_id: Annotated[str, InjectedToolArg],
 ) -> str:
     """Get all requests for the current user.
@@ -2110,15 +2128,15 @@ result = agent.invoke(
 
 ---
 
-## 16. LangGraph — StateGraph Architecture
+## 16. LangGraph â€” StateGraph Architecture
 
 ### Why LangGraph Exists
 
 LCEL chains are Directed Acyclic Graphs (DAGs): data flows forward, never back. This is sufficient for standard RAG pipelines. But many AI workflows require **cycles**: an agent that retrieves, decides it needs more information, retrieves again with a different query, then generates. A CRAG that grades document relevance and loops back if documents are poor. A multi-agent system where a supervisor decides which worker to call, hears the result, and decides what to do next.
 
-LangGraph introduces `StateGraph` — a framework for defining stateful, cyclic workflows where each step reads from and writes to a shared state dictionary. It is built on top of `langchain-core` (so all Runnables work inside nodes) but is architecturally separate from `langchain`.
+LangGraph introduces `StateGraph` â€” a framework for defining stateful, cyclic workflows where each step reads from and writes to a shared state dictionary. It is built on top of `langchain-core` (so all Runnables work inside nodes) but is architecturally separate from `langchain`.
 
-### State Design — The Most Important Decision
+### State Design â€” The Most Important Decision
 
 The state in a LangGraph graph is a `TypedDict` (or Pydantic model) that is the shared memory for the entire execution. Every node reads the state as input and returns a partial update (not the full state). The `Annotated` type with a reducer function controls how updates are merged:
 
@@ -2146,7 +2164,7 @@ class MyAppGraphState(TypedDict):
     errors: Annotated[List[str], operator.add]           # accumulate errors for logging
 ```
 
-### Node Functions — Contract and Conventions
+### Node Functions â€” Contract and Conventions
 
 Node functions have one job: read from state, do work, return a partial state update:
 
@@ -2193,7 +2211,7 @@ def generate_node(state: MyAppGraphState) -> dict:
     """
     context = "\n\n".join(d.page_content for d in state["retrieved_docs"])
     
-    response = ChatAnthropic(model="claude-3-5-sonnet-20241022").invoke(
+    response = ChatAnthropic(model="claude-sonnet-4-6").invoke(
         state["messages"] + [HumanMessage(content=f"Context:\n{context}\n\nUse only this context.")]
     )
     
@@ -2212,12 +2230,12 @@ def rewrite_query_node(state: MyAppGraphState) -> dict:
     }
 ```
 
-### Graph Construction — Full API
+### Graph Construction â€” Full API
 
 ```python
 graph = StateGraph(MyAppGraphState)
 
-# ─── Register nodes ──────────────────────────────────────────────────────
+# â”€â”€â”€ Register nodes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 graph.add_node("classify", classify_intent_node)
 graph.add_node("retrieve", retrieve_node)
 graph.add_node("grade", grade_documents_node)
@@ -2225,16 +2243,16 @@ graph.add_node("rewrite", rewrite_query_node)
 graph.add_node("generate", generate_node)
 graph.add_node("escalate", escalate_to_human_node)  # for complex cases
 
-# ─── Entry point ─────────────────────────────────────────────────────────
+# â”€â”€â”€ Entry point â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 graph.set_entry_point("classify")
 # Equivalent: graph.add_edge(START, "classify")
 
-# ─── Regular edges ───────────────────────────────────────────────────────
+# â”€â”€â”€ Regular edges â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 graph.add_edge("retrieve", "grade")    # always go from retrieve to grade
 graph.add_edge("generate", END)        # always end after generate
 graph.add_edge("escalate", END)
 
-# ─── Conditional edges ───────────────────────────────────────────────────
+# â”€â”€â”€ Conditional edges â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def route_by_intent(state: MyAppGraphState) -> str:
     """Returns name of next node based on classified intent."""
     if state["intent"] in ("REQUESTS", "COMPLAINT"):
@@ -2261,10 +2279,10 @@ def route_after_grading(state: MyAppGraphState) -> str:
 
 graph.add_conditional_edges("grade", route_after_grading)
 
-# Rewrite loops back to retrieve — this is the CYCLE that makes it agentic
+# Rewrite loops back to retrieve â€” this is the CYCLE that makes it agentic
 graph.add_edge("rewrite", "retrieve")
 
-# ─── Compile ─────────────────────────────────────────────────────────────
+# â”€â”€â”€ Compile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.sqlite import SqliteSaver  # pip install langgraph-checkpoint-sqlite  # separate package since langgraph-checkpoint 4.x
 
@@ -2280,30 +2298,30 @@ app = graph.compile(
     debug=False,                       # True = verbose logging
 )
 
-# ─── Visualise the graph ─────────────────────────────────────────────────
+# â”€â”€â”€ Visualise the graph â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Requires: pip install pygraphviz
 print(app.get_graph().draw_mermaid())  # Mermaid.js diagram syntax
 app.get_graph().draw_png("graph.png")  # requires pygraphviz
 ```
 
-### LangGraph 1.1 — Type-Safe Invocation (`version="v2"`)
+### LangGraph 1.1 â€” Type-Safe Invocation (`version="v2"`)
 
 LangGraph 1.1 (March 2026) introduces opt-in type-safe streaming and invocation:
 
 ```python
 from langgraph.types import GraphOutput, StreamPart
 
-# version="v2" → returns GraphOutput, not a plain dict
+# version="v2" â†’ returns GraphOutput, not a plain dict
 result = app.invoke(input_state, config=config, version="v2")
 result.value       # the output state (dict, Pydantic model, or dataclass)
 result.interrupts  # tuple[Interrupt, ...], empty if none occurred
 
-# Streaming with version="v2" → yields typed StreamPart objects
+# Streaming with version="v2" â†’ yields typed StreamPart objects
 for part in app.stream(input_state, config=config, version="v2"):
     print(part["type"])  # "values" | "updates" | "messages" | "checkpoint" | ...
     print(part["data"])  # strongly-typed payload
 
-# version="v1" (default) — unchanged, all existing code works
+# version="v1" (default) â€” unchanged, all existing code works
 result = app.invoke(input_state, config=config)  # plain dict, backward-compatible
 ```
 
@@ -2357,9 +2375,9 @@ for state in app.get_state_history(config):
 
 ---
 
-## 17. LangGraph — Advanced Patterns
+## 17. LangGraph â€” Advanced Patterns
 
-### CRAG — Corrective Retrieval Augmented Generation
+### CRAG â€” Corrective Retrieval Augmented Generation
 
 CRAG addresses a fundamental RAG failure mode: when retrieval fails to find relevant documents, a standard RAG chain silently generates a poor answer. CRAG adds a grading step and a corrective loop.
 
@@ -2369,7 +2387,7 @@ from langchain_core.output_parsers import StrOutputParser
 from pydantic import BaseModel, Field
 from typing import Literal
 
-# ─── Document relevance grader ───────────────────────────────────────────
+# â”€â”€â”€ Document relevance grader â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class GradeDocuments(BaseModel):
     """Binary grade for document relevance."""
     binary_score: Literal["yes", "no"] = Field(
@@ -2407,7 +2425,7 @@ def grade_documents_node(state: CRAGState) -> dict:
     
     return {"documents": relevant_docs}
 
-# ─── Query rewriter ──────────────────────────────────────────────────────
+# â”€â”€â”€ Query rewriter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 rewrite_prompt = ChatPromptTemplate.from_messages([
     ("system", """You are a query optimisation specialist for reference document retrieval.
 
@@ -2429,7 +2447,7 @@ def rewrite_query_node(state: CRAGState) -> dict:
         "rewrite_count": state["rewrite_count"] + 1,
     }
 
-# ─── Web search fallback ─────────────────────────────────────────────────
+# â”€â”€â”€ Web search fallback â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # If rewriting fails too, fall back to web search for general domain knowledge
 from langchain_community.tools.tavily_search import TavilySearchResults
 
@@ -2442,7 +2460,7 @@ def web_search_node(state: CRAGState) -> dict:
                 for r in results]
     return {"documents": web_docs, "used_web_search": True}
 
-# ─── Routing logic ───────────────────────────────────────────────────────
+# â”€â”€â”€ Routing logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def route_after_grading(state: CRAGState) -> str:
     has_relevant = len(state["documents"]) > 0
     at_max_rewrites = state["rewrite_count"] >= 2
@@ -2461,29 +2479,29 @@ def route_after_grading(state: CRAGState) -> str:
 from langgraph.graph import StateGraph, END, START
 from typing import Literal
 
-# ─── Worker agents (specialised sub-agents) ──────────────────────────────
+# â”€â”€â”€ Worker agents (specialised sub-agents) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 data_agent_runnable = create_agent(
-    model=ChatAnthropic(model="claude-3-5-sonnet-20241022"),
+    model=ChatAnthropic(model="claude-sonnet-4-6"),
     tools=[retrieve_record_info, search_spec_documents],
     state_modifier="You are the Data Specialist agent. Answer ONLY content coverage questions. Be precise and cite sources.",
-    checkpointer=None,  # workers are stateless — supervisor maintains state
+    checkpointer=None,  # workers are stateless â€” supervisor maintains state
 )
 
 ops_agent_runnable = create_agent(
-    model=ChatAnthropic(model="claude-3-5-sonnet-20241022"),
+    model=ChatAnthropic(model="claude-sonnet-4-6"),
     tools=[get_request_status, submit_request, get_required_documents],
     state_modifier="You are the Operations Specialist agent. Handle request submissions, status checks, and documentation requirements.",
     checkpointer=None,
 )
 
 pricing_agent_runnable = create_agent(
-    model=ChatAnthropic(model="claude-3-5-sonnet-20241022"),
+    model=ChatAnthropic(model="claude-sonnet-4-6"),
     tools=[calculate_price, get_product_pricing, apply_discount],
     state_modifier="You are the Pricing Specialist agent. Handle price calculations and pricing queries only.",
     checkpointer=None,
 )
 
-# ─── Supervisor decision schema ───────────────────────────────────────────
+# â”€â”€â”€ Supervisor decision schema â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class SupervisorDecision(BaseModel):
     """Supervisor routing decision."""
     next: Literal["data_agent", "ops_agent", "pricing_agent", "FINISH"] = Field(
@@ -2508,7 +2526,7 @@ Rules:
     MessagesPlaceholder("messages"),
 ])
 
-structured_supervisor = ChatAnthropic(model="claude-3-5-sonnet-20241022").with_structured_output(
+structured_supervisor = ChatAnthropic(model="claude-sonnet-4-6").with_structured_output(
     SupervisorDecision
 )
 
@@ -2522,7 +2540,7 @@ def supervisor_node(state: SupervisorState) -> dict:
         if decision.next != "FINISH" else [],
     }
 
-# ─── Worker wrapper nodes ─────────────────────────────────────────────────
+# â”€â”€â”€ Worker wrapper nodes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def run_agent_node(agent_runnable, agent_name: str):
     """Factory function: creates a node that runs a specific agent."""
     def node(state: SupervisorState) -> dict:
@@ -2534,7 +2552,7 @@ def run_agent_node(agent_runnable, agent_name: str):
         return {"messages": [final_response]}
     return node
 
-# ─── Build supervisor graph ───────────────────────────────────────────────
+# â”€â”€â”€ Build supervisor graph â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 supervisor_graph = StateGraph(SupervisorState)
 supervisor_graph.add_node("supervisor", supervisor_node)
 supervisor_graph.add_node("data_agent", run_agent_node(data_agent_runnable, "Data Specialist"))
@@ -2619,7 +2637,7 @@ result = chain.invoke(
 )
 ```
 
-### LangSmith Integration — Production Tracing
+### LangSmith Integration â€” Production Tracing
 
 ```python
 import os
@@ -2630,7 +2648,7 @@ os.environ["LANGCHAIN_API_KEY"] = "your-langsmith-api-key"
 os.environ["LANGCHAIN_PROJECT"] = "MyApp-v3.0-production"
 
 # All chain/agent invocations are now automatically traced
-# No code changes required — tracing is transparent
+# No code changes required â€” tracing is transparent
 
 # For specific run metadata (user tracking, A/B testing)
 result = chain.invoke(
@@ -2665,7 +2683,7 @@ results = evaluate(
     target=lambda x: chain.invoke(x),
     data="MyApp-RAG-Eval-v1",
     evaluators=[
-        LangChainStringEvaluator("qa", config={"llm": ChatAnthropic(model="claude-3-5-sonnet-20241022")}),
+        LangChainStringEvaluator("qa", config={"llm": ChatAnthropic(model="claude-sonnet-4-6")}),
         LangChainStringEvaluator("context_qa", ...),
     ],
     experiment_prefix="rag-v3-hybrid-retrieval",
@@ -2695,7 +2713,7 @@ chain = (
         ("system", "You are MyApp."),
         ("human", "{question}"),
     ])
-    | ChatAnthropic(model="claude-3-5-sonnet-20241022")
+    | ChatAnthropic(model="claude-sonnet-4-6")
     | StrOutputParser()
 )
 
@@ -2735,9 +2753,9 @@ async def batch_classify(questions: list[str]) -> list[dict]:
     return [{"question": q, "intent": r} for q, r in zip(questions, results)]
 ```
 
-### astream_events — Fine-Grained Streaming
+### astream_events â€” Fine-Grained Streaming
 
-`astream_events` gives you granular control over what to stream — you can show tool calls, LLM tokens, retrieval results, and chain steps separately:
+`astream_events` gives you granular control over what to stream â€” you can show tool calls, LLM tokens, retrieval results, and chain steps separately:
 
 ```python
 @app.get("/chat/events")
@@ -2809,7 +2827,7 @@ class MyAppSettings(BaseSettings):
     langsmith_api_key: str = ""
     
     # Model configuration
-    generation_model: str = "claude-3-5-sonnet-20241022"
+    generation_model: str = "claude-sonnet-4-6"
     classification_model: str = "claude-3-haiku-20240307"
     embedding_model: str = "voyage-3-5"
     
@@ -2833,7 +2851,7 @@ def get_settings() -> MyAppSettings:
     return MyAppSettings()
 ```
 
-### Chain Dependency Injection — Singleton Pattern
+### Chain Dependency Injection â€” Singleton Pattern
 
 ```python
 from functools import lru_cache
@@ -2944,7 +2962,7 @@ This section maps every component of your your application PRD to the precise La
 | BM25 keyword search | `BM25Retriever` | `langchain_community` |
 | Semantic vector search | `VectorStoreRetriever` | `Chroma.as_retriever()` |
 | BM25 + semantic hybrid | `EnsembleRetriever` | `langchain.retrievers` |
-| HyDE query expansion | LCEL chain → retriever | Custom `hyde_generator | semantic_retriever` |
+| HyDE query expansion | LCEL chain â†’ retriever | Custom `hyde_generator | semantic_retriever` |
 | Cross-encoder re-ranking | `CrossEncoderReranker` | `langchain.retrievers.document_compressors` |
 | Full pipeline | `ContextualCompressionRetriever` | Wraps `EnsembleRetriever` |
 
@@ -2975,12 +2993,113 @@ This section maps every component of your your application PRD to the precise La
 | `calculate_price` | `@tool` | Formula-based computation |
 | `search_knowledge_base` | `BaseTool` subclass | Wraps `compression_retriever` |
 
-### SQLite Analytics → LangSmith
+### SQLite Analytics â†’ LangSmith
 
 Your planned SQLite analytics layer (tracking queries, retrieval results, response quality) can be implemented either via `BaseCallbackHandler` writing to SQLite, or by routing everything through LangSmith and using its evaluation APIs. LangSmith gives you token usage, latency histograms, trace replay, and dataset-based evaluation out of the box.
 
 ---
 
-*End of LangChain Deep Reference Guide — v1.1 · General Edition · Updated March 2026*
+*End of LangChain Deep Reference Guide â€” v1.1 Â· General Edition Â· Updated March 2026*
 
 *Next recommended study: LangSmith evaluation cookbook, LangGraph Platform deployment, and the `MultiVectorRetriever` for Hierarchical RAG implementation.*
+
+
+---
+
+## 21. Deep Agents v0.4 (February 2026)
+
+> Deep Agents is a separate LangChain product (not a package) for deploying long-running, persistent agents with pluggable sandboxes. Released February 2026 as v0.4.
+
+### What Deep Agents Adds
+
+Standard LangGraph agents are in-process: they start, run, and finish in a single Python process. Deep Agents add:
+
+1. **Persistent state across sessions** - conversations and memory survive individual runs; state stored in configurable backends (Redis, Postgres, or managed LangSmith storage)
+2. **Pluggable execution sandbox** - agent tools run in isolated containers (Docker, E2B, or custom); prevents tool code from affecting the host process
+3. **Smarter conversation summarization** - v0.4 introduced a hybrid summarizer that preserves semantic precision for code and SQL arguments while aggressively compressing natural language history
+4. **Event streaming** - real-time SSE/WebSocket event stream from long-running agents; clients subscribe via token
+5. **Built-in interrupt/resume** - agents can be paused at any tool boundary and resumed later (supports human-in-the-loop) without losing state
+
+### Architecture
+
+```
+Client (browser/app)
+   |  SSE / WebSocket events
+   v
+Deep Agents API Server (FastAPI)
+   |  Task queue (Celery / BullMQ)
+   v
+Agent Worker Pool
+   |  LangGraph agent + tool calls
+   v
+Sandbox (E2B / Docker)     <-- tools run here (code, bash, browser)
+   |
+   v
+State Backend (Redis / Postgres / LangSmith)
+```
+
+### When to Use Deep Agents vs LangGraph
+
+| Feature | LangGraph (in-process) | Deep Agents |
+|---------|----------------------|-------------|
+| Setup complexity | Low (just Python) | High (server + sandbox) |
+| Persistence | Manual (checkpointer) | Built-in |
+| Isolation | No | Yes (sandbox) |
+| Long-running (hours) | Fragile | Designed for it |
+| Real-time streaming | Via callbacks | Native SSE |
+| Cost | No infrastructure | Infra + API server |
+| Best for | Dev/prototyping | Production agents |
+
+Deep Agents v0.4 is the right choice when your agents run for minutes or hours, execute actual code (code interpreter pattern), or need interrupt/resume for human approval flows.
+
+---
+
+## 22. LangSmith Fleet (March 2026)
+
+> **LangSmith Fleet** is the renamed and expanded version of what was previously called **LangSmith Agent Builder** (renamed March 19, 2026). It is the managed platform for deploying, monitoring, and scaling LangGraph agents.
+
+### What Fleet Provides
+
+- **Hosted deployment:** Upload a LangGraph agent; Fleet manages containers, scaling, and rollouts
+- **Fleet dashboard:** Monitor all deployed agents across environments (dev/staging/prod)
+- **Live agent inspection:** Pause any running agent, inspect its state, inject messages, resume
+- **A/B deployment:** Canary releases for agent updates with automatic rollback on error rate threshold
+- **Evaluation pipelines:** Connect to LangSmith datasets for continuous regression testing
+- **Cost tracking:** Per-agent token usage and latency breakdown across model providers
+
+### Fleet vs LangSmith (Observability)
+
+LangSmith (the observability product) and LangSmith Fleet (the deployment product) are complementary:
+
+`
+LangSmith (observe)         LangSmith Fleet (deploy)
+-----------------------     ----------------------------
+Traces & spans              Hosted agent runtime
+Evaluation / datasets       Agent lifecycle management
+Prompt monitoring           Scaling / rollout control
+Feedback collection         Live state inspection
+`
+
+Both are accessed from smith.langchain.com. Fleet is a paid add-on to the LangSmith Team/Enterprise tier.
+
+### Quick Start with Fleet
+
+```python
+# 1. Define your agent as a LangGraph StateGraph (standard pattern)
+from langgraph.graph import StateGraph
+graph = StateGraph(MyAgentState)
+# ... add nodes, edges
+
+# 2. Compile to get a LangGraph app
+app = graph.compile()
+
+# 3. Deploy to Fleet via LangSmith CLI
+# pip install langsmith-cli
+# langsmith fleet deploy --name my-agent --graph app
+```
+
+---
+
+*End of LangChain Deep Reference Guide - v1.1 - General Edition - Updated April 2026*
+
+*Next recommended study: LangSmith evaluation cookbook, Deep Agents v0.4 sandbox configuration, MultiVectorRetriever for Hierarchical RAG, and LangSmith Fleet deployment guide.*

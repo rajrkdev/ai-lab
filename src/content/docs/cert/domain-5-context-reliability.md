@@ -878,6 +878,7 @@ Structured error context enables the coordinator to produce a useful (if incompl
 | **Terminating on single failure** | Anti-pattern — wastes all partial results |
 | **Coverage annotations** | Mark partial sections with gap_note and source count |
 | **Context degradation** | Extended sessions → vague answers referencing "typical patterns" |
+| **1M context window** | Opus 4.6 on Max/Team/Enterprise tiers (v2.1.84+); standard is 200K |
 | **Scratchpad files** | Persist key findings to files — survives context compression |
 | **/compact** | Reduces context usage. Persistent rules → CLAUDE.md not prompt. |
 | **Crash recovery** | State manifests → resume only incomplete work |

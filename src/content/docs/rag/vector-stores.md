@@ -1,9 +1,13 @@
 ---
 title: Vector Stores
-description: Comprehensive comparison of vector databases for RAG — FAISS, Chroma, Pinecone, Weaviate, pgvector, Qdrant — covering index types, filtering, scaling, and production trade-offs.
+description: Complete 2026 guide to vector databases for RAG — FAISS, Chroma, Pinecone, Weaviate, pgvector, Qdrant, LanceDB, MongoDB Atlas, Azure AI Search — index algorithms, hybrid search, filtering, scaling, and production trade-offs.
 sidebar:
   order: 6
 ---
+
+> **Current as of April 2026.** Ecosystem evolves quickly — verify version compatibility before production deployment.
+>
+> **Key 2026 trends:** Hybrid search (vector + keyword) is now the default expectation. Billion-vector deployments are common. Momentum is shifting toward extended relational databases (pgvector, pgvectorscale) instead of dedicated vector services for teams already running Postgres.
 
 ## What a Vector Store Does
 
@@ -196,7 +200,7 @@ print(results["documents"][0])    # list of top-5 matching chunks
 **Type:** Fully managed cloud service  
 **License:** Proprietary (SaaS)
 
-Pinecone is the leading managed vector database — zero infrastructure, auto-scaling, pay-per-use.
+Pinecone is the leading managed vector database — zero infrastructure, auto-scaling, pay-per-use. **Dedicated Read Nodes (DRN)** (December 2025) provide reserved hardware for predictable p99 latency on high-throughput workloads. Note: serverless tier is slower than pod-based — use pod-based (p2) for latency-critical applications.
 
 ```python
 from pinecone import Pinecone, ServerlessSpec
@@ -345,7 +349,7 @@ def search(query_embedding: np.ndarray, k: int = 5):
 **Type:** Open-source (Rust) or managed cloud  
 **License:** Apache 2.0
 
-Qdrant is built in Rust for high performance. Supports **payload filtering** (metadata filters applied directly within the ANN search, not post-filter) and **sparse vectors** for hybrid retrieval.
+Qdrant is built in Rust for high performance. The **2025 Rust rewrite** delivered **4× faster writes and queries** compared to the earlier Python implementation. Supports **payload filtering** (metadata filters applied directly within the ANN search, not post-filter) and **sparse vectors** for hybrid retrieval.
 
 ```python
 from qdrant_client import QdrantClient
@@ -410,8 +414,258 @@ Custom ANN research:                  FAISS (library)
 
 ---
 
+---
+
+## LanceDB
+
+**Website:** lancedb.com  
+**License:** Apache 2.0  
+**Type:** Embedded columnar vector store — no server required  
+**Built on:** Lance columnar format (Apache Arrow / DuckDB)
+
+LanceDB (2023) is built for ML workflows: serverless, zero-infrastructure, git-like versioning, and SQL via DuckDB.
+
+```
+  WHY LANCEDB IS DIFFERENT:
+  ─────────────────────────────────────────────────────────────
+  ✓ Columnar storage — scans only the columns you need
+  ✓ No server — embedded like SQLite, no Docker required
+  ✓ Versioning — git-like history for your vector data
+  ✓ DuckDB integration — SQL queries over vectors + metadata
+  ✓ Multi-modal — stores images, audio alongside vectors
+  ✓ Cloud-native — S3 / GCS / Azure Blob as native backends
+```
+
+```python
+import lancedb
+import numpy as np
+import pandas as pd
+
+db = lancedb.connect("./lancedb_data")   # or "s3://your-bucket/lancedb"
+
+# Create from pandas DataFrame — HNSW index built automatically
+data = pd.DataFrame({
+    "id":     ["chunk_0", "chunk_1"],
+    "text":   ["Refunds take 30 days.", "Shipping is 5-7 days."],
+    "source": ["tos.pdf", "faq.pdf"],
+    "vector": [np.random.rand(1024).tolist(), np.random.rand(1024).tolist()],
+})
+table = db.create_table("rag_docs", data=data, mode="overwrite")
+
+# Vector search with SQL pre-filter
+results = (
+    table.search(query_embedding)
+    .where("source = 'tos.pdf'")
+    .limit(5)
+    .to_pandas()
+)
+
+# Hybrid: vector + built-in FTS (BM25)
+table.create_fts_index("text")
+results = (
+    table.search(query_embedding, query_type="hybrid")
+    .rerank(query_string="refund policy")
+    .limit(5)
+    .to_pandas()
+)
+```
+
+```python
+# LangChain integration
+from langchain_community.vectorstores import LanceDB
+
+vectorstore = LanceDB.from_documents(
+    documents=docs,
+    embedding=embeddings,
+    connection=db,
+    table_name="rag_docs",
+)
+retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
+```
+
+---
+
+## MongoDB Atlas Vector Search
+
+**Website:** mongodb.com/atlas  
+**Type:** Managed cloud — add-on to existing MongoDB  
+**Key feature:** Vector search inside your existing MongoDB collections — no data migration
+
+```python
+from pymongo import MongoClient
+import certifi
+
+client = MongoClient("mongodb+srv://user:pass@cluster.mongodb.net/", tlsCAFile=certifi.where())
+collection = client["rag_db"]["documents"]
+
+# Insert document with embedding
+collection.insert_one({
+    "text":       "Refunds are processed within 30 days.",
+    "source":     "tos.pdf",
+    "department": "legal",
+    "embedding":  embedding_vector.tolist(),
+})
+
+# $vectorSearch aggregation pipeline (index created once via Atlas UI)
+results = collection.aggregate([
+    {
+        "$vectorSearch": {
+            "index":          "vector_index",
+            "path":           "embedding",
+            "queryVector":    query_embedding.tolist(),
+            "numCandidates":  100,
+            "limit":          5,
+            "filter":         {"department": "legal"},
+        }
+    },
+    {"$project": {"text": 1, "source": 1, "score": {"$meta": "vectorSearchScore"}}},
+])
+
+for doc in results:
+    print(f"{doc['score']:.4f}: {doc['text']}")
+```
+
+```python
+# LangChain
+from langchain_mongodb import MongoDBAtlasVectorSearch
+
+vectorstore = MongoDBAtlasVectorSearch(
+    collection=collection,
+    embedding=embeddings,
+    index_name="vector_index",
+    text_key="text",
+    embedding_key="embedding",
+)
+retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
+```
+
+---
+
+## Azure AI Search
+
+**Website:** azure.microsoft.com/products/ai-services/ai-search  
+**Type:** Managed cloud (Azure)  
+**Key feature:** Vector + BM25 + Microsoft semantic reranking (cross-encoder) in a single service
+
+The standard choice for Azure OpenAI deployments. Semantic reranking uses Microsoft's own cross-encoder and is included free up to 1000 queries/month.
+
+```python
+from azure.search.documents import SearchClient
+from azure.search.documents.indexes import SearchIndexClient
+from azure.search.documents.indexes.models import (
+    SearchIndex, SimpleField, SearchableField, SearchField,
+    SearchFieldDataType, VectorSearch,
+    HnswAlgorithmConfiguration, VectorSearchProfile,
+    SemanticConfiguration, SemanticPrioritizedFields, SemanticField, SemanticSearch,
+)
+from azure.search.documents.models import VectorizedQuery
+from azure.core.credentials import AzureKeyCredential
+
+endpoint = "https://YOUR_SERVICE.search.windows.net"
+credential = AzureKeyCredential("YOUR_ADMIN_KEY")
+index_name = "rag-index"
+
+# Create index with vector + semantic config (run once)
+index_client = SearchIndexClient(endpoint, credential)
+index_client.create_or_update_index(SearchIndex(
+    name=index_name,
+    fields=[
+        SimpleField(name="id", type=SearchFieldDataType.String, key=True),
+        SearchableField(name="content", type=SearchFieldDataType.String),
+        SimpleField(name="source", type=SearchFieldDataType.String, filterable=True),
+        SearchField(
+            name="embedding",
+            type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
+            vector_search_dimensions=1024,
+            vector_search_profile_name="hnsw-profile",
+        ),
+    ],
+    vector_search=VectorSearch(
+        algorithms=[HnswAlgorithmConfiguration(name="hnsw-algo", parameters={"m": 4, "efConstruction": 400})],
+        profiles=[VectorSearchProfile(name="hnsw-profile", algorithm_configuration_name="hnsw-algo")],
+    ),
+    semantic_search=SemanticSearch(configurations=[
+        SemanticConfiguration(
+            name="semantic-config",
+            prioritized_fields=SemanticPrioritizedFields(
+                content_fields=[SemanticField(field_name="content")]
+            ),
+        )
+    ]),
+))
+
+# Hybrid search: BM25 + vector + semantic reranking
+search_client = SearchClient(endpoint, index_name, credential)
+results = search_client.search(
+    search_text="refund policy",           # BM25 query
+    vector_queries=[
+        VectorizedQuery(
+            vector=query_embedding.tolist(),
+            k_nearest_neighbors=50,
+            fields="embedding",
+        )
+    ],
+    query_type="semantic",
+    semantic_configuration_name="semantic-config",
+    filter="source eq 'tos.pdf'",
+    top=5,
+    select=["id", "content", "source"],
+)
+for result in results:
+    print(f"Reranker: {result['@search.reranker_score']:.4f}: {result['content'][:80]}")
+```
+
+---
+
+## Full Comparison (August 2025)
+
+| Feature | FAISS | Chroma | Pinecone | Weaviate | pgvector | Qdrant | LanceDB | MongoDB Atlas | Azure AI Search |
+|---|---|---|---|---|---|---|---|---|---|
+| **Type** | Library | Embedded/server | Managed SaaS | OSS/managed | PG ext | OSS/managed | Embedded/cloud | Managed SaaS | Managed SaaS |
+| **Max scale** | Unlimited | ~1M | Unlimited | Unlimited | ~10M (tuned) | Unlimited | Unlimited | Unlimited | Unlimited |
+| **Native hybrid** | No | No | No | ✓ BM25+dense | With FTS | ✓ sparse+dense | ✓ FTS+vector | ✓ | ✓ + semantic rerank |
+| **In-graph filter** | No | No | No | Partial | No | **Yes** | Pre-filter | Pre-filter | Post-filter |
+| **Multi-tenancy** | Manual | Manual | Namespaces | Multi-tenant | Schema/RLS | Collections | Tables | Databases | Indexes |
+| **Self-host** | Yes | Yes | No | Yes | Yes | Yes | Yes | No | No |
+| **Versioning** | No | No | No | No | No | No | **Yes** | No | No |
+| **SQL interface** | No | No | No | No | **Yes** | No | **DuckDB** | No | No |
+| **Best for** | Research/embedded | Dev/prototyping | Managed prod | Hybrid search | Existing Postgres | High-perf prod | ML workflows | Existing MongoDB | Azure deployments |
+
+---
+
+## Choosing a Vector Store
+
+```
+  Prototyping / learning:
+    → Chroma   (simplest, zero infrastructure)
+    → LanceDB  (if you want SQL queries or versioning)
+
+  Production, cloud-managed:
+    → Pinecone Serverless  (simplest ops, no idle cost)
+    → Qdrant Cloud         (best filtered search performance)
+
+  Production, self-hosted:
+    → Qdrant   (Rust, in-graph filtering, sparse+dense)
+    → Weaviate (if native BM25+dense hybrid is required)
+
+  Existing database integration:
+    → pgvector            (already running PostgreSQL)
+    → MongoDB Atlas       (already using MongoDB)
+    → Azure AI Search     (Azure ecosystem, Azure OpenAI)
+
+  ML / data science workflows:
+    → LanceDB  (columnar, DuckDB, versioning, Arrow-native)
+
+  Maximum raw ANN performance research:
+    → FAISS  (library, fine-tune every parameter)
+    → Qdrant (production-grade Rust performance)
+```
+
+---
+
 ## See Also
 
 - [Embedding Models](../embedding-models) — what generates the vectors stored here
 - [Retrieval Strategies](../retrieval-strategies) — dense, sparse, hybrid, and reranking patterns
+- [BM25 & Sparse Retrieval](../bm25-sparse-retrieval) — Qdrant sparse vectors, pgvector FTS
 - [Production RAG](../production-rag) — caching, scaling, and cost optimization
