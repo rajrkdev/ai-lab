@@ -161,6 +161,8 @@ body:has(.interactive-tool) article {
 
 /* Ensure main-frame on interactive pages fills all available width */
 body:has(.interactive-tool) .main-frame {
+  max-width: 100% !important;
+  width: 100% !important;
   padding-inline-end: 0 !important;
 }
 
