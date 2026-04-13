@@ -10,9 +10,13 @@ export default defineConfig({
 	integrations: [
 		react(),
 		starlight({
-			title: 'AI Lab',
+			title: 'Context',
 			customCss: ['./src/styles/custom.css'],
 			head: [
+				{
+					tag: 'meta',
+					attrs: { name: 'robots', content: 'noindex, nofollow' },
+				},
 				{
 					tag: 'script',
 					content: `
