@@ -69,9 +69,9 @@ const Callout = ({ type = "info", children }) => {
 function ContextTab() {
   return (<>
     <div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:16}}>
-      <Metric label="Standard Window" value="200K" sub="tokens (default)" />
-      <Metric label="Extended Window" value="1M" sub="Opus 4.6 & Sonnet 4.6 — standard pricing" color="#a78bfa" />
-      <Metric label="Avg Cost/Dev/Day" value="~$6" sub="90th percentile under $12" color="#f59e0b" />
+      <Metric label="Standard Window" value="200K" sub="tokens (all models)" />
+      <Metric label="Extended Window" value="1M" sub="claude-opus-4-5, claude-sonnet-4-5, claude-opus-4-20250514" color="#a78bfa" />
+      <Metric label="Avg Cost/Dev/Day" value="~$6" sub="90th percentile under $12 (Anthropic 2025 data)" color="#f59e0b" />
     </div>
     <Section title="What fills the context window (token anatomy)" badge={<CcafBadge domain={5} />} defaultOpen>
       <p>Claude Code is <strong style={{color:"#fff"}}>stateless between turns</strong>. Every API call resends the entire payload from scratch — system prompt, tool definitions, CLAUDE.md, memory, conversation history. The context is reconstructed each turn in deliberate order (most stable first for cache optimization):</p>
@@ -197,17 +197,15 @@ function ToolSearchTab() {
 function ModelsTab() {
   return (<>
     <Section title="Model matrix (April 2026)" badge={<CcafBadge domain={2} />} defaultOpen>
-      <Table headers={["","Opus 4.6","Sonnet 4.6","Haiku 4.5"]} rows={[
-        ["Input","$15/MTok","$3/MTok","$1/MTok"],
-        ["Output","$75/MTok","$15/MTok","$5/MTok"],
-        ["Cache read","$1.50/MTok","$0.30/MTok","$0.08/MTok"],
-        ["Context","1M (std pricing)","1M (std pricing)","200K"],
-        ["Max output","128K (default 64K)","128K (default 64K)","64K"],
-        ["SWE-bench","80.8%","79.6%","—"],
-        ["Thinking","low/med/high/max","low/med/high","None"],
-        ["Cost vs Opus","1×","0.2× (80% cheaper)","0.07× (93% cheaper)"],
+      <Table headers={["Model","Input/Output (per 1M)","Context","Best For"]} rows={[
+        ["claude-opus-4-20250514","$15/$75","200K standard, 1M extended","Best quality, complex reasoning, extended thinking"],
+        ["claude-opus-4-5","$15/$75","1M context","Highest context window, coding tasks"],
+        ["claude-sonnet-4-20250514","$3/$15","200K standard, 1M extended","Best balance quality/cost; default for Claude Code"],
+        ["claude-sonnet-4-5","$3/$15","1M context","Best balance with 1M context"],
+        ["claude-haiku-4-20250514","$0.80/$4","200K","Fast, cheap; subagent tasks, classification"],
+        ["claude-haiku-3-5","$0.80/$4","200K","Fastest response; tool-intensive pipelines"],
       ]} />
-      <Callout type="tip">Sonnet handles ~90% of tasks at 80% lower cost. SWE-bench delta: only 1.2 points.</Callout>
+      <Callout type="tip">Sonnet handles ~90% of tasks at 80% lower cost. Use claude-sonnet-4-20250514 as default, claude-haiku-4-20250514 for subagents.</Callout>
     </Section>
     <Section title="opusplan — highest ROI strategy" badge={<CcafBadge domain={2} />}>
       <CodeBlock code={`claude --model opusplan
@@ -250,6 +248,12 @@ function EffortTab() {
 → session /effort command
 → model default (medium)
 → "ultrathink" in prompt = high for one turn`} />
+    </Section>
+    <Section title="/effort command & budget_tokens" badge={<CcafBadge domain={2} />}>
+      <CodeBlock title="/effort slash command usage" code={`/effort high    # Sets budget_tokens ~32,000 — for complex analysis
+/effort medium  # Sets budget_tokens ~8,000 — default balanced
+/effort low     # Disables extended thinking — fast responses`} />
+      <Callout type="warn"><strong>Billing:</strong> Thinking (extended) tokens are billed as output tokens ($15–75/MTok depending on model). Default ~32K thinking budget = $2.40/turn on Opus. Set MAX_THINKING_TOKENS=10000 to reduce by ~70%.</Callout>
     </Section>
     <Section title="--bare mode" badge={<CcafBadge domain={2} />}>
       <p>Skips: hooks, LSP, plugin sync, skill walks, MCP servers, auto-memory, CLAUDE.md, OAuth. Only Bash + Read + Edit available.</p>
@@ -307,7 +311,7 @@ Discard: verbose debug output, exploratory reads`} />
 function AgentsTab() {
   return (<>
     <Section title="Subagents vs Teams" badge={<CcafBadge domain={1} />} defaultOpen>
-      <Table headers={["","Subagents (Task tool)","Agent Teams"]} rows={[
+      <Table headers={["","Agent tool (renamed from Task in v2.1.63)","Agent Teams"]} rows={[
         ["Process","Within parent process","Separate instances (2–16)"],
         ["Context","Scoped (no inheritance!)","Own 1M window each"],
         ["Communication","Vertical only (→ parent)","Lateral (mailbox + task list)"],
@@ -355,6 +359,7 @@ Layer 3 — Manual (/compact)
   /compact Focus on API changes  ← guided preservation
   Esc+Esc or /rewind             ← partial compaction
   Customizable via # Compact Instructions in CLAUDE.md`} />
+      <Callout type="warn"><strong>Tool results are DISCARDED:</strong> Tool call input/output pairs are discarded during compaction. Only the narrative conversation is summarized. Use PostCompact hooks to re-inject fresh context after every compaction.</Callout>
     </Section>
     <Section title="Idle-return /clear hint" badge={<CcafBadge domain={5} />}>
       <p>After 75+ min idle → suggests <Code>/clear</Code> with token savings. Bug fix v2.1.92: now shows current context (not cumulative).</p>

@@ -303,7 +303,7 @@ from llama_index.multi_modal_llms.anthropic import AnthropicMultiModal
 from llama_index.core.indices.multi_modal import MultiModalVectorStoreIndex
 
 mm_llm = AnthropicMultiModal(
-    model="claude-opus-4-6",
+    model="claude-opus-4-5",
     max_tokens=512
 )
 
@@ -355,7 +355,7 @@ agent = ReActAgent.from_tools(
         premium_calc_tool,     # function: calculate premium
         web_search_tool,       # live web search
     ],
-    llm=Anthropic(model="claude-opus-4-6"),
+    llm=Anthropic(model="claude-opus-4-5"),
     verbose=True,
     max_iterations=8,
     # Thought → Action → Observation loop
@@ -465,10 +465,187 @@ async def speculative_rag(question: str):
     final = await llm_verify(draft, evidence)
     return final`,
     general: "Good for developer support chatbots — can speculate on common errors and verify against your documentation."
+  },
+  {
+    id: "contextual",
+    tier: "Generation 3",
+    tierColor: "#f59e0b",
+    name: "Contextual Retrieval",
+    aka: "Context-Enhanced Chunking (Anthropic, Nov 2024)",
+    emoji: "🧩",
+    color: "#a78bfa",
+    tagline: "Prepend document context to every chunk before embedding",
+    complexity: 3,
+    accuracy: 5,
+    speed: 3,
+    when: "Large corpora where chunks lose context; insurance policy sections, legal documents",
+    weaknesses: ["~50% larger vector index", "Extra LLM call per chunk at index time", "Slower initial indexing"],
+    pipeline: ["Load Chunk", "LLM Generates Context Summary", "Prepend Context + Original Chunk", "Embed Contextualized Chunk", "Store + Retrieve"],
+    pipelineColors: ["#a78bfa", "#a78bfa", "#a78bfa", "#a78bfa", "#a78bfa"],
+    description: "Anthropic's Nov 2024 breakthrough: before embedding each chunk, use claude-haiku to generate a 1-2 sentence context that situates it within the whole document. 'The limit is $50,000.' becomes 'From Section 4 of Policy P-200 covering theft exclusions, the theft payout limit is $50,000.' Reduces retrieval failure rates by ~49% (67% with BM25 fusion).",
+    example: "Raw chunk: 'Maximum payout: $50,000.' → Contextualized: 'This clause in Policy P-200 Section 4 sets the maximum theft payout at $50,000 for APAC vehicles registered under the named insured.' Now this chunk is unambiguously findable.",
+    code: `# Contextual Retrieval — Claude generates context for each chunk
+import anthropic
+
+client = anthropic.Anthropic()
+
+CONTEXT_PROMPT = """<document>
+{whole_document}
+</document>
+
+Here is the chunk we want to situate within the document:
+<chunk>
+{chunk_content}
+</chunk>
+
+Provide a short succinct context (1-2 sentences) to situate this 
+chunk within the overall document for retrieval. Answer only with
+the context, no introduction."""
+
+def add_context_to_chunk(document: str, chunk: str) -> str:
+    """Use claude-haiku-4 (fast + cheap) to add context."""
+    response = client.messages.create(
+        model="claude-haiku-4-20250514",  # Fast & cheap for this task
+        max_tokens=200,
+        messages=[{
+            "role": "user",
+            "content": CONTEXT_PROMPT.format(
+                whole_document=document,
+                chunk_content=chunk
+            )
+        }]
+    )
+    context = response.content[0].text
+    return f"{context}\\n\\n{chunk}"  # Prepend context to chunk
+
+# Index with contextualized chunks
+from anthropic import Anthropic
+contextualized_chunks = [
+    add_context_to_chunk(full_document, chunk)
+    for chunk in raw_chunks
+]
+# Now embed & store the contextualized chunks
+# Retrieval failure rate drops ~49%; pair with BM25 for ~67% improvement`,
+    general: "Biggest single-step improvement for production RAG. Use claude-haiku for context generation to keep costs low. Critical for insurance/legal docs where chunks become meaningless without surrounding context."
+  },
+  {
+    id: "latechunking",
+    tier: "Generation 3",
+    tierColor: "#f59e0b",
+    name: "Late Chunking",
+    aka: "Late Interaction Chunking (JinaAI, Oct 2024)",
+    emoji: "⏱️",
+    color: "#34d399",
+    tagline: "Embed the whole document first, THEN chunk the embeddings",
+    complexity: 3,
+    accuracy: 4,
+    speed: 3,
+    when: "Documents where cross-sentence meaning matters; narratives, reports, interconnected clauses",
+    weaknesses: ["Requires long-context embedding model (8192+ tokens)", "Slightly higher memory at index time", "Less control over chunk boundaries"],
+    pipeline: ["Full Document → Long-Context Encoder", "Embed All Tokens (full attention)", "Pool Embeddings Per Chunk Boundary", "Store Chunk Embeddings", "Retrieve"],
+    pipelineColors: ["#34d399", "#34d399", "#34d399", "#34d399", "#34d399"],
+    description: "Traditional RAG: chunk text THEN embed each chunk independently. Late Chunking inverts this: embed the WHOLE document with full attention first (using jina-embeddings-v3 with 8192 token context), then derive chunk embeddings by mean-pooling the token embeddings within chunk boundaries. Each chunk's embedding reflects global document context — solving the 'lost context' problem without an extra LLM call.",
+    example: "Document: 'Policy-P200... Section 4... theft limit $50k... applies to APAC vehicles.' Traditional chunk: '$50k limit' loses 'Policy P-200' and 'APAC' context in its embedding. Late chunking: the $50k chunk embedding encodes the full document context through attention — it 'knows' it's about P-200 APAC theft.",
+    code: `# Late Chunking with jina-embeddings-v3
+from transformers import AutoTokenizer, AutoModel
+import torch
+import numpy as np
+
+model_name = "jinaai/jina-embeddings-v3"  # 8192 token context
+tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+model = AutoModel.from_pretrained(model_name, trust_remote_code=True)
+
+def late_chunking(document: str, chunk_boundaries: list[int]):
+    """
+    Embed WHOLE doc with full attention, then pool per chunk.
+    chunk_boundaries: list of token indices where chunks split.
+    """
+    # 1. Tokenize full document (up to 8192 tokens)
+    inputs = tokenizer(document, return_tensors="pt",
+                       max_length=8192, truncation=True)
+    
+    # 2. Get token embeddings with FULL document attention
+    with torch.no_grad():
+        outputs = model(**inputs, output_hidden_states=True)
+    token_embeddings = outputs.last_hidden_state[0]  # (seq_len, dim)
+    
+    # 3. Mean-pool token embeddings PER CHUNK BOUNDARY
+    chunk_embeddings = []
+    for i, (start, end) in enumerate(zip([0] + chunk_boundaries, 
+                                          chunk_boundaries + [len(token_embeddings)])):
+        chunk_emb = token_embeddings[start:end].mean(dim=0)
+        chunk_embeddings.append(chunk_emb.numpy())
+    
+    return chunk_embeddings  # Each chunk has full-doc-aware embedding
+
+# Result: ~10-12% improvement in MTEB retrieval vs traditional chunking
+# No extra LLM call needed — context is captured by attention mechanism`,
+    general: "Best when your documents have strong inter-sentence dependencies. Pairs well with jina-embeddings-v3 which supports 8192 token input. Cheaper than contextual retrieval (no extra LLM call) but requires a long-context encoder."
+  },
+  {
+    id: "longcontext",
+    tier: "Innovation (2025)",
+    tierColor: "#22d3ee",
+    name: "Long-Context RAG",
+    aka: "In-Context Retrieval / Context Window RAG",
+    emoji: "📐",
+    color: "#22d3ee",
+    tagline: "Skip retrieval entirely — stuff the whole corpus in-context",
+    complexity: 1,
+    accuracy: 4,
+    speed: 2,
+    when: "Corpora under ~500K tokens; compliance docs, policy sets, code repositories; when indexing cost > inference cost",
+    weaknesses: ["Very high per-query cost", "Slow inference for large contexts", "Not viable for million-document corpora", "Memory intensive"],
+    pipeline: ["All Documents → Single Context Window", "Query", "LLM Reads Everything", "Answer from full context", "(No retrieval step)"],
+    pipelineColors: ["#22d3ee", "#22d3ee", "#22d3ee", "#22d3ee", "#22d3ee"],
+    description: "With 1M token context windows (Claude Opus 4.6, Gemini 1.5 Pro), you can skip chunking and retrieval entirely for small-to-medium corpora. Load all your documents into one context window. The model reads everything every query. Dramatically simpler architecture — zero indexing, zero retrieval errors, but very expensive per-query. Research shows it achieves near-perfect recall on 'needle in a haystack' tasks that trip up vector search.",
+    example: "20 insurance policy PDFs → 300K tokens total. Stuff them all into a claude-opus-4-5 call with 1M context. Ask 'List all policies covering APAC flood damage.' LLM reads every document directly — no retrieval failures, no missed clauses.",
+    code: `# Long-Context RAG — no chunking, no vector DB
+import anthropic
+from pathlib import Path
+
+client = anthropic.Anthropic()
+
+def long_context_rag(query: str, documents_dir: str) -> str:
+    """
+    Load all documents into one 1M context window.
+    No chunking, no embeddings, no vector DB.
+    """
+    # 1. Load all documents as text
+    docs = []
+    for f in Path(documents_dir).glob("**/*.txt"):
+        docs.append(f"=== {f.name} ===\\n{f.read_text()}")
+    
+    full_corpus = "\\n\\n".join(docs)
+    
+    # Check token count (rough: 1 token ≈ 4 chars)
+    est_tokens = len(full_corpus) // 4
+    print(f"Estimated tokens: {est_tokens:,}")  # Must be < 900K for safety
+    
+    # 2. Single API call — model reads EVERYTHING
+    response = client.messages.create(
+        model="claude-opus-4-5",  # 1M context window
+        max_tokens=4096,
+        system="You are an expert assistant. You have access to all documents below. Answer questions based ONLY on the provided documents.",
+        messages=[{
+            "role": "user",
+            "content": f"""<documents>
+{full_corpus}
+</documents>
+
+Question: {query}"""
+        }]
+    )
+    return response.content[0].text
+
+# Cost: ~$15 per 1M input tokens (claude-opus-4-5)
+# Use when: corpus < 500K tokens AND query frequency is low
+# Don't use when: millions of documents, high query volume`,
+    general: "The ultimate simplicity play. Perfect for internal tools querying a fixed, known policy set. Skip RAG infrastructure entirely. High cost per query but zero operational overhead. Use claude-haiku-4 ($0.25/1M tokens) for smaller corpora."
   }
 ];
 
-const TIER_ORDER = ["Generation 1", "Generation 2", "Generation 3"];
+const TIER_ORDER = ["Generation 1", "Generation 2", "Generation 3", "Innovation (2025)"];
 
 const StarRating = ({ value, max = 5, color }) => (
   <div style={{ display: "flex", gap: 3 }}>
@@ -526,7 +703,7 @@ export default function RAGTypes() {
       <div style={{ padding: "28px 32px 20px", borderBottom: "1px solid #0f172a" }}>
         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 4, color: "#475569", textTransform: "uppercase", marginBottom: 8 }}>Complete Taxonomy</div>
         <h1 style={{ margin: 0, fontSize: 32, fontWeight: 800, color: "#f8fafc", letterSpacing: -1 }}>Types of RAG</h1>
-        <p style={{ margin: "8px 0 0", color: "#64748b", fontSize: 14 }}>10 architectures — from vanilla to agentic. Click any type to explore.</p>
+        <p style={{ margin: "8px 0 0", color: "#64748b", fontSize: 14 }}>13 architectures — from vanilla to agentic. Click any type to explore.</p>
       </div>
 
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>

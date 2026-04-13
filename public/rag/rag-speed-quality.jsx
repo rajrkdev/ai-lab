@@ -119,11 +119,11 @@ const ragData = [
     name: "Graph RAG",
     speed: 25,
     quality: 93,
-    latency: "~3–5s",
+    latency: "~3–6s",
     color: "#e879f9",
     speedLabel: "Very Slow",
     qualityLabel: "Excellent",
-    llmCalls: 2,
+    llmCalls: "2–3",
     dbCalls: "graph+vector",
     why: "Graph traversal + vector search + relationship resolution. Graph queries can chain multiple hops.",
     tradeoff: "Unmatched for multi-entity relational queries. But graph traversal at scale is expensive. Indexing is complex.",
@@ -161,6 +161,70 @@ const ragData = [
     tradeoff: "The most powerful — handles multi-step reasoning, tool use, cross-document synthesis. Latency is the cost of intelligence.",
     bestFor: "Complex analytical queries, comparisons, calculations, multi-document synthesis",
   },
+  {
+    id: "adaptive",
+    emoji: "🧭",
+    name: "Adaptive RAG",
+    speed: 75,
+    quality: 91,
+    latency: "~150ms–3s",
+    color: "#22d3ee",
+    speedLabel: "Variable (by design)",
+    qualityLabel: "Very High",
+    llmCalls: "1 + N",
+    dbCalls: "0–4+",
+    why: "1 classifier call first. Then 0 DB calls (no retrieval), 1 call (single-hop), or 2–4 calls (multi-hop) depending on query. Avg latency is lower than always-retrieving.",
+    tradeoff: "Best average-case performance. Simple queries bypass retrieval entirely (fast + cheap). Hard queries get full multi-hop retrieval. Misclassification is the only risk.",
+    bestFor: "Mixed workloads where query complexity varies: support bots, assistants, general-purpose RAG",
+  },
+  {
+    id: "contextual",
+    emoji: "🧩",
+    name: "Contextual Retrieval",
+    speed: 65,
+    quality: 88,
+    latency: "~400–700ms",
+    color: "#a78bfa",
+    speedLabel: "Moderate",
+    qualityLabel: "Very High",
+    llmCalls: 2,
+    dbCalls: 1,
+    why: "Haiku generates context per chunk at index time (batch, not per query). Query time: 1 embed call + 1 vector search + 1 LLM generation. The indexing overhead is offline.",
+    tradeoff: "49% fewer retrieval failures vs naive RAG. 67% fewer when combined with BM25. Storage grows ~50%. Worth it for docs where chunks lose meaning without context (policy sections, legal clauses).",
+    bestFor: "Production systems with complex, multi-section documents where chunk context matters",
+  },
+  {
+    id: "latechunking",
+    emoji: "⏱️",
+    name: "Late Chunking",
+    speed: 58,
+    quality: 82,
+    latency: "~500–800ms",
+    color: "#34d399",
+    speedLabel: "Moderate",
+    qualityLabel: "High",
+    llmCalls: 1,
+    dbCalls: 1,
+    why: "Full document goes through long-context encoder (expensive for large docs). No extra LLM call vs contextual retrieval. One encoder pass + pooling per chunk. Standard 1 LLM call for generation.",
+    tradeoff: "10-12% retrieval quality improvement vs traditional chunking. No extra LLM cost vs contextual retrieval. Requires jina-v3 or similar 8192+ token encoder. Best for highly inter-connected documents.",
+    bestFor: "Documents with strong cross-sentence dependencies and available GPU for long-context encoding",
+  },
+  {
+    id: "longcontext",
+    emoji: "📐",
+    name: "Long-Context RAG",
+    speed: 20,
+    quality: 85,
+    latency: "~5–20s",
+    color: "#22d3ee",
+    speedLabel: "Slow",
+    qualityLabel: "High",
+    llmCalls: 1,
+    dbCalls: 0,
+    why: "No retrieval step at all — the 'slowness' comes from feeding 300K–900K tokens to the LLM. The LLM processes the entire corpus every query. Very expensive per query.",
+    tradeoff: "Zero retrieval infrastructure. Zero chunking errors. Near-perfect recall on 'needle in haystack' tasks. But at $15+/query for large corpora with Opus 4.5. Use haiku for smaller corpora ($0.25/1M tokens).",
+    bestFor: "Small-to-medium corpora (<500K tokens) with low query frequency; compliance tools, policy lookups",
+  },
 ];
 
 const sorted = {
@@ -187,7 +251,7 @@ export default function RAGComparison() {
         <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: "#e2e8f0", letterSpacing: -0.5, fontFamily: "'DM Mono', monospace" }}>
           Speed <span style={{ color: "#334155" }}>vs</span> Quality
         </h1>
-        <p style={{ margin: "6px 0 0", color: "#1e3a5f", fontSize: 12 }}>All 10 RAG architectures ranked</p>
+        <p style={{ margin: "6px 0 0", color: "#1e3a5f", fontSize: 12 }}>All 13 RAG architectures ranked</p>
       </div>
 
       {/* View toggle */}

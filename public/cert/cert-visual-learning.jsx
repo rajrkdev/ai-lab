@@ -22,7 +22,7 @@ function AgenticLoop() {
 
   const steps = [
     { phase: "init", title: "1. Send Prompt", desc: "Your code sends the user message + tool definitions to Claude API. The messages array starts with just the user's message.", code: 'messages = [{"role": "user", "content": user_msg}]', highlight: "user" },
-    { phase: "claude", title: "2. Claude Evaluates", desc: "Claude reads the system prompt, conversation history, and tool definitions. It decides whether to respond with text, call tools, or both.", code: 'response = client.messages.create(\n  model="claude-sonnet-4",\n  tools=tools, messages=messages)', highlight: "claude" },
+    { phase: "claude", title: "2. Claude Evaluates", desc: "Claude reads the system prompt, conversation history, and tool definitions. It decides whether to respond with text, call tools, or both.", code: 'response = client.messages.create(\n  model="claude-sonnet-4-20250514",\n  tools=tools, messages=messages)', highlight: "claude" },
     { phase: "check", title: "3. Check stop_reason", desc: "This is THE decision point. The entire loop routes on this single field. Never parse text, never count iterations.", code: 'if response.stop_reason == "end_turn":\n    return response  # DONE\n# else: stop_reason == "tool_use" → continue', highlight: "check" },
     { phase: "execute", title: "4. Execute Tool(s)", desc: "For each tool_use block in Claude's response, run the corresponding function. Claude may request multiple tools in one response.", code: 'for block in response.content:\n    if block.type == "tool_use":\n        result = execute(block.name, block.input)', highlight: "tool" },
     { phase: "append", title: "5. Append to History", desc: "Add Claude's response as 'assistant' message, then tool results as 'user' message. Tool results reference tool_use_id for correlation.", code: 'messages.append({"role": "assistant",\n  "content": response.content})\nmessages.append({"role": "user",\n  "content": tool_results})', highlight: "append" },
@@ -278,14 +278,24 @@ function HooksFlow() {
         <div style={{ fontSize: 13, color: "#1E3A5F", marginTop: 4, lineHeight: 1.5 }}>{sc.takeaway}</div>
       </div>
 
-      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <div style={{ padding: 10, background: "#F8FAFC", borderRadius: 8, border: "1px solid #E2E8F0" }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "#334155" }}>PreToolUse Hook</div>
-          <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>Fires BEFORE tool runs. Can block (deny), allow, modify input, or ask user. Use for: enforcement, validation, redirection.</div>
-        </div>
-        <div style={{ padding: 10, background: "#F8FAFC", borderRadius: 8, border: "1px solid #E2E8F0" }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "#334155" }}>PostToolUse Hook</div>
-          <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>Fires AFTER tool runs. Can normalize output, add context. Cannot undo actions. Use for: data transformation, auditing.</div>
+      <div style={{ marginTop: 12 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 8 }}>All 8 Hook Events</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+          {[
+            { name: "PreToolUse", desc: "Fires before tool call — can block or modify", color: "#F59E0B" },
+            { name: "PostToolUse", desc: "Fires after tool call — can observe results", color: "#10B981" },
+            { name: "PostCompact", desc: "Fires after /compact or auto-compaction — inject fresh context", color: "#8B5CF6" },
+            { name: "CwdChanged", desc: "Fires when working directory changes — update project context", color: "#3B82F6" },
+            { name: "FileChanged", desc: "Fires when files are modified — trigger validation/tests", color: "#EF4444" },
+            { name: "ConfigChange", desc: "Fires when settings/CLAUDE.md changes — reload rules", color: "#6366F1" },
+            { name: "InstructionsLoaded", desc: "Fires when memory/rules load at session start", color: "#0EA5E9" },
+            { name: "Elicitation", desc: "Fires when Claude requests user input — can auto-respond", color: "#EC4899" },
+          ].map((h, i) => (
+            <div key={i} style={{ padding: 8, background: "#F8FAFC", borderRadius: 8, border: "1px solid #E2E8F0" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: h.color }}>{h.name}</div>
+              <div style={{ fontSize: 10, color: "#64748B", marginTop: 3 }}>{h.desc}</div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -476,6 +486,10 @@ function ConfigHierarchy() {
           <div style={{ fontSize: 12, fontWeight: 600, color: "#1E40AF" }}>🎯 Exam Trap: Scattered Test Files</div>
           <div style={{ fontSize: 11, color: "#1E3A5F", marginTop: 4 }}>Use .claude/rules/testing.md with paths: ["**/*.test.*"], NOT directory CLAUDE.md in each folder.</div>
         </div>
+      </div>
+      <div style={{ marginTop: 8, padding: 10, background: "#ECFDF5", borderRadius: 8, border: "1px solid #A7F3D0" }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: "#065F46" }}>📝 Also Loads at Session Start: MEMORY.md</div>
+        <div style={{ fontSize: 11, color: "#047857", marginTop: 4 }}>MEMORY.md (auto-generated, v2.1.59) also loads permanently — Claude Code writes discovered facts here. Check .claude/MEMORY.md to see what Claude has learned about your project.</div>
       </div>
     </div>
   );

@@ -445,7 +445,7 @@ paths:
     difficulty: "⭐⭐ Medium",
     whatWeTest: "Default Claude Code is verbose and explains everything. A custom output style says 'code only, zero explanations'. Does the style override Claude's natural behavior?",
     expectedWinner: "OUTPUT STYLE wins → code only, no explanations",
-    whyItWins: "Output styles REPLACE the default system prompt. This is the most powerful override mechanism — it changes Claude's fundamental behavior.",
+    whyItWins: "Output styles REPLACE the default system prompt. This is the most powerful override mechanism — it changes Claude's fundamental behavior. Introduced in v2.1.x.",
     files: [
       {
         path: ".claude/output-styles/silent-coder.md",
@@ -582,7 +582,7 @@ See @docs/coding-standards.md for our complete rules.`
       "Check: Descriptive variable names? → Import won ✅",
       "The imported file had Project-level priority, beating User preferences"
     ],
-    cleanupNote: "mkdir -p docs && create docs/coding-standards.md. Restore original ~/.claude/CLAUDE.md."
+    cleanupNote: "mkdir -p docs && create docs/coding-standards.md. Restore original ~/.claude/CLAUDE.md. Note: If MEMORY.md was created during testing, you can safely delete .claude/MEMORY.md to reset auto-memory."
   },
 ];
 
