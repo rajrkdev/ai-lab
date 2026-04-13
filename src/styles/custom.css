@@ -533,3 +533,7 @@ body {
 .cursor-pointer { cursor: pointer; }
 .opacity-70 { opacity: .7; }
 .opacity-80 { opacity: .8; }
+
+/* bg-opacity: Tailwind v3 uses CSS custom props so bg-white + bg-opacity-20 = rgba(255,255,255,.2).
+   Our polyfill makes bg-white solid white, so the compound selector overrides it. */
+.bg-white.bg-opacity-20 { background-color: rgba(255, 255, 255, 0.2) !important; }
