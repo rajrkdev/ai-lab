@@ -13,40 +13,6 @@ sidebar:
 
 ---
 
-## Table of Contents
-
-1. [What Is Claude Code](#1-what-is-claude-code)
-2. [Architecture: The Agentic Loop](#2-architecture-the-agentic-loop)
-3. [Three-Tier Agent Architecture](#3-three-tier-agent-architecture)
-4. [Installation & Setup](#4-installation--setup)
-5. [Authentication Methods](#5-authentication-methods)
-6. [CLAUDE.md Configuration System](#6-claudemd-configuration-system)
-7. [Complete Slash Commands Reference](#7-complete-slash-commands-reference)
-8. [Settings & Configuration](#8-settings--configuration)
-9. [Permission System](#9-permission-system)
-10. [Environment Variables](#10-environment-variables)
-11. [Complete Tools Inventory](#11-complete-tools-inventory)
-12. [Hooks System](#12-hooks-system)
-13. [MCP Integration](#13-mcp-integration)
-14. [Subagents Deep Dive](#14-subagents-deep-dive)
-15. [Agent Teams](#15-agent-teams)
-16. [Prompt Caching & Cost Optimization](#16-prompt-caching--cost-optimization)
-17. [Context Window Management](#17-context-window-management)
-18. [Skills System](#18-skills-system)
-19. [Rules System](#19-rules-system)
-20. [Custom Commands (Legacy)](#20-custom-commands-legacy)
-21. [IDE Integration](#21-ide-integration)
-22. [Headless Mode & CI/CD](#22-headless-mode--cicd)
-23. [Security & Sandboxing](#23-security--sandboxing)
-24. [Development Workflows](#24-development-workflows)
-25. [Troubleshooting](#25-troubleshooting)
-26. [Complete Glossary](#26-complete-glossary)
-27. [Power User Tips & Shortcuts](#27-power-user-tips--shortcuts)
-28. [Update Timeline](#28-update-timeline)
-29. [Directory Map](#29-directory-map)
-
----
-
 ## 1. What Is Claude Code
 
 Claude Code is Anthropic's **agentic CLI coding tool** that operates as a full autonomous coding agent — not a line-completion assistant. It reads entire codebases, edits files across projects, runs commands, handles failures, iterates, and commits results through natural language instructions.
