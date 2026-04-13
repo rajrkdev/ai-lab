@@ -7,10 +7,6 @@ sidebar:
 
 # Claude Code: Context, Cost & Token Efficiency — Complete Reference
 
-> **Version:** April 2026 · Claude Code v2.1.104  
-> **CCA-F Domains:** D1 (Agentic Architecture), D2 (Claude Code Config), D3 (Prompt Engineering), D4 (Tool Design & MCP), D5 (Context Management & Reliability)  
-> **Target audience:** Developers optimizing Claude Code usage for cost and token efficiency
-
 ---
 
 ## 1. Context Window Architecture

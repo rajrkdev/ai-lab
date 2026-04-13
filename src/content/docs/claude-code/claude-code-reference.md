@@ -8,9 +8,6 @@ sidebar:
 # The Definitive Claude Code Reference Guide
 ## Architecture, Configuration & Professional Usage
 
-> **Last Updated:** April 2026 | **Target:** Claude Certified Architect Foundations (CCA-F) + Daily Professional Use
-> **Author:** Generated for Raj — Backend Tech Lead | AI-Enabled Architect Track
-
 ---
 
 ## 1. What Is Claude Code
