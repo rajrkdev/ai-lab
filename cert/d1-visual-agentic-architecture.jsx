@@ -83,6 +83,7 @@ response = client.messages.create(
     max_tokens=4096,
     tools=tools,          # Tool definitions
     messages=messages,    # Full conversation history
+    # Optional: extended_thinking={"type": "enabled", "budget_tokens": 8000}
 )
 
 // TypeScript
@@ -91,6 +92,7 @@ const response = await client.messages.create({
   max_tokens: 4096,
   tools,
   messages,
+  // Optional: extended_thinking: { type: "enabled", budget_tokens: 8000 }
 });` },
     { label: "2️⃣ Claude", title: "Step 2: Claude Evaluates and Responds", color: "#8B5CF6",
       content: "Claude reads the system prompt, all tool definitions, and the full conversation history. It then decides: should I respond with text, call one or more tools, or both? Claude's response.content is an array that can contain both text blocks and tool_use blocks simultaneously.",
@@ -321,12 +323,14 @@ function MultiAgent() {
   const agents = [
     { id: "coord", label: "🎯 Coordinator", color: "#3B82F6", y: 0,
       role: "Hub of hub-and-spoke. Decomposes tasks, delegates to subagents, aggregates results, checks quality gaps.",
-      config: `allowedTools: ["Agent"]  # MUST include this
+      config: `allowedTools: ["Agent"]  # MUST include this — renamed from 'Task' in v2.1.63
 agents: {
   "search": searchAgentDef,
   "analysis": analysisAgentDef,
   "synthesis": synthesisAgentDef,
-}`,
+}
+# Extended thinking: enable per-subagent if needed`,
+
       rules: "1) Decides WHICH subagents to invoke (not always all)\n2) Passes complete context in subagent prompts\n3) Evaluates output for gaps → re-delegates if needed\n4) Can emit multiple Agent calls in ONE response (parallel)",
       exam: "If report misses topics → check coordinator's task decomposition first (too narrow). Subagents executed correctly — the problem is what they were assigned." },
     { id: "search", label: "🔍 Search Agent", color: "#10B981", y: 1,
@@ -470,7 +474,7 @@ function HooksSystem() {
     { title: "🚫 Block: Refund > $500", color: "#EF4444",
       steps: [
         { label: "Claude requests: process_refund($750)", bg: "#EBF5FF" },
-        { label: "⚡ PreToolUse hook fires", bg: "#FEF3C7" },
+        { label: "⚡ PreToolUse hook fires (v2.0+) — can block, modify, or approve", bg: "#FEF3C7" },
         { label: "Hook checks: $750 > $500 limit → DENY", bg: "#FEF2F2" },
         { label: "Hook returns: permissionDecision: 'deny'", bg: "#FEF2F2" },
         { label: "Claude receives: 'Exceeds limit. Use escalate_to_human'", bg: "#FEF2F2" },

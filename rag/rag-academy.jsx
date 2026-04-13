@@ -489,66 +489,101 @@ const EmbeddingsContent = () => (
       </div>
     </div>
 
-    <h3 style={{ color: "#e6edf3", marginTop: 20, marginBottom: 8 }}>Embedding Model Comparison</h3>
+    <h3 style={{ color: "#e6edf3", marginTop: 20, marginBottom: 8 }}>Embedding Model Comparison (MTEB 2025)</h3>
     <div style={{ overflowX: "auto" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
         <thead>
           <tr style={{ background: "#161b22" }}>
-            {["Model", "Dims", "Speed", "Best For"].map(h => (
+            {["Model", "Dims", "MTEB", "Size", "Best For"].map(h => (
               <th key={h} style={{ padding: "8px 12px", textAlign: "left", color: "#8b949e", fontWeight: 600, border: "1px solid #21262d" }}>{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {[
-            ["voyage-3 (your stack!)", "1024", "Fast API", "Insurance domain, long docs"],
-            ["text-embedding-3-large", "3072", "API", "General, high accuracy"],
-            ["all-MiniLM-L6-v2", "384", "⚡ CPU local", "Speed-critical, lower quality"],
-            ["BAAI/bge-m3", "1024", "GPU/CPU", "Multilingual, dense+sparse"],
+            ["Gemini-embedding-exp (Google)", "3072", "73.2", "API", "Google Cloud stacks; highest API accuracy Apr 2026"],
+            ["NV-Embed-v2 (NVIDIA)", "4096", "72.3", "7B", "Highest OSS accuracy; needs GPU with 16GB VRAM"],
+            ["GTE-Qwen2-7B (Alibaba)", "3584", "72.1", "7B", "Open-source SoTA; strong multilingual + English"],
+            ["Stella-en-1.5B-v5", "1024", "71.3", "1.5B", "Best efficiency/quality ratio; CPU-feasible"],
+            ["voyage-3 (Voyage AI)", "1024", "67.1", "API", "Best for Claude/Anthropic stacks; low latency"],
+            ["jina-embeddings-v3", "1024", "65.5", "570M", "8192 token context; multilingual; late chunking"],
+            ["text-embedding-3-large (OpenAI)", "3072", "64.6", "API", "Best for OpenAI stacks; Matryoshka dims"],
+            ["BAAI/bge-m3", "1024", "68.2", "568M", "Multilingual dense+sparse hybrid; 8192 ctx"],
+            ["intfloat/e5-mistral-7b", "4096", "66.6", "7B", "Instruction-tuned; needs 'Query:' prefix"],
+            ["all-MiniLM-L6-v2", "384", "41.9", "22M", "CPU-fast only; use for prototypes/edge"],
           ].map((row, i) => (
             <tr key={i} style={{ background: i % 2 === 0 ? "#0d1117" : "#0a0e13" }}>
               {row.map((cell, j) => (
-                <td key={j} style={{ padding: "8px 12px", color: j === 0 ? "#00d4ff" : "#c9d1d9", border: "1px solid #21262d", fontFamily: j === 0 ? "monospace" : "inherit" }}>{cell}</td>
+                <td key={j} style={{ padding: "8px 12px", color: j === 0 ? "#00d4ff" : j === 2 ? "#4ade80" : "#c9d1d9", border: "1px solid #21262d", fontFamily: j === 0 ? "monospace" : "inherit" }}>{cell}</td>
               ))}
             </tr>
           ))}
         </tbody>
       </table>
+      <div style={{ color: "#475569", fontSize: 11, marginTop: 6 }}>MTEB = Massive Text Embedding Benchmark (MMTEB) average retrieval score. Data: April 2026 leaderboard. Benchmarks vary by task; check MTEB Leaderboard for your specific task.</div>
     </div>
 
     <CodeBlock lang="python" code={`import chromadb
-from chromadb.utils import embedding_functions
+import voyageai
 
-# Using Voyage AI (general setup)
-voyageai_ef = embedding_functions.create_langchain_embedding(
-    # or use voyageai directly
-)
+# Initialize Voyage AI client
+voyage = voyageai.Client()  # reads VOYAGE_API_KEY from env
 
-# Create collection with embedding model
-collection = chroma.create_collection(
+# Initialize ChromaDB
+chroma = chromadb.PersistentClient(path="./chroma_db")
+
+# Create collection (use cosine distance for normalized embeddings)
+collection = chroma.get_or_create_collection(
     name="insurance_policies",
-    metadata={"hnsw:space": "cosine"}  # use cosine distance
+    metadata={"hnsw:space": "cosine"}
 )
 
-# Add documents — ChromaDB embeds automatically
+# Index documents — batch embedding for efficiency
+docs = [
+    "Policy P-200 theft limit is $50,000 for APAC vehicles.",
+    "Claims must be filed within 30 days of the incident.",
+    "Section 4.2: Flood coverage requires endorsement E-400.",
+]
+metadatas = [
+    {"source": "P-200", "section": "theft", "page": 12},
+    {"source": "claims_guide", "section": "process", "page": 3},
+    {"source": "P-200", "section": "flood", "page": 18},
+]
+
+# Batch embed (efficient — one API call for all docs)
+embeddings = voyage.embed(
+    docs, model="voyage-3", input_type="document"
+).embeddings  # voyage-3: 1024 dims, MTEB 67.1
+
 collection.add(
-    documents=["Policy P-200 theft limit is $50,000",
-               "Claims must be filed within 30 days"],
-    metadatas=[{"source": "P-200", "section": "theft"},
-               {"source": "claims_guide", "section": "process"}],
-    ids=["chunk_001", "chunk_002"]
+    documents=docs,
+    embeddings=embeddings,
+    metadatas=metadatas,
+    ids=[f"chunk_{i:03d}" for i in range(len(docs))]
 )
 
-# Query — returns top-k most similar chunks
-results = collection.query(
-    query_texts=["What is the theft coverage amount?"],
-    n_results=3,
-    include=["documents", "distances", "metadatas"]
-)
+# Query — embed query with input_type="query" (different from document!)
+def rag_query(question: str, top_k: int = 3):
+    query_embedding = voyage.embed(
+        [question], model="voyage-3", input_type="query"
+    ).embeddings[0]
+    
+    results = collection.query(
+        query_embeddings=[query_embedding],
+        n_results=top_k,
+        include=["documents", "distances", "metadatas"]
+    )
+    
+    for doc, dist, meta in zip(
+        results["documents"][0],
+        results["distances"][0],
+        results["metadatas"][0]
+    ):
+        sim = 1 - dist  # cosine distance to similarity
+        print(f"Score: {sim:.3f} | Source: {meta['source']} | {doc[:60]}...")
 
-# distances close to 0.0 = very similar (cosine distance)
-for doc, dist in zip(results["documents"][0], results["distances"][0]):
-    print(f"Score: {1-dist:.3f} | {doc[:60]}...")`} />
+rag_query("What is the theft coverage limit?")
+# → Score: 0.947 | Source: P-200 | Policy P-200 theft limit is $50,000...`} />
 
     <Quiz questions={[
       {

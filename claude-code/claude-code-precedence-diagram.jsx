@@ -58,8 +58,8 @@ function PrecedencePyramid() {
       priority: "Priority 4",
       color: COLORS.project,
       width: "72%",
-      files: [".claude/settings.json", "./CLAUDE.md", ".claude/rules/*.md", ".claude/agents/*.md", ".claude/skills/*/SKILL.md", ".claude/commands/*.md", ".claude/output-styles/*.md", ".mcp.json"],
-      description: "Team-wide settings committed to version control. Everyone on the team gets the same rules.",
+      files: [".claude/settings.json", "./CLAUDE.md", ".claude/rules/*.md", ".claude/agents/*.md", ".claude/skills/*/SKILL.md", ".claude/commands/*.md", ".claude/output-styles/*.md", ".mcp.json", ".claude/MEMORY.md"],
+      description: "Team-wide settings committed to version control. Everyone on the team gets the same rules. Includes auto-generated MEMORY.md (v2.1.59) where Claude records discovered project facts.",
       analogy: "Like the team handbook — everyone follows the same standards.",
       overrides: "Overrides User settings",
       overriddenBy: "Enterprise, CLI, and Local settings"

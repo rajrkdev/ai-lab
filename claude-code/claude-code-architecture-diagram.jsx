@@ -237,6 +237,16 @@ function App() {
             gitIcon={true}
             note="In a monorepo, if cwd is /repo/packages/api, it loads CLAUDE.md from /repo/packages/api/, /repo/packages/, /repo/, etc."
           />
+          <Arrow color={C.cyan} dashed />
+
+          {/* Project MEMORY.md (Auto-Generated, Always Loaded) */}
+          <FileBox
+            name="⑭ MEMORY.md"
+            path=".claude/MEMORY.md"
+            color={C.cyan} bg={C.cyanBg} border={C.cyanBorder}
+            gitIcon={true}
+            note="v2.1.59+. Claude Code auto-generates this. Records discovered project facts, patterns, preferences. Capped at 200 lines. You read it; Claude writes it."
+          />
         </div>
 
         {/* Merged result */}

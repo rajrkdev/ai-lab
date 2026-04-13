@@ -185,22 +185,26 @@ AFTER (three specific tools):
         ))}
       </div>
 
-      <h4 style={{ fontSize: 13, fontWeight: 600, color: "#1E293B" }}>Environment Variable Expansion</h4>
+      <h4 style={{ fontSize: 13, fontWeight: 600, color: "#1E293B" }}>MCP Config Example (.mcp.json)</h4>
       <Code>{`// .mcp.json — secrets stay OUT of version control
 {
   "mcpServers": {
-    "github": {
+    "db-readonly": {
+      "type": "http",
+      "url": "https://mcp.mycompany.com/db-readonly",
+      "transport": "streamable-http",
+      "headers": { "Authorization": "Bearer \${DB_API_KEY}" }
+    },
+    "file-tools": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": {
-        "GITHUB_TOKEN": "\${GITHUB_TOKEN}",          // Required — errors if unset
-        "API_URL": "\${API_URL:-https://api.github.com}" // Default if unset
-      }
+      "args": ["-y", "@anthropic-ai/mcp-server-files"],
+      "env": { "ROOT_DIR": "\${PROJECT_ROOT}" }
     }
   }
 }
-// Syntax: \${VAR} — required. \${VAR:-default} — with fallback.
+// Env var syntax: \${VAR} — required. \${VAR:-default} — with fallback.
 // Supported in: command, args, env, url, headers`}</Code>
+      <Box type="key">MCP 2.0 (2025): Streamable HTTP replaces HTTP+SSE as the production transport. Specify "transport": "streamable-http" for remote servers. Local stdio servers (command/args) remain unchanged.</Box>
 
       <h4 style={{ fontSize: 13, fontWeight: 600, color: "#1E293B", marginTop: 12 }}>MCP Resources vs Tools</h4>
       <Compare
