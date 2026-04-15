@@ -2,7 +2,6 @@
 title: "LangChain: Deep Reference Guide"
 ---
 
-# LangChain: Deep Reference Guide
 ### Architecture · Patterns · Production · v1.1
 
 > **Audience:** This guide assumes Python proficiency, familiarity with LLM APIs, and working knowledge of RAG systems. It does not hand-hold on Python syntax — it goes directly into LangChain mechanics, decision rationale, and production trade-offs. Every section connects back to real production use cases.

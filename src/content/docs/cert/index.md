@@ -5,8 +5,6 @@ sidebar:
   order: 0
 ---
 
-# Claude Certified Architect: Foundations — Exam Prep Hub
-
 ## What This Certification Tests
 
 The **Claude Certified Architect: Foundations** exam validates your ability to design, build, and configure real-world AI systems using the Claude ecosystem. It goes beyond API knowledge — it tests architectural judgment, tradeoff reasoning, and implementation correctness.
