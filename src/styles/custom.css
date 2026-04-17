@@ -126,6 +126,55 @@
   color: var(--sl-color-accent);
 }
 
+/* ── Breadcrumbs ── */
+.c-breadcrumbs {
+  margin-bottom: 1rem;
+}
+
+.c-breadcrumbs__list {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.78rem;
+  color: var(--sl-color-gray-3);
+}
+
+.c-breadcrumbs__crumb {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.c-breadcrumbs__link {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--sl-color-gray-3);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.c-breadcrumbs__link:hover {
+  color: var(--sl-color-accent);
+  text-decoration: none;
+}
+
+.c-breadcrumbs__link[aria-current='page'] {
+  color: var(--sl-color-text);
+  pointer-events: none;
+  font-weight: 500;
+}
+
+.c-breadcrumbs__separator {
+  color: var(--sl-color-gray-5);
+  display: flex;
+  align-items: center;
+}
+
 /* ── Reading progress bar ──
    Injected via the global inline script so it works on every page
    regardless of which Starlight component is rendered. */
