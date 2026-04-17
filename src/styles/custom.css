@@ -492,7 +492,8 @@ body {
 
 .section-card:hover::before { opacity: 1; }
 
-.card-icon  { font-size: 2rem; line-height: 1; margin-bottom: 0.25rem; }
+.card-icon  { line-height: 1; margin-bottom: 0.25rem; color: var(--card-accent, var(--sl-color-accent)); }
+.card-icon svg { display: block; width: 2rem; height: 2rem; }
 .card-title { font-size: 1.0625rem; font-weight: 600; color: var(--sl-color-white); margin: 0; }
 .card-desc  { font-size: 0.8125rem; color: var(--sl-color-gray-3); margin: 0; line-height: 1.5; }
 .card-count {
