@@ -210,6 +210,48 @@ export default defineConfig({
 
   document.addEventListener('DOMContentLoaded', setup);
   document.addEventListener('astro:page-load', setup);
+
+  // ── Reading progress bar ─────────────────────────────────────
+  // Injected here (global script) so it works on every page without
+  // depending on any Starlight component override being rendered.
+  var progressBar = null;
+  var scrollHandler = null;
+
+  function setupProgressBar() {
+    // Remove any listener from a previous page navigation
+    if (progressBar && scrollHandler) {
+      window.removeEventListener('scroll', scrollHandler);
+    }
+
+    // Create the bar element once; reuse on subsequent navigations
+    progressBar = document.getElementById('reading-progress');
+    if (!progressBar) {
+      progressBar = document.createElement('div');
+      progressBar.id = 'reading-progress';
+      progressBar.setAttribute('role', 'progressbar');
+      progressBar.setAttribute('aria-valuenow', '0');
+      progressBar.setAttribute('aria-valuemin', '0');
+      progressBar.setAttribute('aria-valuemax', '100');
+      progressBar.setAttribute('aria-label', 'Reading progress');
+      document.body.appendChild(progressBar);
+    }
+
+    // Reset width on new page
+    progressBar.style.width = '0%';
+
+    scrollHandler = function() {
+      var scroll = window.scrollY;
+      var height = document.body.scrollHeight - window.innerHeight;
+      var pct = height > 0 ? Math.round((scroll / height) * 100) : 0;
+      progressBar.style.width = pct + '%';
+      progressBar.setAttribute('aria-valuenow', String(pct));
+    };
+
+    window.addEventListener('scroll', scrollHandler, { passive: true });
+  }
+
+  document.addEventListener('DOMContentLoaded', setupProgressBar);
+  document.addEventListener('astro:page-load', setupProgressBar);
 })();
 					`,
 				},

@@ -126,6 +126,27 @@
   color: var(--sl-color-accent);
 }
 
+/* ── Reading progress bar ──
+   Injected via the global inline script so it works on every page
+   regardless of which Starlight component is rendered. */
+#reading-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 0%;
+  background: var(--ctx-green, #00d46a);
+  z-index: 99999;
+  transition: width 0.1s linear;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #reading-progress {
+    transition: none;
+  }
+}
+
 /* ── prefers-reduced-motion: disable homepage animations ── */
 @media (prefers-reduced-motion: reduce) {
   .hero-typewriter,
