@@ -1,4 +1,4 @@
-// @ts-check
+﻿// @ts-check
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import react from '@astrojs/react';
@@ -26,25 +26,25 @@ export default defineConfig({
 						{
 							label: 'RAG Guides',
 							link: '/rag/',
-							icon: 'open-book',
+							icon: 'rocket',
 							items: [{ label: 'RAG Guides', autogenerate: { directory: 'rag' }, collapsed: false }],
 						},
 						{
 							label: 'BERT Architectures',
 							link: '/bert/',
-							icon: 'cpu',
+							icon: 'binoculars',
 							items: [{ label: 'BERT Architectures', autogenerate: { directory: 'bert' }, collapsed: false }],
 						},
 						{
 							label: 'LangChain Reference',
 							link: '/langchain/',
-							icon: 'link',
+							icon: 'puzzle',
 							items: [{ label: 'LangChain Reference', autogenerate: { directory: 'langchain' }, collapsed: false }],
 						},
 						{
 							label: 'Claude Code',
 							link: '/claude-code/',
-							icon: 'laptop',
+							icon: 'setting',
 							items: [{ label: 'Claude Code', autogenerate: { directory: 'claude-code' }, collapsed: false }],
 						},
 						{
@@ -79,7 +79,7 @@ export default defineConfig({
   var NAV_KEY = 'sl-nav-collapsed';
   var TOC_KEY = 'sl-toc-collapsed';
 
-  // SVG icons — chevron panel icons
+  // SVG icons â€” chevron panel icons
   var ICON_PANEL_CLOSE = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><polyline points="16 15 13 12 16 9"/></svg>';
   var ICON_PANEL_OPEN  = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><polyline points="13 9 16 12 13 15"/></svg>';
   var ICON_RPANEL_CLOSE = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18"/><polyline points="8 9 11 12 8 15"/></svg>';
@@ -125,7 +125,7 @@ export default defineConfig({
     });
     document.body.appendChild(navToggle);
 
-    // Right TOC toggle — always inject; CSS hides it when no right sidebar
+    // Right TOC toggle â€” always inject; CSS hides it when no right sidebar
     var tocToggle = document.createElement('button');
     tocToggle.id = 'sl-toc-toggle';
     tocToggle.setAttribute('aria-label', 'Toggle table of contents');
@@ -141,7 +141,7 @@ export default defineConfig({
     document.body.appendChild(tocToggle);
   }
 
-  // ── TOC scroll sync ──────────────────────────────────────────
+  // â”€â”€ TOC scroll sync â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Starlight's IntersectionObserver updates aria-current on TOC links but never
   // calls scrollIntoView, so active items below the visible TOC area are invisible.
   // This MutationObserver scrolls the active link into view whenever it changes.
@@ -171,7 +171,7 @@ export default defineConfig({
     });
   }
 
-  // ── Left nav scroll sync ─────────────────────────────────────
+  // â”€â”€ Left nav scroll sync â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Scroll the left sidebar so the active page link is visible.
   // Starlight marks the current page link with aria-current="page".
   // We manually adjust scrollTop so only the sidebar pane scrolls, not the page.
@@ -211,7 +211,7 @@ export default defineConfig({
   document.addEventListener('DOMContentLoaded', setup);
   document.addEventListener('astro:page-load', setup);
 
-  // ── Reading progress bar ─────────────────────────────────────
+  // â”€â”€ Reading progress bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Injected here (global script) so it works on every page without
   // depending on any Starlight component override being rendered.
   var progressBar = null;
@@ -260,3 +260,4 @@ export default defineConfig({
 		}),
 	],
 });
+
