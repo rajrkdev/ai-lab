@@ -1,6 +1,11 @@
 ---
 import type { Props } from '@astrojs/starlight/props';
 import Default from '@astrojs/starlight/components/Footer.astro';
+
+const path = Astro.url.pathname;
+function active(segment: string) {
+  return path.startsWith(`/ai-lab/${segment}/`) || path === `/ai-lab/${segment}` ? 'page' : undefined;
+}
 ---
 
 <Default {...Astro.props}><slot /></Default>
@@ -21,14 +26,14 @@ import Default from '@astrojs/starlight/components/Footer.astro';
 </footer>
 
 <nav class="ctx-mobile-tab-bar" aria-label="Module navigation">
-  <a href="/ai-lab/rag/" class="ctx-tab" aria-label="RAG Guides">
+  <a href="/ai-lab/rag/" class="ctx-tab" aria-label="RAG Guides" aria-current={active('rag')}>
     <!-- Send/rocket icon -->
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9 22 2z"/>
     </svg>
     <span>RAG</span>
   </a>
-  <a href="/ai-lab/bert/" class="ctx-tab" aria-label="BERT Architectures">
+  <a href="/ai-lab/bert/" class="ctx-tab" aria-label="BERT Architectures" aria-current={active('bert')}>
     <!-- CPU/chip icon -->
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/>
@@ -36,7 +41,7 @@ import Default from '@astrojs/starlight/components/Footer.astro';
     </svg>
     <span>BERT</span>
   </a>
-  <a href="/ai-lab/langchain/" class="ctx-tab" aria-label="LangChain Reference">
+  <a href="/ai-lab/langchain/" class="ctx-tab" aria-label="LangChain Reference" aria-current={active('langchain')}>
     <!-- Link/chain icon -->
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
@@ -44,14 +49,14 @@ import Default from '@astrojs/starlight/components/Footer.astro';
     </svg>
     <span>LangChain</span>
   </a>
-  <a href="/ai-lab/claude-code/" class="ctx-tab" aria-label="Claude Code">
+  <a href="/ai-lab/claude-code/" class="ctx-tab" aria-label="Claude Code" aria-current={active('claude-code')}>
     <!-- Terminal/prompt icon -->
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
     </svg>
     <span>Code</span>
   </a>
-  <a href="/ai-lab/cert/" class="ctx-tab" aria-label="Cert Prep">
+  <a href="/ai-lab/cert/" class="ctx-tab" aria-label="Cert Prep" aria-current={active('cert')}>
     <!-- Award/cert icon -->
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/>
@@ -135,5 +140,14 @@ import Default from '@astrojs/starlight/components/Footer.astro';
   .ctx-tab:hover {
     color: var(--sl-color-accent);
     text-decoration: none;
+  }
+
+  .ctx-tab[aria-current='page'] {
+    color: var(--sl-color-accent);
+    font-weight: 600;
+  }
+
+  .ctx-tab[aria-current='page'] svg {
+    filter: drop-shadow(0 0 4px var(--sl-color-accent));
   }
 </style>
