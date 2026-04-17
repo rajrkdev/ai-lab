@@ -265,7 +265,7 @@ Claude Code walks **up** the directory tree from CWD, checking each directory fo
 | `/config` / `/settings` | Opens settings interface |
 | `/permissions` / `/allowed-tools` | Manage tool permissions |
 | `/model [model]` | Switch AI model (←/→ adjust effort) |
-| `/effort [level]` | Set effort: `low` / `medium` / `high` (v2.1.72: `max` removed) |
+| `/effort [level]` | Set effort: `low` / `medium` / `high` / `xhigh` / `max` (available levels depend on model) |
 | `/fast [on/off]` | Toggle fast mode for Opus 4.6 (v2.1.36) |
 | `/output-style [style]` | Set output style |
 | `/theme` | Change color theme |
@@ -382,7 +382,7 @@ Array settings **merge** across scopes (concatenated, deduplicated). If **denied
   },
   
   // Restrict available models
-  "availableModels": ["claude-sonnet-4-6-*", "claude-opus-4-6-*"],
+  "availableModels": ["claude-sonnet-4-6-*", "claude-opus-4-6-*", "claude-opus-4-7-*"],
   
   // Response language
   "language": "en",
@@ -392,7 +392,7 @@ Array settings **merge** across scopes (concatenated, deduplicated). If **denied
   
   // Map friendly model aliases to specific model IDs (v2.1.73)
   "modelOverrides": {
-    "opus": "claude-opus-4-6-20260305",
+    "opus": "claude-opus-4-7-20260401",
     "sonnet": "claude-sonnet-4-6-20260305"
   },
   
@@ -498,7 +498,7 @@ Local Settings → allow: [...], deny: [...], ask: [...]
 |----------|---------|-------------|
 | `CLAUDE_CODE_MAX_OUTPUT_TOKENS` | — | Max output tokens per response |
 | `CLAUDE_CODE_MAX_RETRIES` | 10 | Max API retries |
-| `CLAUDE_CODE_EFFORT_LEVEL` | — | Effort level: `low` / `medium` / `high` (`max` removed in v2.1.72) |
+| `CLAUDE_CODE_EFFORT_LEVEL` | — | Effort level: `low` / `medium` / `high` / `xhigh` / `max` (available levels depend on model) |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | 83.5 | Auto-compact trigger (1-100) |
 | `BASH_DEFAULT_TIMEOUT_MS` | — | Bash command timeout |
 | `API_TIMEOUT_MS` | 600000 | API request timeout |
@@ -1052,8 +1052,8 @@ Everything before it = cache HIT
 - **Break-even:** After single cache read (5-min TTL)
 - **Typical hit rate:** 70-95% in active sessions
 - **Example:** 400K input tokens, 95% hit rate → costs ~15% of non-cached pricing
-- **Average cost:** ~$6/developer/day, <$12 for 90% of users
-- **Monthly team average:** $100-200/developer with Sonnet 4.6
+- **Average cost:** ~$13/developer/active day, <$30 for 90% of users
+- **Monthly average:** $150-250/developer/month
 
 ### What Breaks Cache
 | Action | Impact |

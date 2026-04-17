@@ -1,0 +1,78 @@
+---
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+---
+
+<StarlightPage
+  frontmatter={{
+    title: '404 — Page Not Found',
+    description: 'This page could not be found.',
+    template: 'splash',
+  }}
+>
+  <div class="ctx-not-found">
+    <pre class="ctx-terminal-404">raj@context:~$ find . -name "this-page"
+<span class="t-err">find: no results matching pattern</span>
+
+raj@context:~$ suggest --recovery
+→ Use Ctrl+K to search for content
+→ Return to homepage
+→ Browse a module below</pre>
+
+    <nav class="ctx-recovery-links" aria-label="Recovery navigation">
+      <a href="/ai-lab/">← Homepage</a>
+      <a href="/ai-lab/rag/">RAG Guides</a>
+      <a href="/ai-lab/bert/">BERT Architectures</a>
+      <a href="/ai-lab/langchain/">LangChain</a>
+      <a href="/ai-lab/claude-code/">Claude Code</a>
+      <a href="/ai-lab/cert/">Cert Prep</a>
+    </nav>
+  </div>
+</StarlightPage>
+
+<style>
+  .ctx-not-found {
+    max-width: 42rem;
+    margin: 2rem auto;
+  }
+
+  .ctx-terminal-404 {
+    background: #0d1117;
+    color: #8b949e;
+    border: 1px solid #30363d;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+    white-space: pre-wrap;
+    font-family: 'Courier New', Courier, monospace;
+  }
+
+  .t-err {
+    color: #ff5f56;
+  }
+
+  .ctx-recovery-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .ctx-recovery-links a {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background: var(--sl-color-bg-sidebar);
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 0.375rem;
+    text-decoration: none;
+    color: var(--sl-color-text-accent);
+    font-size: 0.875rem;
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .ctx-recovery-links a:hover {
+    border-color: var(--ctx-green, #00d46a);
+    background: var(--sl-color-bg-nav);
+    text-decoration: none;
+  }
+</style>

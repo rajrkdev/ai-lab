@@ -125,8 +125,8 @@ The session that generated code retains reasoning context — confirmation bias 
 
 ### NEW: 2026 FEATURE RULES (v2.1.x — Exam Ready)
 
-**Rule 26: Effort Levels Are Now Low / Medium / High Only**  
-Since v2.1.72, the `max` effort level was removed. Valid values: `low`, `medium`, `high`. The `auto` keyword in some CLI contexts selects based on context. The default effort level is now **high** for API, Bedrock, Vertex, Team, and Enterprise tiers (v2.1.94) — NOT medium.
+**Rule 26: Effort Levels Include xhigh and max**  
+Valid effort values: `low`, `medium`, `high`, `xhigh`, `max`; available levels depend on the model. The `auto` keyword in some CLI contexts selects based on context. The default effort level is **high** for API, Bedrock, Vertex, Team, and Enterprise tiers (v2.1.94) — NOT medium.
 
 **Rule 27: HTTP Hooks POST JSON to a URL (v2.1.63)**  
 Hook type `"http"` sends the same JSON payload as a `command` hook (via stdin) as an HTTP POST to a configured URL. Useful for enterprise webhook integrations, Slack notifications, audit systems. Returning `{ "permissionDecision": "deny" }` from an HTTP PreToolUse hook blocks the tool call identically to a `command` hook returning exit code 2.

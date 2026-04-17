@@ -32,7 +32,7 @@ Reserved buffer: 33K–45K tokens for system overhead
 **Key metrics:**
 - Standard context window: **200K tokens**
 - Extended context window: **1M tokens** (Opus 4.6 and Sonnet 4.6, at standard pricing since March 14, 2026 — no surcharge)
-- Average API cost: **~$6/developer/day** (90th percentile under $12)
+- Average API cost: **~$13/developer/active day** (90th percentile under $30; $150-250/month)
 - Input tokens account for **85–92%** of total API costs in typical coding sessions
 
 ### 1.2 Hidden Token Costs
@@ -253,10 +253,12 @@ Does not change the session effort level — subsequent turns revert to the sess
 | Level | Thinking tokens | Use cases | Token impact |
 |-------|----------------|-----------|-------------|
 | low | 0–500 (may skip entirely) | Formatting, linting, lookups, file moves | Saves thousands of output tokens per turn |
-| medium | Balanced (default) | Most coding: features, tests, docs, refactoring | Standard allocation |
+| medium | Balanced | Most coding: features, tests, docs, refactoring | Standard allocation |
 | high | Deep reasoning (2–4× more) | Complex debugging, architecture decisions | Expensive but justified |
+| xhigh | Extended reasoning | Very hard problems, large refactors | Significantly higher cost |
+| max | Maximum reasoning | Most complex, open-ended problems | Highest cost (model-dependent) |
 
-> **Note:** The `max` effort level was removed in v2.1.72. Use `ultrathink` in the prompt for maximum one-turn depth.
+> **Note:** Valid effort levels are `low`, `medium`, `high`, `xhigh`, and `max`; available levels depend on the model. Use `ultrathink` in the prompt to request maximum reasoning depth for a single turn.
 
 ### Effort in Frontmatter
 
@@ -396,7 +398,7 @@ TIER 2 — Subagents (Haiku or Sonnet per frontmatter)
   └── ~1× cost (same process, scoped context)
 
 TIER 3 — Agent Teams (only when lateral comms needed)
-  └── 2–4 teammates max, ~5× cost
+  └── 2–4 teammates max, ~3–7× cost
   └── Use isolation: "worktree" for parallel changes
 ```
 

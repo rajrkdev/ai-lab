@@ -2,6 +2,8 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import react from '@astrojs/react';
+import starlightSidebarTopics from 'starlight-sidebar-topics';
+import starlightTags from 'starlight-tags';
 
 // https://astro.build/config
 export default defineConfig({
@@ -12,10 +14,67 @@ export default defineConfig({
 		starlight({
 			title: 'Context',
 			customCss: ['./src/styles/custom.css'],
+			lastUpdated: true,
+			pagination: true,
+			tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 3 },
+			social: [
+				{ icon: 'github', label: 'GitHub', href: 'https://github.com/rajrkdev/ai-lab' },
+			],
+			components: {
+				PageTitle: './src/components/PageTitle.astro',
+				Footer: './src/components/Footer.astro',
+			},
+			plugins: [
+				starlightSidebarTopics(
+					[
+						{
+							label: 'RAG Guides',
+							link: '/rag/',
+							icon: 'open-book',
+							items: [{ label: 'RAG Guides', autogenerate: { directory: 'rag' }, collapsed: false }],
+						},
+						{
+							label: 'BERT Architectures',
+							link: '/bert/',
+							icon: 'cpu',
+							items: [{ label: 'BERT Architectures', autogenerate: { directory: 'bert' }, collapsed: false }],
+						},
+						{
+							label: 'LangChain Reference',
+							link: '/langchain/',
+							icon: 'link',
+							items: [{ label: 'LangChain Reference', autogenerate: { directory: 'langchain' }, collapsed: false }],
+						},
+						{
+							label: 'Claude Code',
+							link: '/claude-code/',
+							icon: 'laptop',
+							items: [{ label: 'Claude Code', autogenerate: { directory: 'claude-code' }, collapsed: false }],
+						},
+						{
+							label: 'Cert Prep',
+							link: '/cert/',
+							icon: 'star',
+							items: [{ label: 'Cert Prep', autogenerate: { directory: 'cert' }, collapsed: false }],
+						},
+					],
+					// Exclude tag pages (starlight-tags) and 404 from topic association
+					{ exclude: ['/tags', '/tags/**', '/404'] },
+				),
+				starlightTags({ sidebar: false }),
+			],
 			head: [
 				{
 					tag: 'meta',
-					attrs: { name: 'robots', content: 'noindex, nofollow' },
+					attrs: { name: 'robots', content: 'noindex, nofollow, noarchive, nosnippet, noimageindex' },
+				},
+				{
+					tag: 'meta',
+					attrs: { name: 'googlebot', content: 'noindex, nofollow, noarchive, nosnippet, noimageindex' },
+				},
+				{
+					tag: 'meta',
+					attrs: { name: 'bingbot', content: 'noindex, nofollow' },
 				},
 				{
 					tag: 'script',
@@ -159,13 +218,7 @@ export default defineConfig({
 					`,
 				},
 			],
-			sidebar: [
-				{ label: 'Claude Code', autogenerate: { directory: 'claude-code' } },
-				{ label: 'RAG Guides', autogenerate: { directory: 'rag' } },
-				{ label: 'BERT Architectures', autogenerate: { directory: 'bert' } },
-				{ label: 'LangChain Reference', autogenerate: { directory: 'langchain' } },
-				{ label: 'Cert Prep', autogenerate: { directory: 'cert' } },
-			],
+
 		}),
 	],
 });

@@ -2,6 +2,166 @@
    AI Lab — Custom Styles
    ============================================================ */
 
+/* ═══════════════════════════════════════════════════════════════
+   DESIGN SYSTEM — Terminal Green Accent Tokens
+   Remaps Starlight's accent variables so the terminal-green
+   identity propagates into every Starlight component at once:
+   sidebar highlights, buttons, links, badges, active states.
+   ═══════════════════════════════════════════════════════════════ */
+
+:root,
+[data-theme='dark'] {
+  --sl-color-accent-low:   #003d1f;
+  --sl-color-accent:       #00a854;
+  --sl-color-accent-high:  #00d46a;
+
+  /* Custom tokens for components not in Starlight's variable set */
+  --ctx-green:   #00d46a;
+  --ctx-amber:   #f5a623;
+  --ctx-surface: #1a1f1b;
+}
+
+[data-theme='light'] {
+  --sl-color-accent-low:   #d6f5e5;
+  --sl-color-accent:       #00844a;
+  --sl-color-accent-high:  #006638;
+
+  --ctx-green:   #006638;
+  --ctx-amber:   #b36800;
+  --ctx-surface: #f5fdf8;
+}
+
+/* ── Monospace site title (terminal wordmark) ── */
+.site-title {
+  font-family: var(--sl-font-mono);
+  letter-spacing: -0.02em;
+}
+
+/* ── Active sidebar page highlight ──
+   Restores [aria-current='page'] styling in case any custom rule
+   overrides Starlight's default active link appearance. */
+.sl-sidebar a[aria-current='page'],
+.sl-sidebar a[aria-current='page']:hover {
+  color: var(--sl-color-text-accent) !important;
+  background-color: var(--sl-color-accent-low) !important;
+  font-weight: 600;
+  border-inline-start: 2px solid var(--sl-color-accent);
+}
+
+/* ── Sidebar link wrapping — long page titles ── */
+.sl-sidebar a {
+  white-space: normal;
+  word-break: break-word;
+}
+
+/* ── Sidebar section dividers between modules ── */
+.sl-sidebar .top-level > li + li {
+  border-top: 1px solid var(--sl-color-hairline);
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+}
+
+/* ── Terminal-green H2 left-border accent ──
+   Extends the terminal identity from the homepage into every
+   content page heading. */
+.sl-markdown-content h2 {
+  border-left: 3px solid var(--ctx-green);
+  padding-left: 0.75rem;
+  margin-left: -0.75rem;
+}
+
+/* ── $ prompt prefix before page H1 ──
+   A subtle monospace decoration that references the bash prompt
+   from the homepage terminal. */
+.sl-markdown-content > h1::before {
+  content: '$ ';
+  color: var(--ctx-green);
+  font-family: var(--sl-font-mono);
+  font-size: 0.75em;
+  opacity: 0.6;
+}
+
+/* ── Alternating table row colours ──
+   Makes dense tables (Vector Stores, Cert domains, Self-RAG)
+   easier to scan. */
+.sl-markdown-content tbody tr:nth-child(even) {
+  background-color: var(--sl-color-bg-nav);
+}
+
+/* ── Overflow scroll for wide tables on all viewports ── */
+.sl-markdown-content table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── External link indicator ──
+   Users see ↗ on links that leave the site. */
+.sl-markdown-content a[href^="http"]:not([href*="rajrkdev.github.io"])::after {
+  content: ' \2197';
+  font-size: 0.8em;
+  opacity: 0.6;
+}
+
+/* ── Visited link colour ──
+   Returns users to unread content on repeat visits. */
+.sl-markdown-content a:visited {
+  color: var(--sl-color-gray-3);
+}
+
+/* Exclude nav/pagination — only inline content links */
+.sl-sidebar a:visited,
+.pagination-links a:visited {
+  color: inherit;
+}
+
+/* ── Pagefind search empty-state terminal styling ── */
+.pagefind-ui__message {
+  font-family: var(--sl-font-mono);
+  font-size: 13px;
+  color: var(--sl-color-gray-3);
+}
+.pagefind-ui__message::before {
+  content: 'raj@context:~$ search: ';
+  color: var(--sl-color-accent);
+}
+
+/* ── prefers-reduced-motion: disable homepage animations ── */
+@media (prefers-reduced-motion: reduce) {
+  .hero-typewriter,
+  .hero-cursor,
+  .hero-counter,
+  .terminal-cursor,
+  .scroll-indicator {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+  }
+}
+
+/* ── Narrow viewport homepage fix ──
+   Prevents terminal lines from breaking mid-token. */
+@media (max-width: 480px) {
+  .terminal-line {
+    word-break: break-all;
+    font-size: 0.75rem;
+  }
+}
+
+/* ── Mobile: body bottom padding for tab bar ──
+   Applied globally when the mobile tab bar is visible so content
+   isn't hidden behind the fixed navigation. */
+@media (max-width: 72rem) {
+  body {
+    padding-bottom: 56px;
+  }
+}
+
+/* ── Heading anchor hit area (mobile) ── */
+.sl-markdown-content :is(h2, h3, h4) > a.anchor {
+  padding: 0 8px;
+}
+
 /* ── Sidebar Toggle Buttons ── */
 #sl-nav-toggle,
 #sl-toc-toggle {

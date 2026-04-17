@@ -644,13 +644,15 @@ claude -p "Review the changes in this PR for security and correctness" \
 
 ### Effort Levels (v2.1.72+)
 
-**Critical exam knowledge:** The `max` effort level was **removed** in v2.1.72.
+**Critical exam knowledge:** Valid effort levels are `low`, `medium`, `high`, `xhigh`, and `max`; available levels depend on the model.
 
 | Level | Use Case |
 |-------|----------|
 | `low` | Quick lookups, simple edits, status checks |
 | `medium` | Standard development tasks |
-| `high` | Complex architectural changes, deep analysis (now the DEFAULT for API/Bedrock/Vertex/Team/Enterprise since v2.1.94) |
+| `high` | Complex architectural changes, deep analysis (DEFAULT for API/Bedrock/Vertex/Team/Enterprise since v2.1.94) |
+| `xhigh` | Extended reasoning for very hard problems |
+| `max` | Maximum reasoning for the most complex tasks (model-dependent) |
 
 ```bash
 # CLI: Set effort
@@ -856,11 +858,12 @@ Sandbox mode runs Claude Code's tool calls inside an isolated environment. File 
 
 | Use Case | Model | Notes |
 |---|---|---|
-| Complex architecture, long docs | `claude-opus-4-6` | Highest capability |
+| Highest capability, complex reasoning | `claude-opus-4-7` | Latest Opus (April 2026) |
+| Complex architecture, long docs | `claude-opus-4-6` | Previous Opus |
 | Standard development, agentic tasks | `claude-sonnet-4-6` | Best speed/quality balance |
 | Fast classification, grading | `claude-haiku-4-5` | Low latency, low cost |
 
-**Deprecated:** Do not use `claude-opus-4-0`, `claude-opus-4-1`, or `claude-sonnet-4-5` in new Claude Code configurations — prefer the `.6` suffix versions for latest capability.
+**Deprecated:** Do not use `claude-opus-4-0`, `claude-opus-4-1`, or `claude-sonnet-4-5` in new Claude Code configurations — prefer the `.6` or `.7` suffix versions for latest capability.
 
 ### Session Context Isolation for Review
 

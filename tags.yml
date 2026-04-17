@@ -1,0 +1,51 @@
+# tags.yml — Tag definitions for starlight-tags plugin
+# Pages reference tags via frontmatter: tags: [tag-key]
+
+tags:
+  beginner:
+    label: Beginner
+    description: Introductory content suitable for newcomers
+    difficulty: beginner
+    color: "#006638"
+
+  intermediate:
+    label: Intermediate
+    description: Content requiring some background knowledge
+    difficulty: intermediate
+    color: "#1a5fa8"
+
+  advanced:
+    label: Advanced
+    description: In-depth technical content for experienced practitioners
+    difficulty: advanced
+    color: "#7a4e0a"
+
+  rag:
+    label: RAG
+    description: Retrieval-Augmented Generation techniques and patterns
+
+  bert:
+    label: BERT
+    description: BERT architecture, variants, and applications
+
+  langchain:
+    label: LangChain
+    description: LangChain framework and LangGraph
+
+  claude-code:
+    label: Claude Code
+    description: Claude Code configuration and usage
+
+  cert:
+    label: Cert Prep
+    description: Certification preparation materials
+
+  interactive:
+    label: Interactive
+    description: Interactive tools and guided exercises
+    contentType: lab
+
+  reference:
+    label: Reference
+    description: Reference documentation and quick lookup tables
+    contentType: reference
