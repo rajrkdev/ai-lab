@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 
 const COLORS = {
   gray:   { bg: "#F1EFE8", border: "#888780", text: "#444441", sub: "#5F5E5A" },
@@ -93,7 +93,7 @@ function Label({ x, y, text, anchor = "middle", size = 11 }) {
 
 export default function AdvisorDiagram() {
   const theme = useTheme();
-  const [tooltip, setTooltip] = useState(null); // { key }
+  const [tooltip, setTooltip] = useState(null); // { key, x, y } — viewport coords
 
   const tips = {
     run:       { title: "Run /advisor",               body: "Available from Claude Code v2.1.101. Opens an interactive model picker. Session-scoped — re-run it each new session. Re-running mid-session lets you swap the advisor model without restarting." },
@@ -112,8 +112,9 @@ export default function AdvisorDiagram() {
   };
 
   function tip(key) {
-    return () => {
-      setTooltip((prev) => prev?.key === key ? null : { key });
+    return (e) => {
+      if (tooltip?.key === key) { setTooltip(null); return; }
+      setTooltip({ key, x: e.clientX, y: e.clientY });
     };
   }
 
@@ -232,59 +233,55 @@ export default function AdvisorDiagram() {
         ))}
       </svg>
 
-      {/* Info panel — below the diagram, never overlapping */}
-      <div
-        role="region"
-        aria-live="polite"
-        style={{
-          minHeight: tooltip ? undefined : 0,
-          marginTop: 8,
-          borderRadius: 8,
-          overflow: "hidden",
-          border: tooltip ? `1px solid ${ac.border}` : "1px solid transparent",
-          borderLeft: tooltip ? `3px solid ${ac.border}` : "3px solid transparent",
-          transition: "border-color 0.15s",
-        }}
-      >
-        {tooltip && (() => {
-          const tip = tips[tooltip.key];
-          return (
-            <>
-              <div style={{
-                padding: "7px 12px 6px",
-                borderBottom: `1px solid ${ac.border}`,
-                fontWeight: 600,
-                fontSize: 11,
-                letterSpacing: "0.02em",
-                color: ac.sub,
-                background: `${ac.border}18`,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}>
-                <span>{tip.title}</span>
-                <button
-                  onClick={() => setTooltip(null)}
-                  aria-label="Close"
-                  style={{
-                    background: "none", border: "none", cursor: "pointer",
-                    color: ac.sub, fontSize: 14, lineHeight: 1, padding: "0 2px",
-                  }}
-                >✕</button>
-              </div>
-              <div style={{
-                padding: "8px 12px 10px",
-                fontSize: 12,
-                color: ac.text,
-                lineHeight: 1.6,
-                background: ac.bg,
-              }}>
-                {tip.body}
-              </div>
-            </>
-          );
-        })()}
-      </div>
+      {/* Floating tooltip — fixed to viewport so it's near the click and never clipped */}
+      {tooltip && (() => {
+        const t = tips[tooltip.key];
+        const TIP_W = 320;
+        const OFFSET = 14;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        let left = tooltip.x + OFFSET;
+        if (left + TIP_W > vw - 8) left = tooltip.x - TIP_W - OFFSET;
+        left = Math.max(8, left);
+        const ESTIMATED_H = 120;
+        let top = tooltip.y + OFFSET;
+        if (top + ESTIMATED_H > vh - 8) top = tooltip.y - ESTIMATED_H - OFFSET;
+        top = Math.max(8, top);
+        return (
+          <div
+            role="tooltip"
+            style={{
+              position: "fixed",
+              top, left,
+              width: TIP_W,
+              borderRadius: 8,
+              background: ac.bg,
+              border: `1px solid ${ac.border}`,
+              borderLeft: `3px solid ${ac.border}`,
+              fontSize: 12,
+              color: ac.text,
+              lineHeight: 1.6,
+              boxShadow: "0 4px 20px rgba(0,0,0,0.18)",
+              zIndex: 9999,
+              pointerEvents: "none",
+              overflow: "hidden",
+            }}
+          >
+            <div style={{
+              padding: "7px 12px 6px",
+              borderBottom: `1px solid ${ac.border}`,
+              fontWeight: 600,
+              fontSize: 11,
+              letterSpacing: "0.02em",
+              color: ac.sub,
+              background: `${ac.border}18`,
+            }}>
+              {t.title}
+            </div>
+            <div style={{ padding: "8px 12px 10px" }}>{t.body}</div>
+          </div>
+        );
+      })()}
 
       {/* Legend */}
       <div style={{
