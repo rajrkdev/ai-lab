@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 
 const COLORS = {
   gray:   { bg: "#F1EFE8", border: "#888780", text: "#444441", sub: "#5F5E5A" },
@@ -93,8 +93,7 @@ function Label({ x, y, text, anchor = "middle", size = 11 }) {
 
 export default function AdvisorDiagram() {
   const theme = useTheme();
-  const [tooltip, setTooltip] = useState(null); // { key, x, y }
-  const containerRef = useRef(null);
+  const [tooltip, setTooltip] = useState(null); // { key }
 
   const tips = {
     run:       { title: "Run /advisor",               body: "Available from Claude Code v2.1.101. Opens an interactive model picker. Session-scoped — re-run it each new session. Re-running mid-session lets you swap the advisor model without restarting." },
@@ -113,12 +112,8 @@ export default function AdvisorDiagram() {
   };
 
   function tip(key) {
-    return (e) => {
-      if (tooltip?.key === key) { setTooltip(null); return; }
-      const rect = containerRef.current?.getBoundingClientRect();
-      const x = rect ? e.clientX - rect.left : 0;
-      const y = rect ? e.clientY - rect.top  : 0;
-      setTooltip({ key, x, y });
+    return () => {
+      setTooltip((prev) => prev?.key === key ? null : { key });
     };
   }
 
@@ -137,7 +132,7 @@ export default function AdvisorDiagram() {
   const ac = COLORS[accentKey];
 
   return (
-    <div ref={containerRef} style={{ fontFamily: "system-ui, sans-serif", padding: "12px 0", position: "relative" }}>
+    <div style={{ fontFamily: "system-ui, sans-serif", padding: "12px 0" }}>
       <svg width="100%" viewBox="0 0 680 690" aria-label="The /advisor command in Claude Code — dual-model flow diagram">
         <defs>
           <marker id="arrowhead" viewBox="0 0 10 10" refX={8} refY={5}
@@ -237,64 +232,59 @@ export default function AdvisorDiagram() {
         ))}
       </svg>
 
-      {/* Floating tooltip — flips horizontally AND vertically, Escape to close */}
-      {tooltip && (() => {
-        const tip = tips[tooltip.key];
-        const containerWidth  = containerRef.current?.offsetWidth  ?? 680;
-        const containerHeight = containerRef.current?.offsetHeight ?? 690;
-        const tipWidth = Math.min(320, containerWidth - 24);
-        const OFFSET = 14;
-
-        // Horizontal: prefer right of cursor, flip left if overflow
-        let left = tooltip.x + OFFSET;
-        if (left + tipWidth > containerWidth - 8) left = tooltip.x - tipWidth - OFFSET;
-        left = Math.max(4, left);
-
-        // Vertical: prefer below cursor, flip up if near bottom
-        const ESTIMATED_HEIGHT = 110;
-        let top = tooltip.y + OFFSET;
-        if (top + ESTIMATED_HEIGHT > containerHeight - 8) top = tooltip.y - ESTIMATED_HEIGHT - OFFSET;
-        top = Math.max(4, top);
-
-        return (
-          <div
-            role="tooltip"
-            style={{
-              position: "absolute",
-              top, left,
-              width: tipWidth,
-              borderRadius: 8,
-              background: ac.bg,
-              border: `1px solid ${ac.border}`,
-              borderLeft: `3px solid ${ac.border}`,
-              fontSize: 12,
-              color: ac.text,
-              lineHeight: 1.6,
-              boxShadow: "0 4px 20px rgba(0,0,0,0.18)",
-              zIndex: 10,
-              pointerEvents: "none",
-              overflow: "hidden",
-            }}
-          >
-            {/* Title row */}
-            <div style={{
-              padding: "7px 12px 6px",
-              borderBottom: `1px solid ${ac.border}`,
-              fontWeight: 600,
-              fontSize: 11,
-              letterSpacing: "0.02em",
-              color: ac.sub,
-              background: `${ac.border}18`,
-            }}>
-              {tip.title}
-            </div>
-            {/* Body */}
-            <div style={{ padding: "8px 12px 10px" }}>
-              {tip.body}
-            </div>
-          </div>
-        );
-      })()}
+      {/* Info panel — below the diagram, never overlapping */}
+      <div
+        role="region"
+        aria-live="polite"
+        style={{
+          minHeight: tooltip ? undefined : 0,
+          marginTop: 8,
+          borderRadius: 8,
+          overflow: "hidden",
+          border: tooltip ? `1px solid ${ac.border}` : "1px solid transparent",
+          borderLeft: tooltip ? `3px solid ${ac.border}` : "3px solid transparent",
+          transition: "border-color 0.15s",
+        }}
+      >
+        {tooltip && (() => {
+          const tip = tips[tooltip.key];
+          return (
+            <>
+              <div style={{
+                padding: "7px 12px 6px",
+                borderBottom: `1px solid ${ac.border}`,
+                fontWeight: 600,
+                fontSize: 11,
+                letterSpacing: "0.02em",
+                color: ac.sub,
+                background: `${ac.border}18`,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}>
+                <span>{tip.title}</span>
+                <button
+                  onClick={() => setTooltip(null)}
+                  aria-label="Close"
+                  style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    color: ac.sub, fontSize: 14, lineHeight: 1, padding: "0 2px",
+                  }}
+                >✕</button>
+              </div>
+              <div style={{
+                padding: "8px 12px 10px",
+                fontSize: 12,
+                color: ac.text,
+                lineHeight: 1.6,
+                background: ac.bg,
+              }}>
+                {tip.body}
+              </div>
+            </>
+          );
+        })()}
+      </div>
 
       {/* Legend */}
       <div style={{
