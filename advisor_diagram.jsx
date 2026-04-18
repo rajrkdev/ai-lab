@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 
 const COLORS = {
   gray:   { bg: "#F1EFE8", border: "#888780", text: "#444441", sub: "#5F5E5A" },
@@ -114,7 +115,7 @@ export default function AdvisorDiagram() {
   function tip(key) {
     return (e) => {
       if (tooltip?.key === key) { setTooltip(null); return; }
-      setTooltip({ key, x: e.clientX, y: e.clientY });
+      setTooltip({ key, x: e.pageX, y: e.pageY });
     };
   }
 
@@ -233,25 +234,26 @@ export default function AdvisorDiagram() {
         ))}
       </svg>
 
-      {/* Floating tooltip — fixed to viewport so it's near the click and never clipped */}
-      {tooltip && (() => {
+      {/* Floating tooltip — portal into body with position:absolute+pageXY so it scrolls with the page */}
+      {tooltip && createPortal((() => {
         const t = tips[tooltip.key];
         const TIP_W = 320;
         const OFFSET = 14;
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
+        const docW = document.documentElement.clientWidth;
         let left = tooltip.x + OFFSET;
-        if (left + TIP_W > vw - 8) left = tooltip.x - TIP_W - OFFSET;
+        if (left + TIP_W > docW - 8) left = tooltip.x - TIP_W - OFFSET;
         left = Math.max(8, left);
         const ESTIMATED_H = 120;
         let top = tooltip.y + OFFSET;
-        if (top + ESTIMATED_H > vh - 8) top = tooltip.y - ESTIMATED_H - OFFSET;
+        // If near the bottom of the viewport, flip upward
+        const fromViewportBottom = window.innerHeight - (tooltip.y - window.scrollY);
+        if (fromViewportBottom < ESTIMATED_H + 16) top = tooltip.y - ESTIMATED_H - OFFSET;
         top = Math.max(8, top);
         return (
           <div
             role="tooltip"
             style={{
-              position: "fixed",
+              position: "absolute",
               top, left,
               width: TIP_W,
               borderRadius: 8,
@@ -281,7 +283,7 @@ export default function AdvisorDiagram() {
             <div style={{ padding: "8px 12px 10px" }}>{t.body}</div>
           </div>
         );
-      })()}
+      })(), document.body)}
 
       {/* Legend */}
       <div style={{
