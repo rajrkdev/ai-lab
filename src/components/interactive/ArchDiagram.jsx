@@ -770,10 +770,6 @@ function App() {
         ))}
       </div>
 
-      {/* Footer */}
-      <div style={{ textAlign: "center", padding: "20px 0", color: C.textDim, fontSize: 11 }}>
-        Source: Official Anthropic documentation — code.claude.com/docs
-      </div>
     </div>
   );
 }
