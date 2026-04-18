@@ -1,6 +1,6 @@
 ---
 title: "Claude Code: Context, Cost & Token Efficiency — Reference"
-description: "Complete reference for context management, prompt caching, token budgets, model selection, and effort controls in Claude Code v2.1.92+. Covers all five CCA-F exam domains."
+description: "Complete reference for context management, prompt caching, token budgets, model selection, effort controls, hooks, environment variables, and the advisor tool in Claude Code v2.1.101+. Covers all five CCA-F exam domains."
 sidebar:
   order: 5
 ---
@@ -80,6 +80,21 @@ Each cache entry has a **5-minute TTL** that refreshes on every hit. Active sess
 
 **CCA-F formula:** Effective input cost = `(miss_tokens × write_rate) + (hit_tokens × 0.1 × base_rate)`. At 90% hit rate over a 20-turn session with 100K context on Sonnet, caching delivers **~84% savings** ($0.945 vs $6.00 without caching).
 
+### 2.2a When Each Cache Tier Activates
+
+The two write tiers exist because Anthropic optimizes differently depending on how likely a cached prefix is to be reused.
+
+| Tier | Write cost | Who gets it | When it activates |
+|------|-----------|------------|------------------|
+| **5-minute** | 1.25× base | API-key customers; subagents; rarely-resumed sessions | Default everywhere for direct API users |
+| **1-hour** | 2.0× base | Pro/Max subscribers (logged-in CLI) for likely-reused prefixes | System prompt + tool definitions on interactive sessions |
+
+**Why the split exists:** Writing a 1-hour cache entry costs 2.0× but a cache hit costs only 0.1×. If the prefix is reused even once within an hour the write premium is fully recovered. Anthropic rolls the 1-hour tier out selectively — interactive users reuse long prefixes (system prompt, tools) repeatedly in a session; API script runs and subagents rarely do.
+
+**March 2026 silent regression:** Community analysis of raw JSONL session logs confirmed that Anthropic silently changed the default cache TTL from 1 hour to 5 minutes for some subscriber sessions sometime in early March 2026. Any pause longer than 5 minutes caused the full cached context to expire, forcing a complete cache-write on the next turn. The effect: users saw no change in visible behavior but quiet quota drain and cost inflation. Partially resolved by Anthropic server-side; the `--exclude-dynamic-system-prompt-sections` flag (v2.1.98) mitigates the daily-invalidation portion by stripping volatile date headers from the system prompt.
+
+**Practical implication:** If `/cost` shows unexpectedly high `cache_write` tokens relative to `cache_read` tokens mid-session — especially after a pause — the 5-minute TTL has fired and the cache went cold. Use `/context` to verify, and consider `/compact` before long idle periods rather than after.
+
 ### 2.3 The `--resume` Cache Regression (v2.1.69 → v2.1.90)
 
 Between v2.1.69 and v2.1.90, `--resume` sessions suffered a critical bug causing a **~20× cost increase** per message. Only the internal system prompt (~14.5K tokens) was cached; all conversation history rebuilt from scratch on every turn.
@@ -152,6 +167,23 @@ ToolSearch is automatic by default — zero configuration needed. For servers wh
 ```
 
 Additional details: only MCP tools (`mcp__` prefix) are eligible for deferral; built-in tools (Read, Edit, Bash, Write, Glob, Grep, WebSearch, WebFetch) are never deferred. Tool descriptions and server instructions are capped at **2KB** (v2.1.84) to prevent OpenAPI-generated servers from bloating context.
+
+### 3.3 ToolSearch Failure Modes
+
+Claude can invoke ToolSearch using either a **regex variant** (`tool_search_tool_regex`) or a **BM25 variant** (`tool_search_tool_bm25`). Each has distinct failure modes.
+
+**Regex variant (`tool_search_tool_regex`):**
+- Claude constructs a Python `re.search()` pattern against tool names and descriptions
+- **Failure:** Patterns longer than 200 characters are silently truncated, causing empty or wrong results with no error message
+- **Fix:** Use short, high-entropy patterns: `(?i)finance|billing` not `(?i)financial_reporting|billing_management|invoice_processing`
+- Prefer character classes and alternation over verbose literals
+
+**BM25 variant (`tool_search_tool_bm25`):**
+- Uses natural-language keyword ranking against the tool catalog
+- **Failure:** When the MCP server name is long (e.g., `amazon-bedrock-agentcore-browser-mcp`), server-name tokens dominate BM25 scoring and crowd out capability keywords. A query like `amazon-bedrock-agentcore-browser-mcp navigate evaluate` returns `browser_navigate` and `browser_navigate_back` but misses `browser_evaluate` because the result limit (5) cuts off before it ranks
+- **Fix:** Strip the server name prefix from your query entirely. Use just `navigate evaluate` or `browser evaluate page`
+
+**Shared failure mode:** When neither variant returns the needed tool, Claude either attempts to call it by guessed name (fails with unknown tool) or halts and asks the user. Mitigation: keep tool descriptions distinct and keyword-rich; avoid tool names that differ only by suffix (`get_user`, `get_users`, `get_user_by_id` → `get_user_single`, `get_users_list`, `get_user_by_id`).
 
 ---
 
@@ -250,15 +282,23 @@ Does not change the session effort level — subsequent turns revert to the sess
 
 ### Effort Level Reference
 
-| Level | Thinking tokens | Use cases | Token impact |
-|-------|----------------|-----------|-------------|
-| low | 0–500 (may skip entirely) | Formatting, linting, lookups, file moves | Saves thousands of output tokens per turn |
-| medium | Balanced | Most coding: features, tests, docs, refactoring | Standard allocation |
-| high | Deep reasoning (2–4× more) | Complex debugging, architecture decisions | Expensive but justified |
-| xhigh | Extended reasoning | Very hard problems, large refactors | Significantly higher cost |
-| max | Maximum reasoning | Most complex, open-ended problems | Highest cost (model-dependent) |
+| Level | Approx. thinking tokens | Use cases | Token cost vs medium |
+|-------|------------------------|-----------|---------------------|
+| low | 0–500 (often skipped) | Formatting, linting, lookups, file moves | ~0–10% of medium |
+| medium | 1K–8K (adaptive) | Most coding: features, tests, docs, refactoring | Baseline |
+| high | 8K–32K | Complex debugging, architecture decisions | 2–4× medium |
+| xhigh | 32K–80K (Opus 4.7 only) | Very hard problems, cross-system refactors | 5–10× medium |
+| max | Up to model ceiling | Most open-ended problems; not session-persistent | Highest |
 
-> **Note:** Valid effort levels are `low`, `medium`, `high`, `xhigh`, and `max`; available levels depend on the model. Use `ultrathink` in the prompt to request maximum reasoning depth for a single turn.
+> **Note:** Token ranges are approximate and model-dependent. Adaptive thinking (see "Adaptive Thinking" subsection below) adjusts within these bands per-turn. `xhigh` is available on Opus 4.7 only. Use `ultrathink` in the prompt to request maximum reasoning depth for a single turn without changing the session level.
+
+**Default effort by plan and model (as of v2.1.94, April 2026):**
+
+| User tier | Opus 4.6 / Sonnet 4.6 | Opus 4.7 |
+|-----------|----------------------|---------|
+| Pro / Max (CLI) | medium | xhigh |
+| API key / Team / Enterprise | high (raised in v2.1.94) | xhigh |
+| Bedrock / Vertex / Foundry | high (raised in v2.1.94) | xhigh |
 
 ### Effort in Frontmatter
 
@@ -278,7 +318,39 @@ effort: low
 ---
 ```
 
-**Priority order:** `CLAUDE_CODE_EFFORT_LEVEL` env var (highest) → skill/agent frontmatter → session `/effort` command → model default (medium). `ultrathink` in prompt text overrides for a single turn.
+**Priority order:** `CLAUDE_CODE_EFFORT_LEVEL` env var (highest) → skill/agent frontmatter → session `/effort` command → model default. `ultrathink` in prompt text overrides for a single turn.
+
+### 5.4 Adaptive Thinking (v2.1.74, February 9 2026)
+
+Adaptive thinking lets Opus 4.6 and Sonnet 4.6 decide per-turn how many thinking tokens to spend, rather than using the fixed budget set by `MAX_THINKING_TOKENS`. It is the default mode since February 9, 2026.
+
+**The February 2026 perception problem:** On the same day adaptive thinking launched, Anthropic also silently lowered the default effort from `high` to `medium` (March 3, 2026 for interactive sessions). Community analysis of 6,852 sessions measured a 67% drop in model reasoning depth compared to pre-February baselines. The culprit was the effort default change, not adaptive thinking itself.
+
+**How adaptive thinking actually works:** Rather than always burning a fixed 32K thinking budget, the model scales thinking tokens to task complexity. A lookup uses ~500 tokens; a multi-file refactor might use 20K. At `high` effort, the ceiling is ~32K. At `xhigh` (Opus 4.7), ~80K.
+
+**Key environment variables:**
+
+```bash
+# Revert to fixed thinking budget (Opus 4.6 / Sonnet 4.6 only — NOT Opus 4.7)
+export CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING=1
+
+# Set the fixed budget when adaptive is disabled
+export MAX_THINKING_TOKENS=10000   # Default was ~32K before adaptive
+
+# Restore effort to previous default for API users
+export CLAUDE_CODE_EFFORT_LEVEL=high
+```
+
+> **Opus 4.7 note:** Opus 4.7 always uses adaptive reasoning. `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING` has no effect on it. `MAX_THINKING_TOKENS` does not apply.
+
+**Decision guide:**
+
+| Symptom | Fix |
+|---------|-----|
+| Responses feel shallow / low reasoning depth | Raise effort: `/effort high` or `export CLAUDE_CODE_EFFORT_LEVEL=high` |
+| Costs spiked after Feb 2026 update | Likely effort default raised for your tier; set `export CLAUDE_CODE_EFFORT_LEVEL=medium` |
+| Need deterministic token budgets for CI billing | `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING=1` + `MAX_THINKING_TOKENS=10000` |
+| One-off deep reasoning on a specific turn | Add `ultrathink` to that prompt; leave session effort unchanged |
 
 ---
 
@@ -288,7 +360,7 @@ The `--bare` flag (v2.1.81, March 2026) creates a minimal, deterministic executi
 
 | Skipped | Why it matters |
 |---------|---------------|
-| Hooks (PreToolUse/PostToolUse) | No hook execution overhead |
+| All lifecycle hooks (see §12) | No hook execution overhead — PreToolUse, PostToolUse, PreCompact, SessionStart, etc. all skipped |
 | LSP connections | No language server startup (~200-500ms) |
 | Plugin sync | No marketplace git pull (~1-3s) |
 | Skill directory walks | No .claude/commands/ scanning |
@@ -335,7 +407,7 @@ CLAUDE.md files are injected into **every single API call** as input tokens. A 1
 |-----------|-----|--------|
 | Move workflows to skills | `.claude/commands/` files load only when invoked | Saves tokens every non-skill turn |
 | Use `.claude/rules/` with paths | Topic-specific rules load only for matching files | Scoped injection vs global |
-| `@import` for modularity | Reference external files (max depth: 5 hops) | Keep root CLAUDE.md lean |
+| `@import` for modularity | `@path/to/file.md` — resolved relative to the importing file, not the working directory; max depth: 5 hops; depth 6 is silently ignored | Keep root CLAUDE.md lean |
 | HTML comments `<!-- -->` | Stripped before injection into API calls | Zero token cost — free human notes |
 | `claudeMdExcludes` setting | Skip irrelevant CLAUDE.md in monorepos | Avoid unrelated project instructions |
 | `.claudeignore` | Like `.gitignore` — block build artifacts, lock files | Prevent accidental large file reads |
@@ -387,6 +459,29 @@ The **"Known Failures"** section prevents successive sessions from re-attempting
 
 **CCA-F design principle:** Tool descriptions are the primary routing mechanism (not function names). Keep tools to 4–5 per agent for optimal selection accuracy.
 
+### What "Explicitly Pass All Info" Means in Practice
+
+A poorly-formed subagent prompt assumes the agent already knows context from the parent:
+
+```
+# BAD — agent has no idea what "the auth refactor" means or where files are
+Task: Continue the auth refactor we discussed. Make sure tests still pass.
+```
+
+A well-formed subagent prompt is self-contained — a stranger could execute it:
+
+```
+# GOOD — every fact the agent needs is spelled out
+Task: Refactor the JWT validation logic in src/auth/validator.ts.
+Context: We are migrating from HS256 to RS256. The current implementation
+is in validateToken() at line 47. The public key path is config/keys/rs256.pub.
+Do NOT modify the token generation code in src/auth/generator.ts.
+Tests are in tests/auth/validator.test.ts — run with `npm test auth` before finishing.
+Success: All 14 existing tests pass and the function signature is unchanged.
+```
+
+Key fields to always include: file paths, function names, what NOT to change, how to run tests, and a concrete definition of "done".
+
 ### Cost-Efficient Agent Architecture
 
 ```
@@ -428,6 +523,11 @@ After 75+ minutes idle, Claude Code suggests `/clear` with token savings display
 | Deferred tools losing input schemas | Unusable tools until re-discovery | v2.1.89 |
 | Autocompact thrash loop | Infinite token burn | v2.1.89 (circuit breaker) |
 | `--resume` truncating recent history | Lost context + cache miss | v2.1.92 |
+| `--resume` full prompt-cache miss for users with deferred tools, MCP servers, or custom agents | ~20× cost increase per resumed turn | v2.1.93 |
+| Edit/Write failing with "File content has changed" when a PostToolUse format-on-save hook rewrites file between consecutive edits | Broken hook + edit chain | v2.1.93 |
+| PreCompact hook added | Hooks can now block or guide compaction behavior | v2.1.95 |
+| Context token ceiling (`CLAUDE_CODE_MAX_CONTEXT_TOKENS`) | Hard cap prevents runaway context growth in CI | v2.1.96 |
+| Auto mode not respecting explicit user boundaries ("don't push", "wait for X") | Unauthorized actions in auto mode | v2.1.93 |
 
 ### 9.4 Long-Running Sessions
 
@@ -474,7 +574,7 @@ Subscribes to GitHub PR events. CI failure → investigate → fix → push → 
 
 ---
 
-## 11. Top 10 Cost Optimizations (Ranked by Impact)
+## 11. Top 12 Cost Optimizations (Ranked by Impact)
 
 | Rank | Optimization | Impact | Command | CCA-F Domain |
 |------|-------------|--------|---------|-------------|
@@ -488,10 +588,280 @@ Subscribes to GitHub PR events. CI failure → investigate → fix → push → 
 | 8 | ToolSearch (automatic) | 85%+ reduction in tool tokens | Auto when MCP > 10K tokens | D4 |
 | 9 | Effort: low for simple tasks | Skips thinking entirely | Frontmatter: `effort: low` | D2 |
 | 10 | `--bare` for CI/scripts | ~14% faster, minimal overhead | `claude -p '...' --bare` | D2 |
+| 11 | PostToolUse hooks for data filtering | Pre-filter large outputs before Claude sees them; community reports 40–70% cost reduction | `.claude/settings.json` hooks | D4 |
+| 12 | Advisor before architecture decisions | Prevents costly rework from wrong approaches; call once before design, once before done | `advisor()` in session | D1 |
 
 ---
 
-## 12. CCA-F Exam Relevance
+## 12. Hooks Reference
+
+Hooks are user-defined shell commands (or scripts) that fire at specific points in Claude Code's lifecycle. They turn best-practice guidelines into deterministic enforcement — hooks always run; prompts sometimes work.
+
+### 12.1 All Hook Events (April 2026)
+
+Hooks fire at three cadences: **once per session**, **once per turn**, and **on every tool call** in the agentic loop.
+
+| Event | Cadence | Blocking? | Key use cases |
+|-------|---------|-----------|--------------|
+| `SessionStart` | Per session | No | Load env vars, warm caches, re-inject context after compaction |
+| `SessionEnd` | Per session | No | Cleanup, final reporting, summary logs |
+| `UserPromptSubmit` | Per turn | Yes (exit 2) | Sanitize input, classify task type, route to skill |
+| `PreToolUse` | Per tool call | **Yes (exit 2 or `{"decision":"block"}`)** | Security gates, file protection, mandatory review |
+| `PostToolUse` | Per tool call | No | Format-on-save, lint, test runner trigger |
+| `PostToolUseFailure` | Per tool call (on failure) | No | Add diagnostic context for Claude's next step |
+| `Stop` | Per turn | Yes (return to keep going) | Enforce completion criteria before Claude stops |
+| `SubagentStop` | Per subagent | No | Validate subagent output before returning to parent |
+| `PermissionRequest` | Per auto-mode check | Yes | Auto-approve/deny permission dialogs |
+| `PermissionDenied` | Per auto-mode denial | Partial (`{retry: true}`) | Tell Claude it can retry after adjusting approach |
+| `PreCompact` | Before compaction | Yes (exit 2) | Block compaction; inject critical context that compaction would lose |
+| `PostCompact` | After compaction | No | Re-inject state; reload environment |
+| `Notification` | On alert | No | Slack/webhook routing; desktop notifications |
+| `FileChanged` | On watched file change | No | Hot-reload, re-read config on disk changes |
+| `CwdChanged` | On directory change | No | Reload env vars (direnv-style), switch project context |
+
+### 12.2 Hook Configuration
+
+```json
+// .claude/settings.json
+{
+  "hooks": {
+    "PreToolUse": [{
+      "matcher": "Bash",
+      "hooks": [{
+        "type": "command",
+        "command": "bash /scripts/block-rm-rf.sh"
+      }]
+    }],
+    "PostToolUse": [{
+      "matcher": "Edit",
+      "hooks": [{
+        "type": "command",
+        "command": "npx prettier --write $CLAUDE_TOOL_ARG_FILE_PATH"
+      }]
+    }],
+    "PreCompact": [{
+      "matcher": "compact",
+      "hooks": [{
+        "type": "command",
+        "command": "cat .claude/compact-context.md"
+      }]
+    }]
+  }
+}
+```
+
+**Blocking a tool call (PreToolUse):**
+- Exit with code `2`, or
+- Return JSON `{"decision": "block", "reason": "explanation"}` — Claude sees the reason
+
+**PermissionDenied retry:**
+- Return `{"retry": true}` — tells Claude it may try again with an adjusted approach
+
+### 12.3 Token Cost Impact of Hooks
+
+| Hook pattern | Token effect |
+|-------------|-------------|
+| PostToolUse grep/filter before injecting output | **Reduces** tokens — hook distills 10K-line log to 50 matching lines |
+| PostToolUse that re-reads the edited file | **Adds** tokens — avoid unless the read is necessary |
+| PreToolUse that always calls an LLM | **Adds** tokens per tool call — use shell scripts, not LLM calls, in hooks |
+| `--bare` mode | **Skips all hooks** — use for CI where hooks add overhead without benefit |
+
+Poorly written hooks (e.g., a PostToolUse that `cat`s a large file unconditionally) can compound cost worse than the tool itself. The `--bare` flag skips all hooks and is the correct choice for automated pipelines.
+
+### 12.4 Hooks vs. Instructions
+
+| Use hooks when | Use CLAUDE.md instructions when |
+|---------------|--------------------------------|
+| You need the behavior enforced every time, unconditionally | The guidance is probabilistic ("try to...") |
+| The action is dangerous or irreversible | The guidance is stylistic or contextual |
+| You want deterministic CI pipeline gates | The instruction rarely applies |
+| Speed matters (hooks are faster than another Claude turn) | Flexibility and judgment are needed |
+
+---
+
+## 13. Environment Variables Reference
+
+Consolidated reference for all token-cost-relevant environment variables. Variables marked ★ have the highest practical impact.
+
+### Core Cost Controls
+
+| Variable | Default | Effect |
+|----------|---------|--------|
+| ★ `CLAUDE_CODE_SUBAGENT_MODEL` | inherit | Override model for all subagents. Set to `haiku` globally for ~93% cost reduction on exploration tasks |
+| ★ `MAX_THINKING_TOKENS` | ~32K | Fixed thinking budget when adaptive thinking is disabled. Lower to `10000` for ~70% thinking cost reduction |
+| ★ `CLAUDE_CODE_EFFORT_LEVEL` | model/plan default | Highest-priority effort override. Values: `low`, `medium`, `high`, `xhigh`, `max`. Set `high` to restore pre-March 2026 reasoning depth |
+| `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING` | unset | Set to `1` to revert Opus 4.6/Sonnet 4.6 to fixed `MAX_THINKING_TOKENS` budget. No effect on Opus 4.7 |
+| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | 83.5 | Context fill % that triggers auto-compaction. Range: 1–100. Lower = more aggressive compaction |
+| `CLAUDE_CODE_MAX_CONTEXT_TOKENS` (v2.1.96) | unset | Hard ceiling on context size. When combined with `DISABLE_COMPACT`, prevents context growth beyond the cap |
+
+### Session and Execution Controls
+
+| Variable | Default | Effect |
+|----------|---------|--------|
+| `CLAUDE_CODE_MAX_OUTPUT_TOKENS` | model max | Cap output token budget per turn. Note: has no effect on Opus 4.6 in some versions (tracked bug) |
+| `CLAUDE_CODE_SCRIPT_CAPS` (v2.1.96) | unset | Restricts script capabilities in Bash tool. Paired with PID namespace isolation on Linux |
+| `CLAUDE_CODE_PERFORCE_MODE` (v2.1.96) | unset | Enables Perforce VCS mode instead of Git |
+| `CLAUDE_CODE_USE_MANTLE` (v2.1.94) | unset | Set to `1` for Amazon Bedrock powered by Mantle |
+| `AWS_BEARER_TOKEN_BEDROCK` | unset | Bearer token for Bedrock auth (replaces SigV4 in CLAUDE_CODE_SKIP_BEDROCK_AUTH mode) |
+
+### Observability and Telemetry
+
+| Variable | Default | Effect |
+|----------|---------|--------|
+| `DISABLE_TELEMETRY` | unset | Set to `1` to opt out of usage telemetry |
+| `DISABLE_ERROR_REPORTING` | unset | Set to `1` to suppress crash report uploads |
+| `CLAUDE_CODE_ENABLE_TELEMETRY` | unset | Enable structured telemetry output (OpenTelemetry) |
+| `OTEL_*` | — | Standard OpenTelemetry transport/logging env vars; used for forwarding metrics to external observability stacks |
+| `MAX_STRUCTURED_OUTPUT_RETRIES` | 3 | Retry limit for structured output format recovery |
+
+### Quick-Start `.env` for Cost-Optimized Interactive Sessions
+
+```bash
+# Restore high-reasoning default (pre-March 2026 behavior)
+export CLAUDE_CODE_EFFORT_LEVEL=high
+
+# Set thinking budget ceiling (applies when adaptive thinking is off)
+export MAX_THINKING_TOKENS=10000
+
+# Route all subagents to Haiku (~93% cheaper for exploration)
+export CLAUDE_CODE_SUBAGENT_MODEL=haiku
+
+# Compact at 75% instead of 83.5% for faster headroom recovery
+export CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=75
+```
+
+### Quick-Start for CI / `--bare` Pipelines
+
+```bash
+# Deterministic fixed budget — no adaptive thinking
+export CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING=1
+export MAX_THINKING_TOKENS=5000
+
+# Hard context ceiling — prevents runaway cost in long CI runs
+export CLAUDE_CODE_MAX_CONTEXT_TOKENS=80000
+
+# Use --bare to skip hooks, MCP, CLAUDE.md, memory
+claude -p "Review this diff for security issues" --bare \
+  --allowedTools "Read,Bash(git diff:*)" \
+  --output-format json
+```
+
+---
+
+## 14. The Advisor Tool
+
+### 14.1 Two Distinct "Advisor" Concepts
+
+**Important:** Two separate things share the "advisor" name in the Claude ecosystem. They are architecturally different and serve different audiences.
+
+| | Built-in `advisor()` harness tool | Anthropic Advisor API (beta) |
+|-|----------------------------------|------------------------------|
+| **What it is** | A tool built into the Claude Code session harness | An API-level feature for developers building their own apps |
+| **Who uses it** | Claude, mid-task, to consult a stronger reviewer | Developers building executor+advisor app patterns |
+| **How invoked** | Claude calls `advisor()` with no parameters | Via API with `advisor-tool-2026-03-01` beta header |
+| **What it sees** | Your entire conversation history, automatically | The context you pass in the API call |
+| **Since** | Available in Claude Code harness sessions | Beta rollout April 9, 2026 |
+| **Benchmarks** | N/A (internal harness tool) | Sonnet + Opus advisor: 74.8% SWE-bench Multilingual (vs 72.1% Sonnet alone, at 11.9% less cost than Opus solo) |
+
+### 14.2 The Built-in `advisor()` Tool — For Day-to-Day Development
+
+This is the advisor you interact with in Claude Code sessions. When Claude (or a skill) calls `advisor()`, it forwards the **entire conversation transcript** to a stronger reviewer model. The reviewer sees everything: the task, every tool call made, every result received, every reasoning step. It then returns a single message with guidance.
+
+**Purpose:** Catch reasoning errors, surface overlooked constraints, and give a second opinion before Claude commits to an approach — especially on decisions that are hard to reverse or expensive to redo.
+
+#### When Claude (or You) Should Trigger the Advisor
+
+| Situation | Why advisor adds value |
+|-----------|----------------------|
+| **Before substantive work** — before writing code, before committing to an architecture, before deleting anything | The advisor sees what Claude is about to do and can catch flawed assumptions before they're encoded in code |
+| **After orientation, before implementation** — you've explored the codebase, now you're about to act | Orientation (reading files, grepping) is cheap to redo; implementation is not. Advisor after orienting, before writing |
+| **When stuck** — same error recurring, approach not converging, unexpected results | The advisor has the full picture and can identify the wrong-turn Claude took several steps back |
+| **Change of approach** — Claude is about to switch strategies | Validates whether the new approach is actually better or just differently wrong |
+| **Before declaring done** — task appears complete | The strongest use: the advisor catches gaps between what was asked and what was done |
+| **Risky / irreversible actions** — deleting branches, force pushes, schema changes | Adds a high-quality gate before the irreversible step |
+| **Ambiguous requirements** — the task description is underspecified | Advisor can identify which interpretation is most defensible and flag what to clarify |
+
+#### When NOT to Trigger the Advisor
+
+| Situation | Reason to skip |
+|-----------|---------------|
+| Short reactive tasks where the next action is dictated by tool output you just read | Advisor adds most value before approach crystallizes, not during mechanical execution |
+| After every single tool call | Over-calling drains tokens; the advisor is expensive on large contexts |
+| When you have primary-source evidence that already resolves the question | Trust the file, the test result, the stack trace — don't ask for a second opinion on facts |
+| When the task is already complete and the deliverable is durable | Call advisor BEFORE declaring done; if the session ends during the advisor call, a written/committed result persists |
+
+#### Cost Model
+
+The advisor call forwards the entire conversation. On a large session (50+ turns with tool results), this is a significant token spend — roughly equivalent to a full API call with the entire context as input. The expense is justified when the alternative is redoing hours of work.
+
+**Practical guidance:**
+- On tasks longer than a few steps: call advisor **at least once** before committing to an approach and **once** before declaring done
+- On short tasks: call advisor when the next action is non-obvious or high-risk
+- Never call advisor redundantly — if you already have evidence pointing one way and the advisor points another, make one more reconciliation call rather than silently switching
+
+#### Acting on Advisor Feedback
+
+```
+Rule: Give advice serious weight.
+
+If the advisor says X and your tool results say Y:
+  → Surface the conflict in one more advisor call: "I found Y, you suggest X — which constraint breaks the tie?"
+  → Do NOT silently switch to X without verifying
+  → Do NOT dismiss X without engaging with it
+
+A passing self-test is not evidence the advice is wrong.
+It is evidence your test doesn't check what the advice is checking.
+```
+
+#### Advisor in Your Own Workflow (Non-Claude Triggering)
+
+You can prompt Claude to call the advisor by including trigger phrases in your message:
+- `"check with advisor before proceeding"`
+- `"get a second opinion on this approach"`
+- `"advisor review before you write"`
+
+This is especially useful for:
+- Architecture decisions where getting it wrong means a large rework
+- Security-sensitive code (auth, permissions, data access)
+- Database migrations or schema changes
+- Any step that touches shared infrastructure
+
+### 14.3 The Anthropic Advisor API — For App Builders
+
+For developers building Claude-powered applications (not using the Claude Code harness), the Advisor API lets you pair a fast executor model with Opus as an on-demand advisor.
+
+**Pattern:**
+
+```python
+# Executor: Sonnet or Haiku handles routine work
+# Advisor: Opus consulted only on uncertain decisions
+
+# API call with beta header
+response = client.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=4096,
+    tools=[advisor_tool],   # Makes advisor() callable
+    messages=messages,
+    betas=["advisor-tool-2026-03-01"]
+)
+```
+
+**Benchmark results (Anthropic internal, April 2026):**
+
+| Executor | Advisor | Score | vs baseline | vs full Opus | Cost vs full Opus |
+|----------|---------|-------|------------|-------------|------------------|
+| Sonnet 4.6 | None | 72.1% SWE-bench Multilingual | — | -8.7pp | -80% |
+| Sonnet 4.6 | Opus 4.6 | 74.8% | +2.7pp | -6pp | **-11.9%** |
+| Haiku 4.5 | None | 19.7% BrowseComp | — | — | -93% |
+| Haiku 4.5 | Opus 4.6 | 41.2% BrowseComp | **+109%** | — | **-85%** |
+
+The Haiku + Opus advisor pairing is the most dramatic: more than double the performance for 85% less cost than using Sonnet.
+
+**When to use the Advisor API vs. always using Opus:** Use it when most requests are routine (Sonnet/Haiku handles them) but a subset require deep reasoning. The executor decides when to escalate. If >40% of requests need escalation, switching the main model to Opus may be cheaper.
+
+---
+
+## 15. CCA-F Exam Relevance
 
 **Structure:** 60 questions in 120 minutes. 6 scenarios available, 4 randomly selected per sitting.
 
@@ -513,7 +883,12 @@ The exam rewards **programmatic enforcement over prompt-based guidance** — hoo
 8. The `--resume` bug connected ToolSearch, caching, and session management
 9. Auto-compaction triggers at ~83.5% with a circuit breaker after 3 thrash loops
 10. `opusplan` routes Plan-mode turns to Opus while keeping main session on Sonnet
+11. PreToolUse is the ONLY hook that can block an action; all others are observational
+12. `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING=1` does NOT apply to Opus 4.7
+13. ToolSearch regex patterns >200 chars are silently truncated — use short high-entropy patterns
+14. 1-hour cache write tier (2.0×) is for Pro/Max subscribers on likely-reused prefixes; API customers get 5-minute (1.25×) by default
+15. The advisor() tool forwards the entire conversation — most valuable before approach crystallization and before declaring done
 
 ---
 
-*Sources: [Claude Code Docs](https://code.claude.com/docs/en/), [Claude API Pricing](https://platform.claude.com/docs/en/about-claude/pricing), [Claude Code Changelog](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md), [Anthropic Scientific Computing Guide](https://www.anthropic.com/research/long-running-Claude), Claude Code Camp, community analysis.*
+*Sources: [Claude Code Docs](https://code.claude.com/docs/en/), [Claude Code Hooks](https://code.claude.com/docs/en/hooks), [Claude API Pricing](https://platform.claude.com/docs/en/about-claude/pricing), [Adaptive Thinking Docs](https://platform.claude.com/docs/en/build-with-claude/adaptive-thinking), [Advisor Tool Docs](https://platform.claude.com/docs/en/agents-and-tools/tool-use/advisor-tool), [Claude Code Changelog](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md), [Anthropic Scientific Computing Guide](https://www.anthropic.com/research/long-running-Claude), [Apiyi April 2026 Changelog Analysis](https://help.apiyi.com/en/claude-code-changelog-2026-april-updates-en.html), [Cache TTL Community Analysis](https://github.com/anthropics/claude-code/issues/46829), [ToolSearch Failure Issue](https://github.com/anthropics/claude-code/issues/30466), Claude Code Camp, community analysis. Updated April 18, 2026 (v2.1.101).*
