@@ -162,7 +162,7 @@ function MarkdownFileCard({ file, isExpanded, onToggle }) {
           <span className="font-bold text-white text-sm">{file.name}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs px-2 py-0.5 rounded-full bg-white bg-opacity-20 text-white">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-white" style={{ color: file.color.text }}>
             {file.loadBehavior}
           </span>
           <span className="text-white text-xs">{isExpanded ? "▲" : "▼"}</span>
@@ -956,7 +956,6 @@ function App() {
             </div>
           ))}
         </div>
-        <p className="text-xs text-gray-500 mt-2">Source: Official Anthropic documentation at code.claude.com/docs</p>
       </div>
     </div>
   );
