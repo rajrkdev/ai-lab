@@ -6,9 +6,8 @@ sidebar:
   order: 14
 ---
 
-<img
-  src="/ai-lab/claude-code/advisor-command-claude-code.svg"
-  alt="The /advisor command in Claude Code — dual-model flow diagram showing the executor (Sonnet) and advisor (Opus) columns, trigger conditions, and context transfer"
-  width="680"
-  style="max-width:100%;height:auto;"
-/>
+import AdvisorDiagram from '../../../../advisor_diagram.jsx';
+
+<div class="interactive-tool">
+  <AdvisorDiagram client:only="react" />
+</div>

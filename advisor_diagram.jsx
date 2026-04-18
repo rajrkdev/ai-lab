@@ -265,7 +265,7 @@ export default function AdvisorDiagram() {
             {label}
           </span>
         ))}
-
+        <span style={{ marginLeft: "auto", opacity: 0.6 }}></span>
       </div>
     </div>
   );

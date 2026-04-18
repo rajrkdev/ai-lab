@@ -18,7 +18,6 @@ export default defineConfig({
 			lastUpdated: true,
 			editLink: { baseUrl: 'https://github.com/rajrkdev/ai-lab/edit/main/' },
 			tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 3 },
-			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/rajrkdev/ai-lab' }],
 			components: {
 				PageTitle: './src/components/PageTitle.astro',
 				Footer: './src/components/Footer.astro',
