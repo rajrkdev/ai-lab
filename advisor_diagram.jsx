@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 const COLORS = {
   gray:   { bg: "#F1EFE8", border: "#888780", text: "#444441", sub: "#5F5E5A" },
@@ -97,19 +97,19 @@ export default function AdvisorDiagram() {
   const containerRef = useRef(null);
 
   const tips = {
-    run:       "Available from Claude Code v2.1.101. Opens an interactive model picker. Session-scoped — re-run it each new session. Re-running mid-session lets you swap the advisor model without restarting.",
-    model:     "Currently Sonnet 4.6 or Opus 4.6. No Haiku, no custom endpoints. The advisor must be at least as capable as the executor — you can't set a weaker model as advisor.",
-    active:    "From this point Sonnet autonomously decides when to call Opus. You never trigger it manually. The configuration resets when the session ends. Running /compact collapses accumulated advice into a summary.",
-    task:      "Advisor is armed but completely silent here. No calls happen just from receiving a task — Sonnet needs to orient first before it knows enough to benefit from advice.",
-    orient:    "Reading files, fetching URLs, checking directory structure — this is orientation, not substantive work. The advisor stays silent. Only once Sonnet is about to commit to an interpretation does it escalate.",
-    trigger:   "4 patterns fire reliably: (1) before writing or editing, (2) at perceived completion, (3) when stuck or errors are looping, (4) before changing approach. The key heuristic: orientation vs. substantive work.",
-    called:    "Takes zero parameters — input is always an empty object {}. The server builds the full context automatically by forwarding the entire transcript. You cannot pass extra instructions to Opus here.",
-    resumes:   "The advisor_tool_result block now lives in the conversation history permanently. Sonnet doesn't 'read and follow' instructions — the advice is part of the token context it generates from. Future advisor calls can see it too.",
-    done:      "Always write the file / commit / save BEFORE this call. The advisor sub-inference takes time; if the session ends during it, a durable on-disk result survives but an unwritten one doesn't.",
-    complete:  "Session ends here. All advisor_tool_result blocks persist in history for this session. If you /compact, they get compressed into a summary — resetting the advisor's accumulated guidance for future turns.",
-    transcript:"Opus receives: your system prompt, all tool definitions, all prior turns, all tool results. It sees everything Sonnet saw. The server constructs this automatically — nothing you put in advisor() input reaches Opus.",
-    inference: "Opus runs without tools and without context management. It can only reason over what the executor already gathered — it cannot read more files or run bash. Thinking blocks are dropped; only the final advice text is returned.",
-    result:    "Two variants: advisor_result (plain text, normal case) and advisor_redacted_result (encrypted blob for ZDR compliance). Either way, Sonnet always sees readable advice. Round-trip the block verbatim — omitting it causes a 400 error.",
+    run:       { title: "Run /advisor",               body: "Available from Claude Code v2.1.101. Opens an interactive model picker. Session-scoped — re-run it each new session. Re-running mid-session lets you swap the advisor model without restarting." },
+    model:     { title: "Select advisor model",       body: "Currently Sonnet 4.6 or Opus 4.6. No Haiku, no custom endpoints. The advisor must be at least as capable as the executor — you can't set a weaker model as advisor." },
+    active:    { title: "Advisor active · whole session", body: "From this point Sonnet autonomously decides when to call Opus. You never trigger it manually. The configuration resets when the session ends. Running /compact collapses accumulated advice into a summary." },
+    task:      { title: "User sends task",            body: "Advisor is armed but completely silent here. No calls happen just from receiving a task — Sonnet needs to orient first before it knows enough to benefit from advice." },
+    orient:    { title: "Read & orient",              body: "Reading files, fetching URLs, checking directory structure — this is orientation, not substantive work. The advisor stays silent. Only once Sonnet is about to commit to an interpretation does it escalate." },
+    trigger:   { title: "Trigger condition met?",     body: "4 patterns fire reliably: (1) before writing or editing, (2) at perceived completion, (3) when stuck or errors are looping, (4) before changing approach. The key heuristic: orientation vs. substantive work." },
+    called:    { title: "advisor() called",           body: "Takes zero parameters — input is always an empty object {}. The server builds the full context automatically by forwarding the entire transcript. You cannot pass extra instructions to Opus here." },
+    resumes:   { title: "Sonnet resumes",             body: "The advisor_tool_result block now lives in the conversation history permanently. Sonnet doesn't 'read and follow' instructions — the advice is part of the token context it generates from. Future advisor calls can see it too." },
+    done:      { title: "Near completion?",           body: "Always write the file / commit / save BEFORE this call. The advisor sub-inference takes time; if the session ends during it, a durable on-disk result survives but an unwritten one doesn't." },
+    complete:  { title: "Task complete",              body: "Session ends here. All advisor_tool_result blocks persist in history for this session. If you /compact, they get compressed into a summary — resetting the advisor's accumulated guidance for future turns." },
+    transcript:{ title: "Full transcript → Opus",    body: "Opus receives: your system prompt, all tool definitions, all prior turns, all tool results. It sees everything Sonnet saw. The server constructs this automatically — nothing you put in advisor() input reaches Opus." },
+    inference: { title: "Opus sub-inference",         body: "Opus runs without tools and without context management. It can only reason over what the executor already gathered — it cannot read more files or run bash. Thinking blocks are dropped; only the final advice text is returned." },
+    result:    { title: "advisor_tool_result",        body: "Two variants: advisor_result (plain text, normal case) and advisor_redacted_result (encrypted blob for ZDR compliance). Either way, Sonnet always sees readable advice. Round-trip the block verbatim — omitting it causes a 400 error." },
   };
 
   function tip(key) {
@@ -121,6 +121,14 @@ export default function AdvisorDiagram() {
       setTooltip({ key, x, y });
     };
   }
+
+  // Dismiss on Escape key
+  useEffect(() => {
+    if (!tooltip) return;
+    const onKey = (e) => { if (e.key === "Escape") setTooltip(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [tooltip]);
 
   const accentKey = !tooltip ? "blue" :
     ["run","model","task","complete"].includes(tooltip.key) ? "gray" :
@@ -229,15 +237,25 @@ export default function AdvisorDiagram() {
         ))}
       </svg>
 
-      {/* Floating tooltip */}
+      {/* Floating tooltip — flips horizontally AND vertically, Escape to close */}
       {tooltip && (() => {
-        const containerWidth = containerRef.current?.offsetWidth ?? 680;
+        const tip = tips[tooltip.key];
+        const containerWidth  = containerRef.current?.offsetWidth  ?? 680;
+        const containerHeight = containerRef.current?.offsetHeight ?? 690;
         const tipWidth = Math.min(320, containerWidth - 24);
-        // Place right of cursor, flip left if it would overflow
-        let left = tooltip.x + 12;
-        if (left + tipWidth > containerWidth - 8) left = tooltip.x - tipWidth - 12;
+        const OFFSET = 14;
+
+        // Horizontal: prefer right of cursor, flip left if overflow
+        let left = tooltip.x + OFFSET;
+        if (left + tipWidth > containerWidth - 8) left = tooltip.x - tipWidth - OFFSET;
         left = Math.max(4, left);
-        const top = tooltip.y + 12;
+
+        // Vertical: prefer below cursor, flip up if near bottom
+        const ESTIMATED_HEIGHT = 110;
+        let top = tooltip.y + OFFSET;
+        if (top + ESTIMATED_HEIGHT > containerHeight - 8) top = tooltip.y - ESTIMATED_HEIGHT - OFFSET;
+        top = Math.max(4, top);
+
         return (
           <div
             role="tooltip"
@@ -245,7 +263,6 @@ export default function AdvisorDiagram() {
               position: "absolute",
               top, left,
               width: tipWidth,
-              padding: "10px 14px",
               borderRadius: 8,
               background: ac.bg,
               border: `1px solid ${ac.border}`,
@@ -253,12 +270,28 @@ export default function AdvisorDiagram() {
               fontSize: 12,
               color: ac.text,
               lineHeight: 1.6,
-              boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.18)",
               zIndex: 10,
               pointerEvents: "none",
+              overflow: "hidden",
             }}
           >
-            {tips[tooltip.key]}
+            {/* Title row */}
+            <div style={{
+              padding: "7px 12px 6px",
+              borderBottom: `1px solid ${ac.border}`,
+              fontWeight: 600,
+              fontSize: 11,
+              letterSpacing: "0.02em",
+              color: ac.sub,
+              background: `${ac.border}18`,
+            }}>
+              {tip.title}
+            </div>
+            {/* Body */}
+            <div style={{ padding: "8px 12px 10px" }}>
+              {tip.body}
+            </div>
           </div>
         );
       })()}

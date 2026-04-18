@@ -15,10 +15,10 @@ export default defineConfig({
 			title: 'Context',
 			customCss: ['./src/styles/custom.css'],
 			pagination: true,
-			lastUpdated: true,
 			editLink: { baseUrl: 'https://github.com/rajrkdev/ai-lab/edit/main/' },
 			tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 3 },
 			components: {
+				Sidebar: './src/components/Sidebar.astro',
 				PageTitle: './src/components/PageTitle.astro',
 				Footer: './src/components/Footer.astro',
 			},
