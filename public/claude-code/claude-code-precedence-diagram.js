@@ -695,6 +695,6 @@ Personal prefs: @~/.claude/my-project-notes.md`,
     { label: "Local", color: COLORS.local.bg },
     { label: "Auto-generated", color: COLORS.auto.bg },
     { label: "Plugin", color: COLORS.plugin.bg }
-  ].map((item) => /* @__PURE__ */ React.createElement("div", { key: item.label, className: "flex items-center gap-1 text-xs text-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "w-3 h-3 rounded", style: { backgroundColor: item.color } }), item.label))), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 mt-2" }, "Source: Official Anthropic documentation at code.claude.com/docs")));
+  ].map((item) => /* @__PURE__ */ React.createElement("div", { key: item.label, className: "flex items-center gap-1 text-xs text-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "w-3 h-3 rounded", style: { backgroundColor: item.color } }), item.label))));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(/* @__PURE__ */ React.createElement(App, null));
