@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 const COLORS = {
   gray:   { bg: "#F1EFE8", border: "#888780", text: "#444441", sub: "#5F5E5A" },
@@ -58,7 +58,6 @@ function Box({ x, y, w, h, color, title, sub, onClick, active, theme }) {
           fontFamily="system-ui, sans-serif"
         >{title}</text>
       )}
-      {/* tap indicator dot */}
       {onClick && (
         <circle cx={x + w - 10} cy={y + 10} r={3}
           fill={active ? c.text : c.border} opacity={active ? 1 : 0.5}/>
@@ -94,7 +93,8 @@ function Label({ x, y, text, anchor = "middle", size = 11 }) {
 
 export default function AdvisorDiagram() {
   const theme = useTheme();
-  const [tooltip, setTooltip] = useState(null);
+  const [tooltip, setTooltip] = useState(null); // { key, x, y }
+  const containerRef = useRef(null);
 
   const tips = {
     run:       "Available from Claude Code v2.1.101. Opens an interactive model picker. Session-scoped — re-run it each new session. Re-running mid-session lets you swap the advisor model without restarting.",
@@ -112,10 +112,24 @@ export default function AdvisorDiagram() {
     result:    "Two variants: advisor_result (plain text, normal case) and advisor_redacted_result (encrypted blob for ZDR compliance). Either way, Sonnet always sees readable advice. Round-trip the block verbatim — omitting it causes a 400 error.",
   };
 
-  const tip = (key) => () => setTooltip(tooltip === key ? null : key);
+  function tip(key) {
+    return (e) => {
+      if (tooltip?.key === key) { setTooltip(null); return; }
+      const rect = containerRef.current?.getBoundingClientRect();
+      const x = rect ? e.clientX - rect.left : 0;
+      const y = rect ? e.clientY - rect.top  : 0;
+      setTooltip({ key, x, y });
+    };
+  }
+
+  const accentKey = !tooltip ? "blue" :
+    ["run","model","task","complete"].includes(tooltip.key) ? "gray" :
+    ["active","orient","resumes"].includes(tooltip.key)     ? "teal" :
+    ["trigger"].includes(tooltip.key)                       ? "coral" : "blue";
+  const ac = COLORS[accentKey];
 
   return (
-    <div style={{ fontFamily: "system-ui, sans-serif", padding: "12px 0" }}>
+    <div ref={containerRef} style={{ fontFamily: "system-ui, sans-serif", padding: "12px 0", position: "relative" }}>
       <svg width="100%" viewBox="0 0 680 690" aria-label="The /advisor command in Claude Code — dual-model flow diagram">
         <defs>
           <marker id="arrowhead" viewBox="0 0 10 10" refX={8} refY={5}
@@ -127,11 +141,11 @@ export default function AdvisorDiagram() {
 
         {/* ── SETUP ROW ── */}
         <Box x={20}  y={24} w={138} h={40} color="gray" title="Run /advisor"
-          onClick={tip("run")} active={tooltip==="run"} theme={theme}/>
+          onClick={tip("run")} active={tooltip?.key==="run"} theme={theme}/>
         <Box x={200} y={24} w={172} h={40} color="gray" title="Select advisor model"
-          onClick={tip("model")} active={tooltip==="model"} theme={theme}/>
+          onClick={tip("model")} active={tooltip?.key==="model"} theme={theme}/>
         <Box x={420} y={24} w={222} h={40} color="teal" title="Advisor active · whole session"
-          onClick={tip("active")} active={tooltip==="active"} theme={theme}/>
+          onClick={tip("active")} active={tooltip?.key==="active"} theme={theme}/>
         <Arrow d="M158 44 L200 44"/>
         <Arrow d="M372 44 L420 44"/>
 
@@ -148,19 +162,19 @@ export default function AdvisorDiagram() {
 
         {/* ── EXECUTOR COLUMN ── */}
         <Box x={20} y={114} w={210} h={40} color="gray"  title="User sends task"
-          onClick={tip("task")} active={tooltip==="task"} theme={theme}/>
+          onClick={tip("task")} active={tooltip?.key==="task"} theme={theme}/>
         <Box x={20} y={168} w={210} h={52} color="teal"  title="Read & orient" sub="files, context, history"
-          onClick={tip("orient")} active={tooltip==="orient"} theme={theme}/>
+          onClick={tip("orient")} active={tooltip?.key==="orient"} theme={theme}/>
         <Box x={20} y={234} w={210} h={40} color="coral" title="Trigger condition met?"
-          onClick={tip("trigger")} active={tooltip==="trigger"} theme={theme}/>
+          onClick={tip("trigger")} active={tooltip?.key==="trigger"} theme={theme}/>
         <Box x={20} y={292} w={210} h={52} color="blue"  title="advisor() called" sub="stream pauses silently"
-          onClick={tip("called")} active={tooltip==="called"} theme={theme}/>
+          onClick={tip("called")} active={tooltip?.key==="called"} theme={theme}/>
         <Box x={20} y={490} w={210} h={52} color="teal"  title="Sonnet resumes" sub="advice injected to context"
-          onClick={tip("resumes")} active={tooltip==="resumes"} theme={theme}/>
+          onClick={tip("resumes")} active={tooltip?.key==="resumes"} theme={theme}/>
         <Box x={20} y={558} w={210} h={52} color="blue"  title="Near completion?" sub="Call advisor again"
-          onClick={tip("done")} active={tooltip==="done"} theme={theme}/>
+          onClick={tip("done")} active={tooltip?.key==="done"} theme={theme}/>
         <Box x={20} y={628} w={210} h={40} color="gray"  title="Task complete"
-          onClick={tip("complete")} active={tooltip==="complete"} theme={theme}/>
+          onClick={tip("complete")} active={tooltip?.key==="complete"} theme={theme}/>
 
         {/* executor vertical arrows */}
         <Arrow d="M125 154 L125 168"/>
@@ -178,11 +192,11 @@ export default function AdvisorDiagram() {
 
         {/* ── ADVISOR COLUMN ── */}
         <Box x={440} y={292} w={210} h={52} color="blue" title="Full transcript → Opus" sub="zero extra API calls"
-          onClick={tip("transcript")} active={tooltip==="transcript"} theme={theme}/>
+          onClick={tip("transcript")} active={tooltip?.key==="transcript"} theme={theme}/>
         <Box x={440} y={358} w={210} h={52} color="blue" title="Opus sub-inference" sub="400–700 text tokens"
-          onClick={tip("inference")} active={tooltip==="inference"} theme={theme}/>
+          onClick={tip("inference")} active={tooltip?.key==="inference"} theme={theme}/>
         <Box x={440} y={424} w={210} h={52} color="teal" title="advisor_tool_result" sub="returned to executor"
-          onClick={tip("result")} active={tooltip==="result"} theme={theme}/>
+          onClick={tip("result")} active={tooltip?.key==="result"} theme={theme}/>
 
         {/* advisor vertical arrows */}
         <Arrow d="M545 344 L545 358"/>
@@ -215,33 +229,36 @@ export default function AdvisorDiagram() {
         ))}
       </svg>
 
-      {/* Tooltip strip */}
+      {/* Floating tooltip */}
       {tooltip && (() => {
-        // pick accent color to match the box that was tapped
-        const accentKey =
-          ["run","model","task","complete"].includes(tooltip) ? "gray" :
-          ["active","orient","resumes"].includes(tooltip)     ? "teal" :
-          ["trigger"].includes(tooltip)                       ? "coral" : "blue";
-        const ac = COLORS[accentKey];
+        const containerWidth = containerRef.current?.offsetWidth ?? 680;
+        const tipWidth = Math.min(320, containerWidth - 24);
+        // Place right of cursor, flip left if it would overflow
+        let left = tooltip.x + 12;
+        if (left + tipWidth > containerWidth - 8) left = tooltip.x - tipWidth - 12;
+        left = Math.max(4, left);
+        const top = tooltip.y + 12;
         return (
-          <div style={{
-            margin: "0 4px 8px",
-            padding: "10px 14px",
-            borderRadius: 8,
-            background: ac.bg,
-            borderLeft: `3px solid ${ac.border}`,
-            fontSize: 13,
-            color: ac.text,
-            lineHeight: 1.6,
-          }}>
-            <strong style={{ marginRight: 6 }}>Note:</strong>{tips[tooltip]}
-            <button
-              onClick={() => setTooltip(null)}
-              style={{
-                float: "right", background: "none", border: "none",
-                cursor: "pointer", fontSize: 14, color: ac.sub,
-              }}
-            >✕</button>
+          <div
+            role="tooltip"
+            style={{
+              position: "absolute",
+              top, left,
+              width: tipWidth,
+              padding: "10px 14px",
+              borderRadius: 8,
+              background: ac.bg,
+              border: `1px solid ${ac.border}`,
+              borderLeft: `3px solid ${ac.border}`,
+              fontSize: 12,
+              color: ac.text,
+              lineHeight: 1.6,
+              boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
+              zIndex: 10,
+              pointerEvents: "none",
+            }}
+          >
+            {tips[tooltip.key]}
           </div>
         );
       })()}
@@ -265,7 +282,6 @@ export default function AdvisorDiagram() {
             {label}
           </span>
         ))}
-        <span style={{ marginLeft: "auto", opacity: 0.6 }}></span>
       </div>
     </div>
   );
