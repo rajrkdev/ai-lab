@@ -748,116 +748,287 @@ claude -p "Review this diff for security issues" --bare \
 
 ---
 
-## 14. The Advisor Tool
+## 14. The `/advisor` Slash Command — Day-to-Day Workflow
 
-### 14.1 Two Distinct "Advisor" Concepts
+### 14.1 What `/advisor` Actually Is
 
-**Important:** Two separate things share the "advisor" name in the Claude ecosystem. They are architecturally different and serve different audiences.
+Typing `/advisor` in Claude Code invokes the built-in advisor skill, which causes Claude to call the `advisor()` tool internally. No parameters, no configuration. What happens immediately:
 
-| | Built-in `advisor()` harness tool | Anthropic Advisor API (beta) |
-|-|----------------------------------|------------------------------|
-| **What it is** | A tool built into the Claude Code session harness | An API-level feature for developers building their own apps |
-| **Who uses it** | Claude, mid-task, to consult a stronger reviewer | Developers building executor+advisor app patterns |
-| **How invoked** | Claude calls `advisor()` with no parameters | Via API with `advisor-tool-2026-03-01` beta header |
-| **What it sees** | Your entire conversation history, automatically | The context you pass in the API call |
-| **Since** | Available in Claude Code harness sessions | Beta rollout April 9, 2026 |
-| **Benchmarks** | N/A (internal harness tool) | Sonnet + Opus advisor: 74.8% SWE-bench Multilingual (vs 72.1% Sonnet alone, at 11.9% less cost than Opus solo) |
+1. The **entire conversation transcript** is bundled — every message you sent, every tool call Claude made, every file it read, every result it saw, every reasoning step it took
+2. That full bundle is forwarded to an **Opus-tier reviewer model** — a stronger model than the one running your session
+3. The reviewer reads the complete arc of the session with no investment in the current approach
+4. It returns **one focused message** — a critique, a corrected plan, flagged assumptions, missing constraints, or validation that the current approach is sound
+5. That message lands in your active session context. Claude continues with the reviewer's feedback fully visible
 
-### 14.2 The Built-in `advisor()` Tool — For Day-to-Day Development
+The reviewer model does not hold a back-and-forth conversation with you. It makes one pass, one response. If you need a second review after acting on its feedback, type `/advisor` again.
 
-This is the advisor you interact with in Claude Code sessions. When Claude (or a skill) calls `advisor()`, it forwards the **entire conversation transcript** to a stronger reviewer model. The reviewer sees everything: the task, every tool call made, every result received, every reasoning step. It then returns a single message with guidance.
+**What makes it architecturally different from a second Claude turn:** A normal follow-up message runs through the same reasoner with the same biases and the same blind spots. The advisor is a different model reading the same transcript cold. It has not been building up an investment in the approach that is currently failing.
 
-**Purpose:** Catch reasoning errors, surface overlooked constraints, and give a second opinion before Claude commits to an approach — especially on decisions that are hard to reverse or expensive to redo.
+---
 
-#### When Claude (or You) Should Trigger the Advisor
+### 14.2 Two Ways `/advisor` Gets Invoked
 
-| Situation | Why advisor adds value |
-|-----------|----------------------|
-| **Before substantive work** — before writing code, before committing to an architecture, before deleting anything | The advisor sees what Claude is about to do and can catch flawed assumptions before they're encoded in code |
-| **After orientation, before implementation** — you've explored the codebase, now you're about to act | Orientation (reading files, grepping) is cheap to redo; implementation is not. Advisor after orienting, before writing |
-| **When stuck** — same error recurring, approach not converging, unexpected results | The advisor has the full picture and can identify the wrong-turn Claude took several steps back |
-| **Change of approach** — Claude is about to switch strategies | Validates whether the new approach is actually better or just differently wrong |
-| **Before declaring done** — task appears complete | The strongest use: the advisor catches gaps between what was asked and what was done |
-| **Risky / irreversible actions** — deleting branches, force pushes, schema changes | Adds a high-quality gate before the irreversible step |
-| **Ambiguous requirements** — the task description is underspecified | Advisor can identify which interpretation is most defensible and flag what to clarify |
+#### You type `/advisor` explicitly
 
-#### When NOT to Trigger the Advisor
-
-| Situation | Reason to skip |
-|-----------|---------------|
-| Short reactive tasks where the next action is dictated by tool output you just read | Advisor adds most value before approach crystallizes, not during mechanical execution |
-| After every single tool call | Over-calling drains tokens; the advisor is expensive on large contexts |
-| When you have primary-source evidence that already resolves the question | Trust the file, the test result, the stack trace — don't ask for a second opinion on facts |
-| When the task is already complete and the deliverable is durable | Call advisor BEFORE declaring done; if the session ends during the advisor call, a written/committed result persists |
-
-#### Cost Model
-
-The advisor call forwards the entire conversation. On a large session (50+ turns with tool results), this is a significant token spend — roughly equivalent to a full API call with the entire context as input. The expense is justified when the alternative is redoing hours of work.
-
-**Practical guidance:**
-- On tasks longer than a few steps: call advisor **at least once** before committing to an approach and **once** before declaring done
-- On short tasks: call advisor when the next action is non-obvious or high-risk
-- Never call advisor redundantly — if you already have evidence pointing one way and the advisor points another, make one more reconciliation call rather than silently switching
-
-#### Acting on Advisor Feedback
+Direct user control at deliberate checkpoints:
 
 ```
-Rule: Give advice serious weight.
+# You orient (read files, explore), then before you write:
+/advisor
 
-If the advisor says X and your tool results say Y:
-  → Surface the conflict in one more advisor call: "I found Y, you suggest X — which constraint breaks the tie?"
-  → Do NOT silently switch to X without verifying
-  → Do NOT dismiss X without engaging with it
+# Claude is mid-task and stuck:
+/advisor
 
-A passing self-test is not evidence the advice is wrong.
-It is evidence your test doesn't check what the advice is checking.
+# Claude says "task complete" — gate before you accept:
+/advisor
 ```
 
-#### Advisor in Your Own Workflow (Non-Claude Triggering)
+You can also embed the trigger in your prompt so Claude calls it automatically:
 
-You can prompt Claude to call the advisor by including trigger phrases in your message:
-- `"check with advisor before proceeding"`
-- `"get a second opinion on this approach"`
-- `"advisor review before you write"`
-
-This is especially useful for:
-- Architecture decisions where getting it wrong means a large rework
-- Security-sensitive code (auth, permissions, data access)
-- Database migrations or schema changes
-- Any step that touches shared infrastructure
-
-### 14.3 The Anthropic Advisor API — For App Builders
-
-For developers building Claude-powered applications (not using the Claude Code harness), the Advisor API lets you pair a fast executor model with Opus as an on-demand advisor.
-
-**Pattern:**
-
-```python
-# Executor: Sonnet or Haiku handles routine work
-# Advisor: Opus consulted only on uncertain decisions
-
-# API call with beta header
-response = client.messages.create(
-    model="claude-sonnet-4-6",
-    max_tokens=4096,
-    tools=[advisor_tool],   # Makes advisor() callable
-    messages=messages,
-    betas=["advisor-tool-2026-03-01"]
-)
+```
+Refactor the auth module. Check with advisor before writing any code.
 ```
 
-**Benchmark results (Anthropic internal, April 2026):**
+```
+Audit the migration. Use advisor before declaring done.
+```
 
-| Executor | Advisor | Score | vs baseline | vs full Opus | Cost vs full Opus |
-|----------|---------|-------|------------|-------------|------------------|
-| Sonnet 4.6 | None | 72.1% SWE-bench Multilingual | — | -8.7pp | -80% |
-| Sonnet 4.6 | Opus 4.6 | 74.8% | +2.7pp | -6pp | **-11.9%** |
-| Haiku 4.5 | None | 19.7% BrowseComp | — | — | -93% |
-| Haiku 4.5 | Opus 4.6 | 41.2% BrowseComp | **+109%** | — | **-85%** |
+#### Claude calls `advisor()` internally (auto-trigger)
 
-The Haiku + Opus advisor pairing is the most dramatic: more than double the performance for 85% less cost than using Sonnet.
+Four conditions cause Claude to trigger the advisor without you typing anything:
 
-**When to use the Advisor API vs. always using Opus:** Use it when most requests are routine (Sonnet/Haiku handles them) but a subset require deep reasoning. The executor decides when to escalate. If >40% of requests need escalation, switching the main model to Opus may be cheaper.
+| Trigger | What it looks like in the session | Why it fires |
+|---------|----------------------------------|-------------|
+| **Task completion gate** | Claude believes it is done; calls advisor before declaring success | Catches gaps between what was asked and what was delivered |
+| **Decision uncertainty** | Claude hits a choice it is not confident about mid-task | Prevents low-confidence decisions from compounding downstream |
+| **Recurring error / non-convergence** | Same fix attempted 3+ times; tests keep failing; bouncing between two approaches | Current reasoning is in a loop; a fresh perspective is needed |
+| **Multi-phase checkpoint** | Long tasks with an internal todo list; advisor called at phase boundaries | Validates each phase output before the next phase builds on it |
+
+**Important session behavior:** The advisor's response persists in session context. Later advisor calls — whether auto or explicit — can see earlier advice. This creates an accumulating review thread inside the session rather than isolated one-off checks.
+
+**Purpose:** Catch reasoning errors, surface overlooked constraints, and provide a second opinion before Claude commits to an approach — especially on decisions that are hard to reverse or expensive to redo.
+
+---
+
+### 14.3 How `/advisor` Improves Claude's Next Response
+
+This is the primary value. The reviewer's message changes what Claude does immediately after.
+
+#### The cold-reader effect
+
+The advisor model reads your session with no accumulated context bias. Claude, running turn-by-turn, can drift — a wrong assumption in turn 3 shapes every turn after it. The advisor sees turn 3 and turn 27 simultaneously and can say: "The problem started here."
+
+After a well-targeted advisor call, Claude's next response typically shows:
+
+- **Re-anchoring to the original task** — the advisor pulls Claude back to what was actually asked, not what Claude decided the task should be
+- **Constraint recovery** — requirements stated early and drifted out of focus are re-introduced into the active reasoning
+- **Approach correction** — if the advisor identifies the current strategy as wrong, Claude's next response is built on the corrected approach rather than doubling down
+- **Specificity increase** — vague plans become concrete; "I'll refactor this" becomes "I'll change `validateToken()` at line 47 because the null-check is missing before the expiry comparison"
+
+#### What the advisor catches that Claude cannot catch alone
+
+| Failure class | Why Claude misses it | Why the advisor catches it |
+|--------------|---------------------|--------------------------|
+| Requirement drift | Claude weights recent turns more heavily than early instructions | Advisor reads early and late turns with equal attention |
+| Sunk-cost continuation | Claude built several turns on an approach and keeps refining it | Advisor has no investment in the existing approach |
+| False completion | Output matches Claude's interpretation, not the original request | Advisor reads your original request and compares it to the actual output |
+| Missing constraints | A constraint stated once at turn 2 is no longer prominent by turn 20 | Advisor sees every turn simultaneously |
+| Wrong-level abstraction | Claude solves the symptom, not the root cause | Advisor sees the full diagnostic trail and identifies the actual failure point |
+
+#### Real session pattern
+
+From community testing (Sonnet 4.6 as main, Opus 4.6 as advisor):
+
+> "When Sonnet hit the stall pattern on the third pass of the billing fix, it called Opus through `/advisor`. The advisor came back with a two-paragraph analysis that read like a senior engineer's code review — specific, pointing at the exact function, explaining why. Sonnet's next response was completely restructured: different approach, different file targets, and it worked on the first try."
+
+The advisor does not rewrite code. It changes Claude's **reasoning frame** before the next implementation attempt.
+
+---
+
+### 14.4 How `/advisor` Improves Your Prompts Going Forward
+
+This is the compounding benefit most developers miss. The advisor's feedback is not just a one-session fix — it is a **prompt quality signal** you can act on permanently.
+
+#### Reading advisor feedback as prompt diagnosis
+
+When the advisor flags things like:
+
+| Advisor says | What it reveals about your prompt |
+|-------------|----------------------------------|
+| *"It's unclear whether X or Y should take priority"* | Your prompt was ambiguous on that axis — add explicit priority |
+| *"Claude attempted to modify Z, which was not part of the request"* | Your prompt did not scope what was out of bounds — add "do NOT change" clauses |
+| *"The definition of done is not specified"* | Your prompt had no acceptance criteria — define what "done" looks like |
+| *"The file paths are not named; Claude is guessing"* | Your prompt assumed implicit knowledge — name exact files and functions |
+| *"It is unclear whether tests should be updated or kept as-is"* | Your prompt did not specify test modification policy |
+
+Each of these is directly actionable in future prompts for similar tasks.
+
+#### The transformation that emerges over repeated sessions
+
+| Before `/advisor` | After repeated `/advisor` sessions |
+|------------------|----------------------------------|
+| "Refactor the auth module" | "Refactor `src/auth/validator.ts` — specifically `validateToken()` at line 47. Do NOT modify `generator.ts`. Tests in `tests/auth/validator.test.ts`, run with `npm test auth`. Done when all 14 tests pass and the function signature is unchanged." |
+| "Fix the bug" | "Fix the null-pointer in `UserService.getById()` at line 83. Stack trace: [X]. Root cause is [Y]. Do not change the public interface." |
+| "Make the tests pass" | "Make `tests/api/users.test.ts:114` pass. Test expects 404 for unknown users; current implementation returns 500. Only change `src/api/users.ts`." |
+
+The pattern: **general intent → self-contained specification**. The advisor enforces this by flagging every gap. Over time, you pre-fill those gaps before Claude even starts — the advisor teaches you to write prompts that make advisor calls less necessary.
+
+#### What to extract from each advisor session
+
+After each advisor call, ask yourself:
+1. What did the advisor flag as ambiguous? → add that detail to your template for similar tasks
+2. What constraint did the advisor identify as missing? → add explicit "do NOT" clauses next time
+3. What question did the advisor raise that you should have answered upfront? → make it a standard field
+4. What gap existed between "Claude thinks it is done" and "actually done"? → write acceptance criteria explicitly
+
+---
+
+### 14.5 Token Efficiency — Cost vs. Upstream Savings
+
+`/advisor` costs tokens. Understanding when it saves more than it costs is the core efficiency question.
+
+#### What an advisor call costs
+
+The advisor sends your entire conversation as input, billed at Opus-tier input rates (since the reviewer is Opus-tier):
+
+| Session size | Approx. input tokens sent | Cost character |
+|-------------|--------------------------|---------------|
+| 5-turn short task | ~10K–30K tokens | Low — advisor is affordable |
+| 20-turn medium task | ~60K–120K tokens | Moderate — justified for non-trivial decisions |
+| 50-turn long task | ~200K–400K tokens | Significant — reserve for high-stakes moments |
+
+#### What an advisor call prevents
+
+The cost question is not "how much does the advisor call cost?" It is "how much does the wrong approach cost without it?"
+
+| Failure prevented | Rework cost without advisor | Net |
+|------------------|-----------------------------|-----|
+| Wrong architecture caught at turn 5 | 20–40 turns of rework × compound context growth | Large positive |
+| False completion caught before acceptance | Full debugging session to find what is missing | Moderate positive |
+| Recurring error loop broken | 5–10 more failed attempts × context bloat | Moderate positive |
+| Correct approach confirmed (no issue found) | 0 rework | Negative (insurance cost only) |
+
+**Real session data:** In a community-reported session — 42 Sonnet 4.6 turns with 6 advisor calls to Opus 4.6 — total cost came out cheaper than running 42 pure Opus turns for the same session. The advisor calls were individually expensive, but the session was shorter because wrong-turns were cut off early.
+
+#### The ROI breakeven rule
+
+An advisor call pays for itself if it prevents **more than 3–5 additional turns of rework**. On any non-trivial task this threshold is easy to cross. The advisor is a poor investment only when:
+
+- The session is very short (advisor cost approaches total session cost)
+- The next step is mechanically dictated by tool output you just read — no decision to review
+- You are calling it after every tool result — over-invocation adds cost without corresponding quality improvement
+
+#### When the ROI is reliably positive
+
+```
+Task is non-trivial (more than ~5 turns expected)      → call before writing
+Architecture or design decision is involved            → call before committing
+The same approach has failed twice                     → call immediately
+Task scope feels ambiguous                             → call before any implementation
+About to do something irreversible                     → call without exception
+Claude says it is done on a complex task               → call as a completion gate
+```
+
+---
+
+### 14.6 The Model Pairing Reality
+
+In Claude Code, your session model is paired with an Opus-tier reviewer for advisor calls. The pairing direction matters fundamentally:
+
+| Session model | Advisor (reviewer) | Quality of review |
+|--------------|-------------------|------------------|
+| Sonnet 4.6 (recommended daily driver) | Opus-tier | Strong — catches what a capable but lighter model misses |
+| Opus 4.6 | Opus-tier | Peer-level — useful for confirmation and constraint recovery |
+
+**The pairing asymmetry:** A stronger reviewer auditing a lighter executor is the correct direction. The inverse does not work — a lighter model reviewing a heavier model's architecture decision is like a junior engineer reviewing a senior engineer's design. The advisor only adds value when it is at least as capable as the session model.
+
+**Why `/opusplan` and `/advisor` complement each other:** With `opusplan`, Opus handles Plan mode (design turns) and Sonnet handles implementation. `/advisor` then reviews Sonnet's implementation against the Opus-authored plan. This creates a full quality loop: **design by Opus → implement by Sonnet → review by Opus via advisor** — all within one session, with cache implications managed internally by `opusplan`.
+
+---
+
+### 14.7 Practical Patterns for Daily Development
+
+#### Pattern 1 — The orientation gate (highest ROI)
+
+```
+You: [describe the task]
+Claude: [reads files, explores codebase]
+You: /advisor
+Advisor: [flags wrong assumptions; confirms or redirects the approach]
+Claude: [implements on the corrected foundation]
+```
+
+The gap between "what Claude thinks it found" and "what the codebase actually requires" is where the most expensive wrong-turns originate. Cutting that gap before implementation is the single highest-value use of `/advisor`.
+
+#### Pattern 2 — The completion gate
+
+```
+Claude: "I've completed the refactor. All tests pass."
+You: /advisor
+Advisor: [compares original requirement to actual output; surfaces gaps]
+You: [accept or redirect]
+```
+
+Claude cannot reliably verify its own completion because it has been building toward its interpretation of the requirement. The advisor reads the original request and the output side-by-side.
+
+#### Pattern 3 — The loop-breaker
+
+```
+[Claude has tried the same fix 2–3 times; tests still failing]
+You: /advisor
+Advisor: [identifies the actual root cause; points to the turn where the wrong assumption was made]
+Claude: [implements the corrected approach from the right starting point]
+```
+
+The advisor has no reason to continue down the same path. It will often identify that the problem is upstream of where Claude is looking.
+
+#### Pattern 4 — Embedded in the prompt (semi-autonomous)
+
+```
+You: Refactor the payment module. Use /advisor before writing any
+     code, and use /advisor again before telling me you are done.
+```
+
+Pre-programs two review gates without requiring you to watch the session.
+
+#### Pattern 5 — The reconciliation call
+
+```
+You: /advisor
+Advisor: [says approach X is wrong; recommends Y]
+Claude: [has test evidence that X actually works]
+You: /advisor
+     "Advisor said X is wrong. But the test at line 47 proves X works.
+      Which constraint breaks the tie?"
+Advisor: [reconciles; identifies what it missed or confirms the test is insufficient]
+```
+
+Never silently switch approaches when advisor feedback conflicts with primary-source evidence. Surface the conflict explicitly in a second call.
+
+---
+
+### 14.8 When to Use vs. When to Skip
+
+| Use `/advisor` | Skip `/advisor` |
+|---------------|----------------|
+| Before writing code on a task longer than ~5 turns | Short reactive tasks where the next step is dictated by what you just read |
+| Before any irreversible action (delete, force push, schema migration) | After every single tool call — over-invocation adds cost without improving decisions |
+| When the same error has occurred twice | When you have primary-source evidence (file content, passing test, stack trace) that already resolves the question |
+| When requirements feel ambiguous before starting | When the session is very short and advisor cost approaches total session cost |
+| Before accepting Claude's "done" on complex tasks | When you just need Claude to continue mechanical execution |
+| When you are changing approach mid-task | — |
+
+---
+
+### 14.9 What `/advisor` Is Not
+
+| Misconception | Reality |
+|--------------|---------|
+| A chat partner for follow-up questions | One-shot reviewer per call — one message back. Type `/advisor` again for a second pass |
+| A replacement for running tests | Reviews reasoning and approach; does not execute code |
+| Always correct | Can be wrong, especially if it underweights tool evidence. Surface conflicts explicitly rather than switching silently |
+| Free to call any time | Token-significant on large sessions — costs scale with session size |
+| Only useful when stuck | Most valuable *before* a wrong approach is implemented — prevention, not just recovery |
 
 ---
 
