@@ -673,9 +673,9 @@ const CodeBlock = ({ code }) => {
   return (
     <div style={{ background: "#020617", borderRadius: 8, border: "1px solid #1e293b", overflow: "hidden", marginTop: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 12px", background: "#0f172a", borderBottom: "1px solid #1e293b" }}>
-        <span style={{ color: "#475569", fontSize: 11, fontFamily: "monospace" }}>python</span>
+        <span style={{ color: "#9b9895", fontSize: 11, fontFamily: "monospace" }}>python</span>
         <button onClick={() => { navigator.clipboard?.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-          style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 11 }}>
+          style={{ background: "none", border: "none", color: "#9b9895", cursor: "pointer", fontSize: 11 }}>
           {copied ? "✓" : "copy"}
         </button>
       </div>
@@ -701,9 +701,9 @@ export default function RAGTypes() {
     <div style={{ minHeight: "100vh", background: "#020617", color: "#e2e8f0", fontFamily: "'DM Sans', system-ui, sans-serif", display: "flex", flexDirection: "column" }}>
       {/* Header */}
       <div style={{ padding: "28px 32px 20px", borderBottom: "1px solid #0f172a" }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 4, color: "#475569", textTransform: "uppercase", marginBottom: 8 }}>Complete Taxonomy</div>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 4, color: "#9b9895", textTransform: "uppercase", marginBottom: 8 }}>Complete Taxonomy</div>
         <h1 style={{ margin: 0, fontSize: 32, fontWeight: 800, color: "#f8fafc", letterSpacing: -1 }}>Types of RAG</h1>
-        <p style={{ margin: "8px 0 0", color: "#64748b", fontSize: 14 }}>13 architectures — from vanilla to agentic. Click any type to explore.</p>
+        <p style={{ margin: "8px 0 0", color: "#9b9895", fontSize: 14 }}>13 architectures — from vanilla to agentic. Click any type to explore.</p>
       </div>
 
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
@@ -725,20 +725,20 @@ export default function RAGTypes() {
                       <div style={{ flex: 1 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                           <span style={{ color: selected === r.id ? r.color : "#e2e8f0", fontWeight: 700, fontSize: 14 }}>{r.name}</span>
-                          <span style={{ color: "#334155", fontSize: 10 }}>{r.aka}</span>
+                          <span style={{ color: "#d1d5db", fontSize: 10 }}>{r.aka}</span>
                         </div>
-                        <div style={{ color: "#475569", fontSize: 12, marginTop: 2 }}>{r.tagline}</div>
+                        <div style={{ color: "#9b9895", fontSize: 12, marginTop: 2 }}>{r.tagline}</div>
                         <div style={{ display: "flex", gap: 12, marginTop: 6 }}>
                           <div>
-                            <div style={{ color: "#334155", fontSize: 9, marginBottom: 2 }}>ACCURACY</div>
+                            <div style={{ color: "#d1d5db", fontSize: 9, marginBottom: 2 }}>ACCURACY</div>
                             <StarRating value={r.accuracy} color={r.color} />
                           </div>
                           <div>
-                            <div style={{ color: "#334155", fontSize: 9, marginBottom: 2 }}>COMPLEXITY</div>
+                            <div style={{ color: "#d1d5db", fontSize: 9, marginBottom: 2 }}>COMPLEXITY</div>
                             <StarRating value={r.complexity} color={r.color} />
                           </div>
                           <div>
-                            <div style={{ color: "#334155", fontSize: 9, marginBottom: 2 }}>SPEED</div>
+                            <div style={{ color: "#d1d5db", fontSize: 9, marginBottom: 2 }}>SPEED</div>
                             <StarRating value={r.speed} color={r.color} />
                           </div>
                         </div>
@@ -756,7 +756,7 @@ export default function RAGTypes() {
           {!active ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 12, padding: 40 }}>
               <div style={{ fontSize: 48 }}>👈</div>
-              <div style={{ color: "#334155", fontSize: 16, textAlign: "center" }}>Select a RAG type to see<br/>architecture, pipeline, code & general context</div>
+              <div style={{ color: "#d1d5db", fontSize: 16, textAlign: "center" }}>Select a RAG type to see<br/>architecture, pipeline, code & general context</div>
               <div style={{ marginTop: 24, display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", maxWidth: 500 }}>
                 {ragTypes.map(r => (
                   <div key={r.id} onClick={() => setSelected(r.id)}
@@ -774,7 +774,7 @@ export default function RAGTypes() {
                 <div>
                   <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 3, color: active.tierColor, textTransform: "uppercase" }}>{active.tier}</div>
                   <h2 style={{ margin: "2px 0 0", fontSize: 26, fontWeight: 800, color: active.color }}>{active.name}</h2>
-                  <div style={{ color: "#475569", fontSize: 13 }}>{active.aka}</div>
+                  <div style={{ color: "#9b9895", fontSize: 13 }}>{active.aka}</div>
                 </div>
               </div>
 
@@ -782,7 +782,7 @@ export default function RAGTypes() {
               <div style={{ display: "flex", gap: 2, marginBottom: 24, background: "#0a0f1e", borderRadius: 8, padding: 4, border: "1px solid #0f172a", width: "fit-content" }}>
                 {["overview", "pipeline", "code", "general"].map(t => (
                   <button key={t} onClick={() => setTab(t)}
-                    style={{ background: tab === t ? `${active.color}22` : "none", border: tab === t ? `1px solid ${active.color}44` : "1px solid transparent", color: tab === t ? active.color : "#475569", padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontSize: 12, fontWeight: tab === t ? 700 : 400, textTransform: "capitalize" }}>
+                    style={{ background: tab === t ? `${active.color}22` : "none", border: tab === t ? `1px solid ${active.color}44` : "1px solid transparent", color: tab === t ? active.color : "#9b9895", padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontSize: 12, fontWeight: tab === t ? 700 : 400, textTransform: "capitalize" }}>
                     {t === "general" ? "🏗️ General" : t.charAt(0).toUpperCase() + t.slice(1)}
                   </button>
                 ))}
@@ -809,9 +809,9 @@ export default function RAGTypes() {
                   <div style={{ display: "flex", gap: 24, background: "#0a0f1e", border: "1px solid #0f172a", borderRadius: 8, padding: 16 }}>
                     {[["Accuracy", active.accuracy], ["Complexity", active.complexity], ["Speed", active.speed]].map(([label, val]) => (
                       <div key={label}>
-                        <div style={{ color: "#334155", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>{label}</div>
+                        <div style={{ color: "#d1d5db", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>{label}</div>
                         <StarRating value={val} color={active.color} />
-                        <div style={{ color: "#475569", fontSize: 11, marginTop: 4 }}>{val}/5</div>
+                        <div style={{ color: "#9b9895", fontSize: 11, marginTop: 4 }}>{val}/5</div>
                       </div>
                     ))}
                   </div>
@@ -820,7 +820,7 @@ export default function RAGTypes() {
 
               {tab === "pipeline" && (
                 <div>
-                  <div style={{ color: "#64748b", fontSize: 13, marginBottom: 16 }}>Step-by-step data flow for {active.name}:</div>
+                  <div style={{ color: "#9b9895", fontSize: 13, marginBottom: 16 }}>Step-by-step data flow for {active.name}:</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {active.pipeline.map((step, i) => (
                       <div key={i} style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -836,7 +836,7 @@ export default function RAGTypes() {
                     ))}
                   </div>
                   <div style={{ marginTop: 20, background: "#0a0f1e", border: "1px solid #0f172a", borderRadius: 8, padding: 14 }}>
-                    <div style={{ color: "#475569", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, marginBottom: 8 }}>Quick Flow</div>
+                    <div style={{ color: "#9b9895", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, marginBottom: 8 }}>Quick Flow</div>
                     <PipelineFlow steps={active.pipeline} colors={active.pipelineColors} color={active.color} />
                   </div>
                 </div>
@@ -844,7 +844,7 @@ export default function RAGTypes() {
 
               {tab === "code" && (
                 <div>
-                  <div style={{ color: "#64748b", fontSize: 13, marginBottom: 4 }}>Implementation pattern for {active.name}:</div>
+                  <div style={{ color: "#9b9895", fontSize: 13, marginBottom: 4 }}>Implementation pattern for {active.name}:</div>
                   <CodeBlock code={active.code} />
                 </div>
               )}
@@ -856,7 +856,7 @@ export default function RAGTypes() {
                     <div style={{ color: "#cbd5e1", fontSize: 14, lineHeight: 1.8 }}>{active.general}</div>
                   </div>
                   <div style={{ marginTop: 20, background: "#0a0f1e", border: "1px solid #0f172a", borderRadius: 10, padding: 16 }}>
-                    <div style={{ color: "#475569", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Which RAG types does a general production system use?</div>
+                    <div style={{ color: "#9b9895", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Which RAG types does a general production system use?</div>
                     {[
                       { type: "Advanced RAG", role: "Core pipeline — HyDE + Hybrid + Rerank", active: true },
                       { type: "Modular RAG", role: "Customer chatbot vs Developer chatbot = separate modules", active: true },
@@ -868,8 +868,8 @@ export default function RAGTypes() {
                       <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: "1px solid #0f172a" }}>
                         <span style={{ fontSize: 14 }}>{item.active ? "✅" : "🔮"}</span>
                         <div>
-                          <span style={{ color: item.active ? "#e2e8f0" : "#334155", fontSize: 13, fontWeight: 600 }}>{item.type}</span>
-                          <span style={{ color: "#475569", fontSize: 12 }}> — {item.role}</span>
+                          <span style={{ color: item.active ? "#e2e8f0" : "#d1d5db", fontSize: 13, fontWeight: 600 }}>{item.type}</span>
+                          <span style={{ color: "#9b9895", fontSize: 12 }}> — {item.role}</span>
                         </div>
                       </div>
                     ))}
