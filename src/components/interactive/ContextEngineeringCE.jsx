@@ -1010,11 +1010,10 @@ export default function ContextEngineeringClaudeCode() {
   const Section=SECTIONS[active]
   return (
     <div style={{maxWidth:820,margin:"0 auto",padding:"0 20px 80px",fontFamily:"'Inter',-apple-system,BlinkMacSystemFont,sans-serif",background:C.bg3,color:C.text1,lineHeight:1.6,fontSize:15,minHeight:"100vh"}}>
-      <header style={{padding:"32px 0 20px",borderBottom:`0.5px solid ${C.borderMd}`}}>
-        <h1 style={{fontSize:28,fontWeight:500,marginBottom:6}}>Context engineering for Claude Code</h1>
-        <p style={{fontSize:13,color:C.text2}}>v2.1.101 · Models: Opus 4.7, Sonnet 4.6, Haiku 4.5 · Source: Anthropic docs, Claude Code best practices, community data</p>
-      </header>
-      <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none",msOverflowStyle:"none",padding:"14px 0",borderBottom:`0.5px solid ${C.border}`,position:"sticky",top:0,background:C.bg3,zIndex:20}}>
+      <div style={{padding:"12px 0 16px",borderBottom:`0.5px solid ${C.borderMd}`}}>
+        <p style={{fontSize:13,color:C.text2,margin:0}}>v2.1.101 · Models: Opus 4.7, Sonnet 4.6, Haiku 4.5 · Source: Anthropic docs, Claude Code best practices, community data</p>
+      </div>
+      <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none",msOverflowStyle:"none",padding:"14px 0",borderBottom:`0.5px solid ${C.border}`,position:"sticky",top:"var(--sl-nav-height)",background:C.bg3,zIndex:20}}>
         <div style={{display:"flex",flexWrap:"nowrap",gap:4,minWidth:"max-content"}}>
           {TABS.map((tab,i)=>(
             <button key={i} onClick={()=>setActive(i)} style={{padding:"5px 12px",fontSize:12,borderRadius:8,border:`0.5px solid ${i===active?C.borderMd:C.border}`,cursor:"pointer",color:i===active?C.text1:C.text2,background:i===active?C.bg2:"transparent",fontFamily:"sans-serif",transition:"all .12s",whiteSpace:"nowrap",flexShrink:0}}>

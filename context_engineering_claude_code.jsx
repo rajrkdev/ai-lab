@@ -1,13 +1,13 @@
 import { useState, useMemo } from "react"
 
 const C = {
-  text1:"#e6e4de", text2:"#9b9895", text3:"#6a6865",
-  bg1:"#272c27",   bg2:"#1e231e", bg3:"#0e100e",
-  border:"rgba(255,255,255,0.14)", borderMd:"rgba(255,255,255,0.24)",
-  infoBg:"rgba(88,166,255,0.18)",  infoBd:"rgba(88,166,255,0.42)",   infoT:"#58a6ff",
-  okBg:  "rgba(0,212,106,0.18)",   okBd:  "rgba(0,212,106,0.48)",    okT:  "#00d46a",
-  warnBg:"rgba(245,166,35,0.18)",  warnBd:"rgba(245,166,35,0.48)",   warnT:"#f5a623",
-  errBg: "rgba(248,113,113,0.18)", errBd: "rgba(248,113,113,0.48)",  errT: "#f87171",
+  text1:"#1a1a18", text2:"#5c5c58", text3:"#96948e",
+  bg1:"#ffffff",   bg2:"#f5f4f0", bg3:"#eeece8",
+  border:"rgba(0,0,0,0.10)", borderMd:"rgba(0,0,0,0.18)",
+  infoBg:"#e6f1fb", infoBd:"rgba(24,95,165,.22)", infoT:"#0c447c",
+  okBg:  "#eaf3de", okBd:  "rgba(15,110,86,.22)",  okT:  "#085041",
+  warnBg:"#faeeda", warnBd:"rgba(186,117,23,.22)", warnT:"#633806",
+  errBg: "#fcebeb", errBd: "rgba(163,45,45,.22)",  errT: "#791f1f",
 }
 
 // ── GROUND-TRUTH MODEL DATA (April 19, 2026) ──────────────────────────────────
@@ -126,7 +126,7 @@ const NewTag   = () => <span style={{fontSize:10,fontWeight:500,padding:"1px 5px
 const PreviewTag=() => <span style={{fontSize:10,fontWeight:500,padding:"1px 5px",borderRadius:3,background:C.warnBg,color:C.warnT,marginLeft:5,verticalAlign:"middle",border:`0.5px solid ${C.warnBd}`}}>PREVIEW</span>
 
 const Sel = ({value,onChange,options,style={}}) => (
-  <select value={value} onChange={e=>onChange(e.target.value)} style={{fontSize:12,padding:"5px 8px",borderRadius:6,border:`0.5px solid ${C.borderMd}`,background:C.bg1,color:C.text1,fontFamily:"sans-serif",cursor:"pointer",width:"100%",...style}}>
+  <select value={value} onChange={e=>onChange(e.target.value)} style={{fontSize:12,padding:"5px 8px",borderRadius:6,border:`0.5px solid ${C.borderMd}`,background:C.bg1,color:C.text1,fontFamily:"sans-serif",cursor:"pointer",...style}}>
     {options.map(([v,l])=><option key={v} value={v}>{l}</option>)}
   </select>
 )
@@ -370,16 +370,16 @@ const S_SIMULATOR = () => {
       <Body>A precise, model-aware simulator that accounts for extended thinking costs, MCP overhead, session mode, effort level, and prompt caching. Every value is calibrated to real-world Claude Code data. Adjust the controls — the token breakdown and cost estimate update live.</Body>
 
       {/* ── TOP CONTROLS ── */}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,margin:"14px 0 8px",alignItems:"start"}}>
-        <div style={{display:"flex",flexDirection:"column"}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,margin:"14px 0 8px"}}>
+        <div>
           <div style={{fontSize:11,color:C.text3,marginBottom:5,fontWeight:500,letterSpacing:.3}}>MODEL</div>
           <Sel value={modelKey} onChange={v=>{setModelKey(v);if(EFFORT_LEVELS["xhigh"]&&v!=="opus-4-7"&&effortKey==="xhigh")setEffortKey("high")}} options={Object.entries(MODELS).map(([k,v])=>[k,v.short])}/>
         </div>
-        <div style={{display:"flex",flexDirection:"column"}}>
+        <div>
           <div style={{fontSize:11,color:C.text3,marginBottom:5,fontWeight:500,letterSpacing:.3}}>EFFORT LEVEL</div>
           <Sel value={effortKey} onChange={setEffortKey} options={effortOpts}/>
         </div>
-        <div style={{display:"flex",flexDirection:"column"}}>
+        <div>
           <div style={{fontSize:11,color:C.text3,marginBottom:5,fontWeight:500,letterSpacing:.3}}>SESSION MODE</div>
           <Sel value={sessionMode} onChange={setSessionMode} options={Object.entries(SESSION_MODES).map(([k,v])=>[k,v.label])}/>
         </div>
@@ -1014,14 +1014,12 @@ export default function ContextEngineeringClaudeCode() {
         <h1 style={{fontSize:28,fontWeight:500,marginBottom:6}}>Context engineering for Claude Code</h1>
         <p style={{fontSize:13,color:C.text2}}>v2.1.101 · Models: Opus 4.7, Sonnet 4.6, Haiku 4.5 · Source: Anthropic docs, Claude Code best practices, community data</p>
       </header>
-      <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none",msOverflowStyle:"none",padding:"14px 0",borderBottom:`0.5px solid ${C.border}`,position:"sticky",top:0,background:C.bg3,zIndex:20}}>
-        <div style={{display:"flex",flexWrap:"nowrap",gap:4,minWidth:"max-content"}}>
-          {TABS.map((tab,i)=>(
-            <button key={i} onClick={()=>setActive(i)} style={{padding:"5px 12px",fontSize:12,borderRadius:8,border:`0.5px solid ${i===active?C.borderMd:C.border}`,cursor:"pointer",color:i===active?C.text1:C.text2,background:i===active?C.bg2:"transparent",fontFamily:"sans-serif",transition:"all .12s",whiteSpace:"nowrap",flexShrink:0}}>
-              {tab}{i===8?" ⚙":""}
-            </button>
-          ))}
-        </div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:4,padding:"14px 0",borderBottom:`0.5px solid ${C.border}`,position:"sticky",top:0,background:C.bg3,zIndex:20}}>
+        {TABS.map((tab,i)=>(
+          <button key={i} onClick={()=>setActive(i)} style={{padding:"5px 10px",fontSize:12,borderRadius:8,border:`0.5px solid ${i===active?C.borderMd:C.border}`,cursor:"pointer",color:i===active?C.text1:C.text2,background:i===active?C.bg2:"transparent",fontFamily:"sans-serif",transition:"all .12s"}}>
+            {tab}{i===8?" ⚙":""}
+          </button>
+        ))}
       </div>
       <div style={{paddingTop:20}}><Section/></div>
     </div>

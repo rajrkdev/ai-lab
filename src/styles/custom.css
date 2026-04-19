@@ -379,6 +379,15 @@
   box-sizing: border-box;
 }
 
+/* Reset heading styles inside interactive tools — prevents the global
+   .sl-markdown-content h2 border-left rule from shifting component headings */
+.interactive-tool h2,
+.interactive-tool h3 {
+  border-left: none !important;
+  padding-left: 0 !important;
+  margin-left: 0 !important;
+}
+
 /* Remove content max-width constraint for interactive tool pages */
 body:has(.interactive-tool) .sl-markdown-content,
 body:has(.interactive-tool) .content-panel {
