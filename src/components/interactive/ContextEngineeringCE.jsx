@@ -126,7 +126,7 @@ const NewTag   = () => <span style={{fontSize:10,fontWeight:500,padding:"1px 5px
 const PreviewTag=() => <span style={{fontSize:10,fontWeight:500,padding:"1px 5px",borderRadius:3,background:C.warnBg,color:C.warnT,marginLeft:5,verticalAlign:"middle",border:`0.5px solid ${C.warnBd}`}}>PREVIEW</span>
 
 const Sel = ({value,onChange,options,style={}}) => (
-  <select value={value} onChange={e=>onChange(e.target.value)} style={{fontSize:12,padding:"5px 8px",borderRadius:6,border:`0.5px solid ${C.borderMd}`,background:C.bg1,color:C.text1,fontFamily:"sans-serif",cursor:"pointer",...style}}>
+  <select value={value} onChange={e=>onChange(e.target.value)} style={{fontSize:12,padding:"5px 8px",borderRadius:6,border:`0.5px solid ${C.borderMd}`,background:C.bg1,color:C.text1,fontFamily:"sans-serif",cursor:"pointer",width:"100%",...style}}>
     {options.map(([v,l])=><option key={v} value={v}>{l}</option>)}
   </select>
 )
@@ -370,16 +370,16 @@ const S_SIMULATOR = () => {
       <Body>A precise, model-aware simulator that accounts for extended thinking costs, MCP overhead, session mode, effort level, and prompt caching. Every value is calibrated to real-world Claude Code data. Adjust the controls — the token breakdown and cost estimate update live.</Body>
 
       {/* ── TOP CONTROLS ── */}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,margin:"14px 0 8px"}}>
-        <div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,margin:"14px 0 8px",alignItems:"start"}}>
+        <div style={{display:"flex",flexDirection:"column"}}>
           <div style={{fontSize:11,color:C.text3,marginBottom:5,fontWeight:500,letterSpacing:.3}}>MODEL</div>
           <Sel value={modelKey} onChange={v=>{setModelKey(v);if(EFFORT_LEVELS["xhigh"]&&v!=="opus-4-7"&&effortKey==="xhigh")setEffortKey("high")}} options={Object.entries(MODELS).map(([k,v])=>[k,v.short])}/>
         </div>
-        <div>
+        <div style={{display:"flex",flexDirection:"column"}}>
           <div style={{fontSize:11,color:C.text3,marginBottom:5,fontWeight:500,letterSpacing:.3}}>EFFORT LEVEL</div>
           <Sel value={effortKey} onChange={setEffortKey} options={effortOpts}/>
         </div>
-        <div>
+        <div style={{display:"flex",flexDirection:"column"}}>
           <div style={{fontSize:11,color:C.text3,marginBottom:5,fontWeight:500,letterSpacing:.3}}>SESSION MODE</div>
           <Sel value={sessionMode} onChange={setSessionMode} options={Object.entries(SESSION_MODES).map(([k,v])=>[k,v.label])}/>
         </div>
@@ -1014,12 +1014,14 @@ export default function ContextEngineeringClaudeCode() {
         <h1 style={{fontSize:28,fontWeight:500,marginBottom:6}}>Context engineering for Claude Code</h1>
         <p style={{fontSize:13,color:C.text2}}>v2.1.101 · Models: Opus 4.7, Sonnet 4.6, Haiku 4.5 · Source: Anthropic docs, Claude Code best practices, community data</p>
       </header>
-      <div style={{display:"flex",flexWrap:"wrap",gap:4,padding:"14px 0",borderBottom:`0.5px solid ${C.border}`,position:"sticky",top:0,background:C.bg3,zIndex:20}}>
-        {TABS.map((tab,i)=>(
-          <button key={i} onClick={()=>setActive(i)} style={{padding:"5px 10px",fontSize:12,borderRadius:8,border:`0.5px solid ${i===active?C.borderMd:C.border}`,cursor:"pointer",color:i===active?C.text1:C.text2,background:i===active?C.bg2:"transparent",fontFamily:"sans-serif",transition:"all .12s"}}>
-            {tab}{i===8?" ⚙":""}
-          </button>
-        ))}
+      <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none",msOverflowStyle:"none",padding:"14px 0",borderBottom:`0.5px solid ${C.border}`,position:"sticky",top:0,background:C.bg3,zIndex:20}}>
+        <div style={{display:"flex",flexWrap:"nowrap",gap:4,minWidth:"max-content"}}>
+          {TABS.map((tab,i)=>(
+            <button key={i} onClick={()=>setActive(i)} style={{padding:"5px 12px",fontSize:12,borderRadius:8,border:`0.5px solid ${i===active?C.borderMd:C.border}`,cursor:"pointer",color:i===active?C.text1:C.text2,background:i===active?C.bg2:"transparent",fontFamily:"sans-serif",transition:"all .12s",whiteSpace:"nowrap",flexShrink:0}}>
+              {tab}{i===8?" ⚙":""}
+            </button>
+          ))}
+        </div>
       </div>
       <div style={{paddingTop:20}}><Section/></div>
     </div>
