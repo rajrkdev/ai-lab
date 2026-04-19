@@ -29,6 +29,11 @@ pnpm-debug.log*
 # Task tracking
 tasks/
 
+# Local-only files (not for commits)
+context-uiux-audit-2026.md
+context-uiux-audit-starlight-2026.md
+public/favicon-preview.html
+
 # PRD (not published)
 prd/
 public/prd/
