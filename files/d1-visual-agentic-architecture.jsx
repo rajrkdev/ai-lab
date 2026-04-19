@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+﻿import { useState, useEffect, useCallback } from "react";
 
 const tabs = [
   { id: "loop", label: "🔄 Agentic Loop" },
@@ -15,7 +15,7 @@ const tabs = [
 function Section({ title, children, color = "#3B82F6" }) {
   return (
     <div style={{ marginBottom: 20 }}>
-      <h3 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700, color: "#1E293B", borderBottom: `3px solid ${color}`, paddingBottom: 6, display: "inline-block" }}>{title}</h3>
+      <h3 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700, color: "#e6e4de", borderBottom: `3px solid ${color}`, paddingBottom: 6, display: "inline-block" }}>{title}</h3>
       {children}
     </div>
   );
@@ -23,18 +23,18 @@ function Section({ title, children, color = "#3B82F6" }) {
 
 function InfoBox({ type, children }) {
   const styles = {
-    exam: { bg: "#FEF3C7", border: "#F59E0B", icon: "🎯", label: "EXAM TIP" },
-    correct: { bg: "#F0FDF4", border: "#22C55E", icon: "✅", label: "CORRECT" },
-    wrong: { bg: "#FEF2F2", border: "#EF4444", icon: "❌", label: "WRONG" },
-    key: { bg: "#EBF5FF", border: "#3B82F6", icon: "💡", label: "KEY CONCEPT" },
-    code: { bg: "#F8FAFC", border: "#64748B", icon: "💻", label: "CODE" },
-    warn: { bg: "#FFF7ED", border: "#F97316", icon: "⚠️", label: "WARNING" },
+    exam: { bg: "rgba(245,166,35,0.12)", border: "#F59E0B", icon: "🎯", label: "EXAM TIP" },
+    correct: { bg: "rgba(0,212,106,0.12)", border: "#22C55E", icon: "✅", label: "CORRECT" },
+    wrong: { bg: "rgba(239,68,68,0.12)", border: "#EF4444", icon: "❌", label: "WRONG" },
+    key: { bg: "rgba(59,130,246,0.12)", border: "#3B82F6", icon: "💡", label: "KEY CONCEPT" },
+    code: { bg: "rgba(100,116,139,0.12)", border: "#64748B", icon: "💻", label: "CODE" },
+    warn: { bg: "rgba(249,115,22,0.12)", border: "#F97316", icon: "⚠️", label: "WARNING" },
   };
   const s = styles[type] || styles.key;
   return (
     <div style={{ padding: 12, background: s.bg, border: `1px solid ${s.border}44`, borderLeft: `4px solid ${s.border}`, borderRadius: "0 8px 8px 0", marginBottom: 10 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: s.border, marginBottom: 4 }}>{s.icon} {s.label}</div>
-      <div style={{ fontSize: 13, lineHeight: 1.6, color: "#334155" }}>{children}</div>
+      <div style={{ fontSize: 13, lineHeight: 1.6, color: "#d1d5db" }}>{children}</div>
     </div>
   );
 }
@@ -51,15 +51,15 @@ function StepFlow({ steps }) {
         {steps.map((s, i) => (
           <button key={i} onClick={() => setActive(i)} style={{
             padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer",
-            border: `2px solid ${i === active ? s.color || "#3B82F6" : "#E2E8F0"}`,
-            background: i === active ? (s.color || "#3B82F6") + "15" : "white",
-            color: i === active ? s.color || "#1E40AF" : "#64748B",
+            border: `2px solid ${i === active ? s.color || "#3B82F6" : "rgba(255,255,255,0.14)"}`,
+            background: i === active ? (s.color || "#3B82F6") + "15" : "#1e231e",
+            color: i === active ? s.color || "#58a6ff" : "#9b9895",
           }}>{s.label}</button>
         ))}
       </div>
-      <div style={{ background: "#F8FAFC", borderRadius: 12, padding: 16, border: `1px solid ${steps[active].color || "#3B82F6"}33`, minHeight: 120 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "#1E293B", marginBottom: 8 }}>{steps[active].title}</div>
-        <div style={{ fontSize: 13, lineHeight: 1.7, color: "#475569" }}>{steps[active].content}</div>
+      <div style={{ background: "#1e231e", borderRadius: 12, padding: 16, border: `1px solid ${steps[active].color || "#3B82F6"}33`, minHeight: 120 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#e6e4de", marginBottom: 8 }}>{steps[active].title}</div>
+        <div style={{ fontSize: 13, lineHeight: 1.7, color: "#9b9895" }}>{steps[active].content}</div>
         {steps[active].code && <Code>{steps[active].code}</Code>}
       </div>
     </div>
@@ -158,20 +158,20 @@ messages.append({
       <Section title="The Agentic Loop — Complete Animated Walkthrough">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <div style={{ display: "flex", gap: 4 }}>
-            <button onClick={() => setStep(Math.max(0, step - 1))} style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid #E2E8F0", background: "white", cursor: "pointer", fontSize: 12 }}>← Prev</button>
+            <button onClick={() => setStep(Math.max(0, step - 1))} style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.14)", background: "#1e231e", cursor: "pointer", fontSize: 12 }}>← Prev</button>
             <button onClick={() => setAuto(!auto)} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: auto ? "#EF4444" : "#3B82F6", color: "white", cursor: "pointer", fontSize: 12 }}>{auto ? "⏸ Pause" : "▶ Auto-Play"}</button>
-            <button onClick={() => setStep((step + 1) % steps.length)} style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid #E2E8F0", background: "white", cursor: "pointer", fontSize: 12 }}>Next →</button>
+            <button onClick={() => setStep((step + 1) % steps.length)} style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.14)", background: "#1e231e", cursor: "pointer", fontSize: 12 }}>Next →</button>
           </div>
-          <div style={{ fontSize: 12, color: "#94A3B8" }}>Step {step + 1} of {steps.length}</div>
+          <div style={{ fontSize: 12, color: "#6a6865" }}>Step {step + 1} of {steps.length}</div>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 4, marginBottom: 12 }}>
           {steps.map((st, i) => (
             <button key={i} onClick={() => setStep(i)} style={{
               padding: "8px 4px", borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: "pointer",
-              border: `2px solid ${i === step ? st.color : "#E2E8F0"}`,
-              background: i === step ? st.color + "15" : i < step ? "#F0FDF4" : "white",
-              color: i === step ? st.color : "#64748B",
+              border: `2px solid ${i === step ? st.color : "rgba(255,255,255,0.14)"}`,
+              background: i === step ? st.color + "15" : i < step ? "rgba(0,212,106,0.12)" : "#1e231e",
+              color: i === step ? st.color : "#9b9895",
               transition: "all 0.3s",
               transform: i === step ? "scale(1.05)" : "scale(1)",
               boxShadow: i === step ? `0 2px 8px ${st.color}33` : "none",
@@ -181,7 +181,7 @@ messages.append({
 
         <div style={{ background: s.color + "08", borderRadius: 12, padding: 16, border: `2px solid ${s.color}33`, transition: "all 0.3s" }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: s.color, marginBottom: 8 }}>{s.title}</div>
-          <div style={{ fontSize: 13, lineHeight: 1.7, color: "#334155", marginBottom: 8 }}>{s.content}</div>
+          <div style={{ fontSize: 13, lineHeight: 1.7, color: "#d1d5db", marginBottom: 8 }}>{s.content}</div>
           <Code>{s.code}</Code>
         </div>
       </Section>
@@ -189,7 +189,7 @@ messages.append({
       <InfoBox type="key">The complete loop in one sentence: Send prompt → Claude responds → Check stop_reason → If "tool_use": execute tools, append results as user message, loop back → If "end_turn": return text, done.</InfoBox>
 
       <Section title="Agent SDK Version (Simplified)">
-        <div style={{ fontSize: 13, lineHeight: 1.6, color: "#475569", marginBottom: 8 }}>The Claude Agent SDK abstracts the raw loop. You consume a stream of messages — the SDK handles tool execution, context management, and retries internally.</div>
+        <div style={{ fontSize: 13, lineHeight: 1.6, color: "#9b9895", marginBottom: 8 }}>The Claude Agent SDK abstracts the raw loop. You consume a stream of messages — the SDK handles tool execution, context management, and retries internally.</div>
         <Code>{`# Python Agent SDK
 from claude_agent_sdk import query, ClaudeAgentOptions
 from claude_agent_sdk import AssistantMessage, ResultMessage
@@ -273,7 +273,7 @@ messages.append({"role": "user", "content": tool_results})` },
     # Send response back to continue
     messages.append({"role": "assistant", "content": response.content})
     # Make another API call — Claude will continue` },
-    { value: "stop_sequence", action: "Hit custom stop sequence", icon: "🛑", color: "#64748B", freq: "Only if configured",
+    { value: "stop_sequence", action: "Hit custom stop sequence", icon: "🛑", color: "#9b9895", freq: "Only if configured",
       detail: "Claude encountered one of the stop_sequences you defined in the request. The response was terminated at that point. Rarely tested on the exam.",
       code: `# Only happens if you set stop_sequences
 response = client.messages.create(
@@ -284,7 +284,7 @@ response = client.messages.create(
 
   return (
     <Section title="Complete stop_reason Reference Map">
-      <div style={{ fontSize: 13, color: "#64748B", marginBottom: 12 }}>Click each stop_reason to see its full details, code handling, and exam relevance.</div>
+      <div style={{ fontSize: 13, color: "#9b9895", marginBottom: 12 }}>Click each stop_reason to see its full details, code handling, and exam relevance.</div>
       <div style={{ display: "grid", gap: 6 }}>
         {reasons.map((r, i) => (
           <div key={i}>
@@ -292,16 +292,16 @@ response = client.messages.create(
               width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
               borderRadius: 10, cursor: "pointer", textAlign: "left",
               border: `2px solid ${selected === i ? r.color : r.color + "33"}`,
-              background: selected === i ? r.color + "10" : "white", transition: "all 0.2s",
+              background: selected === i ? r.color + "10" : "#1e231e", transition: "all 0.2s",
             }}>
               <span style={{ fontSize: 18 }}>{r.icon}</span>
               <code style={{ fontSize: 13, fontWeight: 700, color: r.color, minWidth: 120 }}>"{r.value}"</code>
-              <span style={{ fontSize: 12, color: "#475569", flex: 1 }}>{r.action}</span>
+              <span style={{ fontSize: 12, color: "#9b9895", flex: 1 }}>{r.action}</span>
               <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: r.color + "20", color: r.color }}>{r.freq}</span>
             </button>
             {selected === i && (
-              <div style={{ margin: "4px 0 8px 28px", padding: 12, background: "#F8FAFC", borderRadius: 8, border: `1px solid ${r.color}22` }}>
-                <div style={{ fontSize: 13, lineHeight: 1.6, color: "#334155", marginBottom: 8 }}>{r.detail}</div>
+              <div style={{ margin: "4px 0 8px 28px", padding: 12, background: "#1e231e", borderRadius: 8, border: `1px solid ${r.color}22` }}>
+                <div style={{ fontSize: 13, lineHeight: 1.6, color: "#d1d5db", marginBottom: 8 }}>{r.detail}</div>
                 <Code>{r.code}</Code>
               </div>
             )}
@@ -363,7 +363,7 @@ agents: {
 
   return (
     <Section title="Hub-and-Spoke Multi-Agent Architecture">
-      <div style={{ fontSize: 13, color: "#64748B", marginBottom: 12 }}>Click any agent to explore its configuration, rules, and exam-relevant details.</div>
+      <div style={{ fontSize: 13, color: "#9b9895", marginBottom: 12 }}>Click any agent to explore its configuration, rules, and exam-relevant details.</div>
       
       <div style={{ display: "grid", gap: 6, marginBottom: 12 }}>
         {agents.map(a => (
@@ -371,23 +371,23 @@ agents: {
             <button onClick={() => setSel(sel === a.id ? null : a.id)} style={{
               width: "100%", padding: "12px 16px", borderRadius: 10, cursor: "pointer", textAlign: "left",
               border: `2px solid ${sel === a.id ? a.color : a.color + "33"}`,
-              background: sel === a.id ? a.color + "10" : "white",
+              background: sel === a.id ? a.color + "10" : "#1e231e",
               display: "flex", justifyContent: "space-between", alignItems: "center",
             }}>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: a.color }}>{a.label}</div>
-                <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>{a.role}</div>
+                <div style={{ fontSize: 12, color: "#9b9895", marginTop: 2 }}>{a.role}</div>
               </div>
-              <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: a.y === 0 ? "#DBEAFE" : "#F1F5F9", color: a.y === 0 ? "#1E40AF" : "#64748B" }}>
+              <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: a.y === 0 ? "rgba(59,130,246,0.22)" : "#1e231e", color: a.y === 0 ? "#58a6ff" : "#9b9895" }}>
                 {a.y === 0 ? "COORDINATOR" : "SUBAGENT"}
               </span>
             </button>
             {sel === a.id && (
               <div style={{ margin: "4px 0 8px 0", padding: 14, background: a.color + "08", borderRadius: 10, border: `1px solid ${a.color}22` }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#1E293B", marginBottom: 6 }}>Configuration:</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#e6e4de", marginBottom: 6 }}>Configuration:</div>
                 <Code>{a.config}</Code>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#1E293B", marginBottom: 6, marginTop: 10 }}>Rules:</div>
-                <div style={{ fontSize: 12, lineHeight: 1.6, color: "#475569", whiteSpace: "pre-line" }}>{a.rules}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#e6e4de", marginBottom: 6, marginTop: 10 }}>Rules:</div>
+                <div style={{ fontSize: 12, lineHeight: 1.6, color: "#9b9895", whiteSpace: "pre-line" }}>{a.rules}</div>
                 <InfoBox type="exam">{a.exam}</InfoBox>
               </div>
             )}
@@ -412,7 +412,7 @@ function ContextPassing() {
       <InfoBox type="warn">Subagents operate with ISOLATED context. They do NOT inherit the coordinator's conversation history. Every piece of information a subagent needs must be EXPLICITLY included in its prompt.</InfoBox>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-        <div style={{ padding: 14, background: "#FEF2F2", borderRadius: 10, border: "1px solid #FECACA" }}>
+        <div style={{ padding: 14, background: "rgba(239,68,68,0.12)", borderRadius: 10, border: "1px solid rgba(239,68,68,0.3)" }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#991B1B", marginBottom: 8 }}>❌ WRONG — Assuming Inherited Context</div>
           <Code>{`# Coordinator discussed findings...
 # Then spawns synthesis agent:
@@ -421,8 +421,8 @@ synthesis_prompt = "Synthesize the findings"
 # what "the findings" refers to!
 # It has an empty conversation.`}</Code>
         </div>
-        <div style={{ padding: 14, background: "#F0FDF4", borderRadius: 10, border: "1px solid #BBF7D0" }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#166534", marginBottom: 8 }}>✅ CORRECT — Explicit Context</div>
+        <div style={{ padding: 14, background: "rgba(0,212,106,0.12)", borderRadius: 10, border: "1px solid rgba(0,212,106,0.3)" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#4ade80", marginBottom: 8 }}>✅ CORRECT — Explicit Context</div>
           <Code>{`synthesis_prompt = f"""
 Synthesize these findings:
 
@@ -438,7 +438,7 @@ Preserve source attribution.
       </div>
 
       <Section title="Structured Data Format for Context Passing">
-        <div style={{ fontSize: 13, lineHeight: 1.6, color: "#475569", marginBottom: 8 }}>Separate content from metadata to preserve attribution across agents:</div>
+        <div style={{ fontSize: 13, lineHeight: 1.6, color: "#9b9895", marginBottom: 8 }}>Separate content from metadata to preserve attribution across agents:</div>
         <Code>{`{
   "findings": [
     {
@@ -469,12 +469,12 @@ function HooksSystem() {
   const scenarios = [
     { title: "🚫 Block: Refund > $500", color: "#EF4444",
       steps: [
-        { label: "Claude requests: process_refund($750)", bg: "#EBF5FF" },
-        { label: "⚡ PreToolUse hook fires", bg: "#FEF3C7" },
-        { label: "Hook checks: $750 > $500 limit → DENY", bg: "#FEF2F2" },
-        { label: "Hook returns: permissionDecision: 'deny'", bg: "#FEF2F2" },
-        { label: "Claude receives: 'Exceeds limit. Use escalate_to_human'", bg: "#FEF2F2" },
-        { label: "Claude calls: escalate_to_human(summary) ✅", bg: "#F0FDF4" },
+        { label: "Claude requests: process_refund($750)", bg: "rgba(59,130,246,0.12)" },
+        { label: "⚡ PreToolUse hook fires", bg: "rgba(245,166,35,0.12)" },
+        { label: "Hook checks: $750 > $500 limit → DENY", bg: "rgba(239,68,68,0.12)" },
+        { label: "Hook returns: permissionDecision: 'deny'", bg: "rgba(239,68,68,0.12)" },
+        { label: "Claude receives: 'Exceeds limit. Use escalate_to_human'", bg: "rgba(239,68,68,0.12)" },
+        { label: "Claude calls: escalate_to_human(summary) ✅", bg: "rgba(0,212,106,0.12)" },
       ],
       code: `def pre_tool_hook(tool_name, tool_input, tool_use_id, ctx):
     if tool_name == "process_refund":
@@ -490,12 +490,12 @@ function HooksSystem() {
     return {"permissionDecision": "allow"}` },
     { title: "🔄 Normalize: Unix Timestamps → ISO 8601", color: "#10B981",
       steps: [
-        { label: "Claude calls: get_order_status('ORD-789')", bg: "#EBF5FF" },
-        { label: "Tool returns: {created_at: 1705312200, status: 2}", bg: "#F8FAFC" },
-        { label: "⚡ PostToolUse hook fires", bg: "#FEF3C7" },
-        { label: "Hook converts: 1705312200 → '2025-01-15T10:30:00Z'", bg: "#FEF3C7" },
-        { label: "Hook converts: status 2 → 'inactive'", bg: "#FEF3C7" },
-        { label: "Claude sees normalized data ✅", bg: "#F0FDF4" },
+        { label: "Claude calls: get_order_status('ORD-789')", bg: "rgba(59,130,246,0.12)" },
+        { label: "Tool returns: {created_at: 1705312200, status: 2}", bg: "rgba(100,116,139,0.12)" },
+        { label: "⚡ PostToolUse hook fires", bg: "rgba(245,166,35,0.12)" },
+        { label: "Hook converts: 1705312200 → '2025-01-15T10:30:00Z'", bg: "rgba(245,166,35,0.12)" },
+        { label: "Hook converts: status 2 → 'inactive'", bg: "rgba(245,166,35,0.12)" },
+        { label: "Claude sees normalized data ✅", bg: "rgba(0,212,106,0.12)" },
       ],
       code: `def post_tool_hook(tool_name, tool_result, tool_use_id, ctx):
     result = json.loads(tool_result)
@@ -511,12 +511,12 @@ function HooksSystem() {
     return {"result": json.dumps(result)}` },
     { title: "🔒 Prerequisite: Verify Customer Before Order Lookup", color: "#3B82F6",
       steps: [
-        { label: "Claude requests: lookup_order('ORD-789')", bg: "#EBF5FF" },
-        { label: "⚡ PreToolUse hook fires", bg: "#FEF3C7" },
-        { label: "Hook checks: verified_customer_id is None → DENY", bg: "#FEF2F2" },
-        { label: "Claude calls: get_customer(email='jane@...')", bg: "#EBF5FF" },
-        { label: "⚡ PostToolUse stores: verified_customer_id = 'C-12345'", bg: "#F0FDF4" },
-        { label: "Claude retries: lookup_order with customer_id → ALLOW ✅", bg: "#F0FDF4" },
+        { label: "Claude requests: lookup_order('ORD-789')", bg: "rgba(59,130,246,0.12)" },
+        { label: "⚡ PreToolUse hook fires", bg: "rgba(245,166,35,0.12)" },
+        { label: "Hook checks: verified_customer_id is None → DENY", bg: "rgba(239,68,68,0.12)" },
+        { label: "Claude calls: get_customer(email='jane@...')", bg: "rgba(59,130,246,0.12)" },
+        { label: "⚡ PostToolUse stores: verified_customer_id = 'C-12345'", bg: "rgba(0,212,106,0.12)" },
+        { label: "Claude retries: lookup_order with customer_id → ALLOW ✅", bg: "rgba(0,212,106,0.12)" },
       ],
       code: `verified_customer_id = None
 
@@ -546,9 +546,9 @@ def post_tool_hook(tool_name, tool_result, tool_use_id, ctx):
         {scenarios.map((s, i) => (
           <button key={i} onClick={() => setScenario(i)} style={{
             padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer",
-            border: `2px solid ${scenario === i ? s.color : "#E2E8F0"}`,
-            background: scenario === i ? s.color + "15" : "white",
-            color: scenario === i ? s.color : "#64748B",
+            border: `2px solid ${scenario === i ? s.color : "rgba(255,255,255,0.14)"}`,
+            background: scenario === i ? s.color + "15" : "#1e231e",
+            color: scenario === i ? s.color : "#9b9895",
           }}>{s.title.split(":")[0]}</button>
         ))}
       </div>
@@ -558,7 +558,7 @@ def post_tool_hook(tool_name, tool_result, tool_use_id, ctx):
         {sc.steps.map((s, i) => (
           <div key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <div style={{ width: 22, height: 22, borderRadius: "50%", background: sc.color + "20", border: `2px solid ${sc.color}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: sc.color, flexShrink: 0 }}>{i + 1}</div>
-            <div style={{ flex: 1, padding: "6px 10px", borderRadius: 6, background: s.bg, fontSize: 12, color: "#334155", border: "1px solid #E2E8F0" }}>{s.label}</div>
+            <div style={{ flex: 1, padding: "6px 10px", borderRadius: 6, background: s.bg, fontSize: 12, color: "#d1d5db", border: "1px solid rgba(255,255,255,0.14)" }}>{s.label}</div>
           </div>
         ))}
       </div>
@@ -582,17 +582,17 @@ function Enforcement() {
       <InfoBox type="exam">This is THE most tested concept in Domain 1. When the question mentions financial consequences, regulatory requirements, or compliance — the answer is ALWAYS programmatic hooks, never prompt-only.</InfoBox>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-        <div style={{ padding: 14, background: "#F0FDF4", borderRadius: 10, border: "2px solid #22C55E" }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#166534", marginBottom: 10 }}>✅ Hooks (Deterministic)</div>
+        <div style={{ padding: 14, background: "rgba(0,212,106,0.12)", borderRadius: 10, border: "2px solid #22C55E" }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#4ade80", marginBottom: 10 }}>✅ Hooks (Deterministic)</div>
           <div style={{ fontSize: 12, color: "#15803D", lineHeight: 1.6 }}>
             100% compliance rate. Physically impossible to bypass. Tool call is blocked before execution. Works regardless of prompt wording, context length, or model behavior.
           </div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "#166534", marginTop: 8 }}>Use for:</div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "#4ade80", marginTop: 8 }}>Use for:</div>
           <div style={{ fontSize: 12, color: "#15803D", lineHeight: 1.6 }}>
             Identity verification before financial ops. Refund limits. PII handling. Regulatory compliance. Any rule that MUST be followed 100% of the time.
           </div>
         </div>
-        <div style={{ padding: 14, background: "#FEF2F2", borderRadius: 10, border: "2px solid #EF4444" }}>
+        <div style={{ padding: 14, background: "rgba(239,68,68,0.12)", borderRadius: 10, border: "2px solid #EF4444" }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: "#991B1B", marginBottom: 10 }}>⚠️ Prompts (Probabilistic)</div>
           <div style={{ fontSize: 12, color: "#7F1D1D", lineHeight: 1.6 }}>
             ~88-95% compliance rate. Non-zero failure rate. Claude may skip instructions under certain contexts, long conversations, or ambiguous situations.
@@ -616,8 +616,8 @@ function Enforcement() {
           ].map((r, i) => (
             <div key={i} style={{ display: "flex", gap: 10, padding: 8, borderRadius: 6, background: r.color + "08", border: `1px solid ${r.color}22`, alignItems: "center" }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: r.color, minWidth: 60 }}>{r.answer}</span>
-              <span style={{ fontSize: 12, color: "#334155", flex: 1 }}>{r.scenario}</span>
-              <span style={{ fontSize: 11, color: "#64748B" }}>{r.why}</span>
+              <span style={{ fontSize: 12, color: "#d1d5db", flex: 1 }}>{r.scenario}</span>
+              <span style={{ fontSize: 11, color: "#9b9895" }}>{r.why}</span>
             </div>
           ))}
         </div>
@@ -841,25 +841,25 @@ lookup_order: "Get order details by order ID.
 
   return (
     <Section title="Anti-Patterns Reference (These ARE the Wrong Answers)" color="#EF4444">
-      <div style={{ fontSize: 13, color: "#64748B", marginBottom: 12 }}>Every anti-pattern below appears as a distractor (wrong answer) on the exam. Know WHY each is wrong.</div>
+      <div style={{ fontSize: 13, color: "#9b9895", marginBottom: 12 }}>Every anti-pattern below appears as a distractor (wrong answer) on the exam. Know WHY each is wrong.</div>
       <div style={{ display: "grid", gap: 12 }}>
         {patterns.map((p, i) => (
-          <div key={i} style={{ borderRadius: 10, border: "1px solid #E2E8F0", overflow: "hidden" }}>
-            <div style={{ padding: "8px 14px", background: "#F8FAFC", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#1E293B" }}>⚠️ {p.title}</div>
-              <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "#DBEAFE", color: "#1E40AF" }}>{p.domain}</span>
+          <div key={i} style={{ borderRadius: 10, border: "1px solid rgba(255,255,255,0.14)", overflow: "hidden" }}>
+            <div style={{ padding: "8px 14px", background: "#1e231e", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#e6e4de" }}>⚠️ {p.title}</div>
+              <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "rgba(59,130,246,0.18)", color: "#58a6ff" }}>{p.domain}</span>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0 }}>
-              <div style={{ padding: 10, background: "#FEF2F2", borderRight: "1px solid #E2E8F0" }}>
+              <div style={{ padding: 10, background: "rgba(239,68,68,0.12)", borderRight: "1px solid rgba(255,255,255,0.14)" }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#991B1B", marginBottom: 4 }}>❌ Wrong Pattern</div>
                 <Code>{p.wrong}</Code>
               </div>
-              <div style={{ padding: 10, background: "#F0FDF4" }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#166534", marginBottom: 4 }}>✅ Correct Pattern</div>
+              <div style={{ padding: 10, background: "rgba(0,212,106,0.12)" }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#4ade80", marginBottom: 4 }}>✅ Correct Pattern</div>
                 <Code>{p.right}</Code>
               </div>
             </div>
-            <div style={{ padding: "8px 14px", background: "#FEF3C7", fontSize: 12, color: "#92400E" }}>
+            <div style={{ padding: "8px 14px", background: "rgba(245,166,35,0.12)", fontSize: 12, color: "#f5a623" }}>
               <strong>Why:</strong> {p.why}
             </div>
           </div>
@@ -890,7 +890,7 @@ export default function App() {
   return (
     <div style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", maxWidth: 780, margin: "0 auto", padding: "12px 10px" }}>
       <div style={{ textAlign: "center", marginBottom: 12 }}>
-        <h1 style={{ fontSize: 18, fontWeight: 800, color: "#1E293B", margin: 0 }}>Domain 1: Agentic Architecture & Orchestration</h1>
+        <h1 style={{ fontSize: 18, fontWeight: 800, color: "#e6e4de", margin: 0 }}>Domain 1: Agentic Architecture & Orchestration</h1>
         <div style={{ fontSize: 12, color: "#3B82F6", fontWeight: 600 }}>27% of exam — Highest priority domain</div>
       </div>
 
@@ -898,14 +898,14 @@ export default function App() {
         {tabs.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
             padding: "5px 8px", borderRadius: 6, whiteSpace: "nowrap", fontSize: 11, fontWeight: 600, cursor: "pointer",
-            border: `2px solid ${tab === t.id ? "#3B82F6" : "#E2E8F0"}`,
-            background: tab === t.id ? "#EBF5FF" : "white",
-            color: tab === t.id ? "#1E40AF" : "#64748B",
+            border: `2px solid ${tab === t.id ? "#3B82F6" : "rgba(255,255,255,0.14)"}`,
+            background: tab === t.id ? "rgba(59,130,246,0.12)" : "#1e231e",
+            color: tab === t.id ? "#58a6ff" : "#9b9895",
           }}>{t.label}</button>
         ))}
       </div>
 
-      <div style={{ background: "white", borderRadius: 16, border: "1px solid #E2E8F0", padding: 16 }}>
+      <div style={{ background: "#1e231e", borderRadius: 16, border: "1px solid rgba(255,255,255,0.14)", padding: 16 }}>
         {content[tab]}
       </div>
     </div>

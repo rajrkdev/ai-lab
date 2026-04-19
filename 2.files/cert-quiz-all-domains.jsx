@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+﻿import { useState, useCallback, useMemo } from "react";
 
 const allQuestions = [
   // DOMAIN 1: Agentic Architecture (27%)
@@ -309,11 +309,11 @@ const allQuestions = [
 ];
 
 const domainColors = {
-  1: { bg: "#EBF5FF", border: "#3B82F6", text: "#1E40AF", tag: "#DBEAFE" },
-  2: { bg: "#F0FDF4", border: "#22C55E", text: "#166534", tag: "#DCFCE7" },
-  3: { bg: "#FFF7ED", border: "#F97316", text: "#9A3412", tag: "#FFEDD5" },
-  4: { bg: "#FAF5FF", border: "#A855F7", text: "#6B21A8", tag: "#F3E8FF" },
-  5: { bg: "#FFF1F2", border: "#F43F5E", text: "#9F1239", tag: "#FFE4E6" },
+  1: { bg: "rgba(59,130,246,0.12)", border: "#3B82F6", text: "#58a6ff", tag: "rgba(59,130,246,0.22)" },
+  2: { bg: "rgba(0,212,106,0.12)", border: "#22C55E", text: "#4ade80", tag: "rgba(0,212,106,0.22)" },
+  3: { bg: "rgba(249,115,22,0.12)", border: "#F97316", text: "#fb923c", tag: "rgba(249,115,22,0.22)" },
+  4: { bg: "rgba(168,85,247,0.12)", border: "#A855F7", text: "#c084fc", tag: "rgba(168,85,247,0.22)" },
+  5: { bg: "rgba(244,63,94,0.12)", border: "#F43F5E", text: "#fb7185", tag: "rgba(244,63,94,0.22)" },
 };
 
 function Quiz() {
@@ -380,14 +380,14 @@ function Quiz() {
     return (
       <div style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", maxWidth: 700, margin: "0 auto", padding: 24 }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: "#1a1a2e", margin: 0 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: "#e6e4de", margin: 0 }}>
             Claude Certified Architect
           </h1>
-          <p style={{ color: "#64748B", fontSize: 14, marginTop: 4 }}>Foundations Exam Practice</p>
+          <p style={{ color: "#9b9895", fontSize: 14, marginTop: 4 }}>Foundations Exam Practice</p>
         </div>
         <div style={{ display: "grid", gap: 12 }}>
           {[
-            { domain: "all", label: "All Domains (25 Questions)", desc: "Full exam simulation", color: "#334155" },
+            { domain: "all", label: "All Domains (25 Questions)", desc: "Full exam simulation", color: "#d1d5db" },
             { domain: 1, label: "D1: Agentic Architecture (27%)", desc: "Loops, multi-agent, hooks", color: domainColors[1].text },
             { domain: 2, label: "D2: Tool Design & MCP (18%)", desc: "Descriptions, errors, tool_choice", color: domainColors[2].text },
             { domain: 3, label: "D3: Claude Code Config (20%)", desc: "CLAUDE.md, rules, CI/CD", color: domainColors[3].text },
@@ -397,7 +397,7 @@ function Quiz() {
             <button key={String(item.domain)} onClick={() => startQuiz(item.domain)}
               style={{
                 padding: "16px 20px", border: `2px solid ${item.color}22`, borderRadius: 12,
-                background: "white", cursor: "pointer", textAlign: "left",
+                background: "#1e231e", cursor: "pointer", textAlign: "left",
                 transition: "all 0.2s", display: "flex", justifyContent: "space-between", alignItems: "center"
               }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = item.color; e.currentTarget.style.transform = "translateY(-1px)"; }}
@@ -405,7 +405,7 @@ function Quiz() {
             >
               <div>
                 <div style={{ fontWeight: 600, fontSize: 15, color: item.color }}>{item.label}</div>
-                <div style={{ fontSize: 13, color: "#94A3B8", marginTop: 2 }}>{item.desc}</div>
+                <div style={{ fontSize: 13, color: "#6a6865", marginTop: 2 }}>{item.desc}</div>
               </div>
               <div style={{ fontSize: 20, color: item.color }}>→</div>
             </button>
@@ -420,14 +420,14 @@ function Quiz() {
     const passed = pct >= 72;
     return (
       <div style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", maxWidth: 700, margin: "0 auto", padding: 24 }}>
-        <div style={{ textAlign: "center", padding: 32, borderRadius: 16, background: passed ? "#F0FDF4" : "#FFF1F2", border: `2px solid ${passed ? "#22C55E" : "#F43F5E"}`, marginBottom: 24 }}>
-          <div style={{ fontSize: 48, fontWeight: 800, color: passed ? "#166534" : "#9F1239" }}>{pct}%</div>
-          <div style={{ fontSize: 18, fontWeight: 600, color: passed ? "#166534" : "#9F1239", marginTop: 4 }}>
+        <div style={{ textAlign: "center", padding: 32, borderRadius: 16, background: passed ? "rgba(0,212,106,0.12)" : "rgba(244,63,94,0.12)", border: `2px solid ${passed ? "#22C55E" : "#F43F5E"}`, marginBottom: 24 }}>
+          <div style={{ fontSize: 48, fontWeight: 800, color: passed ? "#4ade80" : "#fb7185" }}>{pct}%</div>
+          <div style={{ fontSize: 18, fontWeight: 600, color: passed ? "#4ade80" : "#fb7185", marginTop: 4 }}>
             {passed ? "PASS" : "NEEDS MORE STUDY"} — {score}/{questions.length} correct
           </div>
-          <div style={{ fontSize: 13, color: "#64748B", marginTop: 8 }}>Passing threshold: 72% (scaled 720/1000)</div>
+          <div style={{ fontSize: 13, color: "#9b9895", marginTop: 8 }}>Passing threshold: 72% (scaled 720/1000)</div>
         </div>
-        <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12, color: "#334155" }}>Performance by Domain</h3>
+        <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12, color: "#d1d5db" }}>Performance by Domain</h3>
         <div style={{ display: "grid", gap: 8, marginBottom: 24 }}>
           {Object.entries(domainStats).sort(([a],[b]) => Number(a)-Number(b)).map(([d, s]) => {
             const dpct = Math.round((s.correct / s.total) * 100);
@@ -435,16 +435,16 @@ function Quiz() {
             return (
               <div key={d} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: c.bg, borderRadius: 8, border: `1px solid ${c.border}33` }}>
                 <div style={{ flex: 1, fontWeight: 500, fontSize: 14, color: c.text }}>{s.name}</div>
-                <div style={{ fontSize: 13, color: "#64748B" }}>{s.correct}/{s.total}</div>
-                <div style={{ width: 100, height: 8, background: "#E2E8F0", borderRadius: 4, overflow: "hidden" }}>
+                <div style={{ fontSize: 13, color: "#9b9895" }}>{s.correct}/{s.total}</div>
+                <div style={{ width: 100, height: 8, background: "rgba(255,255,255,0.14)", borderRadius: 4, overflow: "hidden" }}>
                   <div style={{ width: `${dpct}%`, height: "100%", background: dpct >= 72 ? c.border : "#F43F5E", borderRadius: 4, transition: "width 0.5s" }} />
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: dpct >= 72 ? c.text : "#9F1239", minWidth: 36, textAlign: "right" }}>{dpct}%</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: dpct >= 72 ? c.text : "#fb7185", minWidth: 36, textAlign: "right" }}>{dpct}%</div>
               </div>
             );
           })}
         </div>
-        <button onClick={() => setMode("menu")} style={{ width: "100%", padding: 14, background: "#334155", color: "white", border: "none", borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
+        <button onClick={() => setMode("menu")} style={{ width: "100%", padding: 14, background: "#00a854", color: "white", border: "none", borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
           ← Back to Menu
         </button>
       </div>
@@ -457,30 +457,30 @@ function Quiz() {
   return (
     <div style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", maxWidth: 700, margin: "0 auto", padding: 24 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <button onClick={() => setMode("menu")} style={{ background: "none", border: "none", color: "#64748B", cursor: "pointer", fontSize: 14 }}>← Menu</button>
+        <button onClick={() => setMode("menu")} style={{ background: "none", border: "none", color: "#9b9895", cursor: "pointer", fontSize: 14 }}>← Menu</button>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <span style={{ fontSize: 13, color: "#64748B" }}>Q{currentQ + 1}/{questions.length}</span>
+          <span style={{ fontSize: 13, color: "#9b9895" }}>Q{currentQ + 1}/{questions.length}</span>
           <span style={{ fontSize: 13, padding: "2px 8px", borderRadius: 4, background: colors.tag, color: colors.text, fontWeight: 500 }}>D{q.domain}</span>
-          <span style={{ fontSize: 13, padding: "2px 8px", borderRadius: 4, background: "#F1F5F9", color: "#64748B" }}>{q.difficulty}</span>
+          <span style={{ fontSize: 13, padding: "2px 8px", borderRadius: 4, background: "#1e231e", color: "#9b9895" }}>{q.difficulty}</span>
         </div>
-        <span style={{ fontSize: 14, fontWeight: 600, color: "#166534" }}>Score: {score}</span>
+        <span style={{ fontSize: 14, fontWeight: 600, color: "#4ade80" }}>Score: {score}</span>
       </div>
 
-      <div style={{ width: "100%", height: 4, background: "#E2E8F0", borderRadius: 2, marginBottom: 20 }}>
+      <div style={{ width: "100%", height: 4, background: "rgba(255,255,255,0.14)", borderRadius: 2, marginBottom: 20 }}>
         <div style={{ width: `${((currentQ + 1) / questions.length) * 100}%`, height: "100%", background: colors.border, borderRadius: 2, transition: "width 0.3s" }} />
       </div>
 
       <div style={{ background: colors.bg, border: `1px solid ${colors.border}33`, borderRadius: 12, padding: 20, marginBottom: 16 }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: colors.text, marginBottom: 8 }}>{q.domainName}</div>
-        <div style={{ fontSize: 15, lineHeight: 1.6, color: "#1E293B" }}>{q.question}</div>
+        <div style={{ fontSize: 15, lineHeight: 1.6, color: "#e6e4de" }}>{q.question}</div>
       </div>
 
       <div style={{ display: "grid", gap: 8, marginBottom: 16 }}>
         {q.options.map((opt, idx) => {
-          let bg = "white", border = "#E2E8F0", fontColor = "#334155";
+          let bg = "#1e231e", border = "rgba(255,255,255,0.14)", fontColor = "#d1d5db";
           if (revealed) {
-            if (idx === q.correct) { bg = "#F0FDF4"; border = "#22C55E"; fontColor = "#166534"; }
-            else if (idx === selected && idx !== q.correct) { bg = "#FFF1F2"; border = "#F43F5E"; fontColor = "#9F1239"; }
+            if (idx === q.correct) { bg = "rgba(0,212,106,0.12)"; border = "#22C55E"; fontColor = "#4ade80"; }
+            else if (idx === selected && idx !== q.correct) { bg = "rgba(244,63,94,0.12)"; border = "#F43F5E"; fontColor = "#fb7185"; }
           } else if (idx === selected) {
             bg = colors.bg; border = colors.border; fontColor = colors.text;
           }
@@ -500,11 +500,11 @@ function Quiz() {
       </div>
 
       {revealed && (
-        <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: 16, marginBottom: 16 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: selected === q.correct ? "#166534" : "#9F1239", marginBottom: 6 }}>
+        <div style={{ background: "#1e231e", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 10, padding: 16, marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: selected === q.correct ? "#4ade80" : "#fb7185", marginBottom: 6 }}>
             {selected === q.correct ? "✓ Correct!" : "✗ Incorrect"}
           </div>
-          <div style={{ fontSize: 14, lineHeight: 1.6, color: "#475569" }}>{q.explanation}</div>
+          <div style={{ fontSize: 14, lineHeight: 1.6, color: "#9b9895" }}>{q.explanation}</div>
         </div>
       )}
 
@@ -514,8 +514,8 @@ function Quiz() {
         style={{
           width: "100%", padding: 14, borderRadius: 10, border: "none", fontSize: 15, fontWeight: 600,
           cursor: selected === null && !revealed ? "not-allowed" : "pointer",
-          background: selected === null && !revealed ? "#E2E8F0" : "#334155",
-          color: selected === null && !revealed ? "#94A3B8" : "white",
+          background: selected === null && !revealed ? "rgba(255,255,255,0.08)" : "#00a854",
+          color: selected === null && !revealed ? "#6a6865" : "white",
           transition: "all 0.2s",
         }}
       >

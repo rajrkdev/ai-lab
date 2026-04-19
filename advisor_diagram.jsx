@@ -2,10 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 
 const COLORS = {
-  gray:   { bg: "#F1EFE8", border: "#888780", text: "#444441", sub: "#5F5E5A" },
-  teal:   { bg: "#E1F5EE", border: "#0F6E56", text: "#085041", sub: "#0F6E56" },
-  coral:  { bg: "#FAECE7", border: "#993C1D", text: "#712B13", sub: "#993C1D" },
-  blue:   { bg: "#E6F1FB", border: "#185FA5", text: "#0C447C", sub: "#185FA5" },
+  gray:   { bg: "#1e231e", border: "#6a6865", text: "#e6e4de", sub: "#9b9895" },
+  teal:   { bg: "rgba(0,212,106,0.12)", border: "#00d46a", text: "#00d46a", sub: "#00d46a" },
+  coral:  { bg: "rgba(239,68,68,0.12)", border: "#f87171", text: "#f87171", sub: "#f87171" },
+  blue:   { bg: "rgba(59,130,246,0.12)", border: "#58a6ff", text: "#58a6ff", sub: "#58a6ff" },
 };
 
 const DARK = {
@@ -16,9 +16,7 @@ const DARK = {
 };
 
 function useTheme() {
-  const [dark] = useState(
-    () => window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
-  );
+  const [dark] = useState(() => true);
   return dark ? DARK : COLORS;
 }
 

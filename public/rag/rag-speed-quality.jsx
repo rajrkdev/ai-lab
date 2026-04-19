@@ -249,7 +249,7 @@ export default function RAGComparison() {
       <div style={{ padding: "24px 28px 16px", borderBottom: "1px solid #0d1b2a" }}>
         <div style={{ fontSize: 10, letterSpacing: 4, color: "#1e3a5f", marginBottom: 6, textTransform: "uppercase" }}>RAG Benchmark</div>
         <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: "#e2e8f0", letterSpacing: -0.5, fontFamily: "'DM Mono', monospace" }}>
-          Speed <span style={{ color: "#334155" }}>vs</span> Quality
+          Speed <span style={{ color: "#d1d5db" }}>vs</span> Quality
         </h1>
         <p style={{ margin: "6px 0 0", color: "#1e3a5f", fontSize: 12 }}>All 13 RAG architectures ranked</p>
       </div>
@@ -258,7 +258,7 @@ export default function RAGComparison() {
       <div style={{ padding: "12px 28px", borderBottom: "1px solid #0d1b2a", display: "flex", gap: 4 }}>
         {[["matrix", "⬛ Matrix"], ["speed", "⚡ Speed Rank"], ["quality", "🎯 Quality Rank"]].map(([v, label]) => (
           <button key={v} onClick={() => setView(v)}
-            style={{ background: view === v ? "#0ea5e9" : "#0d1b2a", border: "none", color: view === v ? "#000" : "#475569", padding: "5px 14px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontWeight: view === v ? 800 : 400, fontFamily: "inherit" }}>
+            style={{ background: view === v ? "#0ea5e9" : "#0d1b2a", border: "none", color: view === v ? "#000" : "#9b9895", padding: "5px 14px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontWeight: view === v ? 800 : 400, fontFamily: "inherit" }}>
             {label}
           </button>
         ))}
@@ -285,8 +285,8 @@ export default function RAGComparison() {
                 <div style={{ position: "absolute", left: 6, top: "50%", transform: "translateY(-50%) rotate(-90deg)", color: "#1e3a5f", fontSize: 10, letterSpacing: 2 }}>QUALITY →</div>
                 {/* Quadrant labels */}
                 <div style={{ position: "absolute", right: 10, top: 10, color: "#0ea5e9", fontSize: 9, opacity: 0.6 }}>FAST + HIGH QUALITY</div>
-                <div style={{ position: "absolute", left: 20, top: 10, color: "#475569", fontSize: 9, opacity: 0.6 }}>SLOW + HIGH QUALITY</div>
-                <div style={{ position: "absolute", right: 10, bottom: 20, color: "#475569", fontSize: 9, opacity: 0.6 }}>FAST + LOW QUALITY</div>
+                <div style={{ position: "absolute", left: 20, top: 10, color: "#9b9895", fontSize: 9, opacity: 0.6 }}>SLOW + HIGH QUALITY</div>
+                <div style={{ position: "absolute", right: 10, bottom: 20, color: "#9b9895", fontSize: 9, opacity: 0.6 }}>FAST + LOW QUALITY</div>
 
                 {/* Dots */}
                 {ragData.map(r => (
@@ -337,15 +337,15 @@ export default function RAGComparison() {
                       </div>
                       <div key={r.id + "-speed"} style={{ padding: "10px 12px", background: selected === r.id ? `${r.color}08` : i % 2 === 0 ? "#060d17" : "#04080f", borderBottom: "1px solid #0d1b2a", display: "flex", alignItems: "center", gap: 8 }}>
                         <Bar value={r.speed} color={r.color} />
-                        <span style={{ color: "#475569", fontSize: 10, minWidth: 30 }}>{r.speed}</span>
+                        <span style={{ color: "#9b9895", fontSize: 10, minWidth: 30 }}>{r.speed}</span>
                       </div>
                       <div key={r.id + "-qual"} style={{ padding: "10px 12px", background: selected === r.id ? `${r.color}08` : i % 2 === 0 ? "#060d17" : "#04080f", borderBottom: "1px solid #0d1b2a", display: "flex", alignItems: "center", gap: 8 }}>
                         <Bar value={r.quality} color={r.color} />
-                        <span style={{ color: "#475569", fontSize: 10, minWidth: 30 }}>{r.quality}</span>
+                        <span style={{ color: "#9b9895", fontSize: 10, minWidth: 30 }}>{r.quality}</span>
                       </div>
-                      <div key={r.id + "-lat"} style={{ padding: "10px 12px", background: selected === r.id ? `${r.color}08` : i % 2 === 0 ? "#060d17" : "#04080f", borderBottom: "1px solid #0d1b2a", color: "#475569", fontSize: 11, display: "flex", alignItems: "center" }}>{r.latency}</div>
-                      <div key={r.id + "-llm"} style={{ padding: "10px 12px", background: selected === r.id ? `${r.color}08` : i % 2 === 0 ? "#060d17" : "#04080f", borderBottom: "1px solid #0d1b2a", color: "#475569", fontSize: 11, display: "flex", alignItems: "center" }}>{r.llmCalls}</div>
-                      <div key={r.id + "-db"} style={{ padding: "10px 12px", background: selected === r.id ? `${r.color}08` : i % 2 === 0 ? "#060d17" : "#04080f", borderBottom: "1px solid #0d1b2a", color: "#475569", fontSize: 11, display: "flex", alignItems: "center" }}>{r.dbCalls}</div>
+                      <div key={r.id + "-lat"} style={{ padding: "10px 12px", background: selected === r.id ? `${r.color}08` : i % 2 === 0 ? "#060d17" : "#04080f", borderBottom: "1px solid #0d1b2a", color: "#9b9895", fontSize: 11, display: "flex", alignItems: "center" }}>{r.latency}</div>
+                      <div key={r.id + "-llm"} style={{ padding: "10px 12px", background: selected === r.id ? `${r.color}08` : i % 2 === 0 ? "#060d17" : "#04080f", borderBottom: "1px solid #0d1b2a", color: "#9b9895", fontSize: 11, display: "flex", alignItems: "center" }}>{r.llmCalls}</div>
+                      <div key={r.id + "-db"} style={{ padding: "10px 12px", background: selected === r.id ? `${r.color}08` : i % 2 === 0 ? "#060d17" : "#04080f", borderBottom: "1px solid #0d1b2a", color: "#9b9895", fontSize: 11, display: "flex", alignItems: "center" }}>{r.dbCalls}</div>
                     </>
                   ))}
                 </div>
@@ -366,7 +366,7 @@ export default function RAGComparison() {
                     <div style={{ flex: 1 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                         <span style={{ color: r.color, fontWeight: 700, fontSize: 14 }}>{r.name}</span>
-                        <span style={{ color: "#475569", fontSize: 12 }}>{r.latency}</span>
+                        <span style={{ color: "#9b9895", fontSize: 12 }}>{r.latency}</span>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <Bar value={r.speed} color={r.color} />
@@ -374,7 +374,7 @@ export default function RAGComparison() {
                       </div>
                     </div>
                   </div>
-                  <div style={{ marginTop: 8, color: "#334155", fontSize: 12, borderTop: "1px solid #0d1b2a", paddingTop: 8 }}>
+                  <div style={{ marginTop: 8, color: "#d1d5db", fontSize: 12, borderTop: "1px solid #0d1b2a", paddingTop: 8 }}>
                     {r.why}
                   </div>
                 </div>
@@ -395,7 +395,7 @@ export default function RAGComparison() {
                     <div style={{ flex: 1 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                         <span style={{ color: r.color, fontWeight: 700, fontSize: 14 }}>{r.name}</span>
-                        <span style={{ color: "#475569", fontSize: 12 }}>{r.qualityLabel}</span>
+                        <span style={{ color: "#9b9895", fontSize: 12 }}>{r.qualityLabel}</span>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <Bar value={r.quality} color={r.color} />
@@ -403,7 +403,7 @@ export default function RAGComparison() {
                       </div>
                     </div>
                   </div>
-                  <div style={{ marginTop: 8, color: "#334155", fontSize: 12, borderTop: "1px solid #0d1b2a", paddingTop: 8 }}>
+                  <div style={{ marginTop: 8, color: "#d1d5db", fontSize: 12, borderTop: "1px solid #0d1b2a", paddingTop: 8 }}>
                     {r.tradeoff}
                   </div>
                 </div>
@@ -420,7 +420,7 @@ export default function RAGComparison() {
                 <span style={{ fontSize: 28 }}>{active.emoji}</span>
                 <div style={{ color: active.color, fontWeight: 800, fontSize: 15, marginTop: 4 }}>{active.name}</div>
               </div>
-              <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: "#334155", cursor: "pointer", fontSize: 18 }}>×</button>
+              <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: "#d1d5db", cursor: "pointer", fontSize: 18 }}>×</button>
             </div>
 
             {[
@@ -429,7 +429,7 @@ export default function RAGComparison() {
             ].map(m => (
               <div key={m.label} style={{ marginBottom: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                  <span style={{ color: "#334155", fontSize: 10, letterSpacing: 2, textTransform: "uppercase" }}>{m.label}</span>
+                  <span style={{ color: "#d1d5db", fontSize: 10, letterSpacing: 2, textTransform: "uppercase" }}>{m.label}</span>
                   <span style={{ color: active.color, fontSize: 11, fontWeight: 700 }}>{m.value}/100</span>
                 </div>
                 <Bar value={m.value} color={active.color} />
@@ -447,11 +447,11 @@ export default function RAGComparison() {
 
             <div style={{ marginBottom: 12 }}>
               <div style={{ color: "#1e3a5f", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>Why this speed?</div>
-              <div style={{ color: "#475569", fontSize: 12, lineHeight: 1.7 }}>{active.why}</div>
+              <div style={{ color: "#9b9895", fontSize: 12, lineHeight: 1.7 }}>{active.why}</div>
             </div>
             <div style={{ marginBottom: 12 }}>
               <div style={{ color: "#1e3a5f", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>Speed vs Quality tradeoff</div>
-              <div style={{ color: "#475569", fontSize: 12, lineHeight: 1.7 }}>{active.tradeoff}</div>
+              <div style={{ color: "#9b9895", fontSize: 12, lineHeight: 1.7 }}>{active.tradeoff}</div>
             </div>
             <div style={{ background: `${active.color}10`, border: `1px solid ${active.color}33`, borderRadius: 8, padding: 10 }}>
               <div style={{ color: "#1e3a5f", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", marginBottom: 4 }}>Best For</div>
