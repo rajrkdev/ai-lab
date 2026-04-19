@@ -25,6 +25,7 @@ Claude Code is Anthropic's AI-powered CLI that integrates directly into your dev
 | [Override Test Lab](./override-test-lab) | Interactive sandbox for testing configuration precedence |
 | [File Catalog — Interactive](./file-catalog) | Browse and filter all Claude Code file types with examples |
 | [Context & Cost Efficiency Guide](./claude-code-efficiency-guide) | Visual interactive guide to token efficiency and compaction |
+| [Context Engineering for Claude Code](./context-engineering-ce) | Comprehensive CE guide — four CE strategies, token simulator, session rhythm, command reference, and full CE checklist |
 
 ## Training & Research
 
