@@ -111,11 +111,12 @@ const WarnBox  = ({children}) => <div style={{background:C.warnBg,border:`0.5px 
 const ErrBox   = ({children}) => <div style={{background:C.errBg, border:`0.5px solid ${C.errBd}`, borderRadius:8,padding:"9px 13px",fontSize:13,color:C.errT, margin:"10px 0",lineHeight:1.5}}>{children}</div>
 const OkBox    = ({children}) => <div style={{background:C.okBg,  border:`0.5px solid ${C.okBd}`,  borderRadius:8,padding:"9px 13px",fontSize:13,color:C.okT,  margin:"10px 0",lineHeight:1.5}}>{children}</div>
 const Card     = ({children,border,style={}}) => <div style={{background:C.bg1,border:`0.5px solid ${border||C.border}`,borderRadius:12,padding:"13px 15px",marginBottom:8,...style}}>{children}</div>
-const MC       = ({label,value,note,color}) => <div style={{background:C.bg2,borderRadius:8,padding:"11px 13px"}}><div style={{fontSize:11,color:C.text3,marginBottom:3,letterSpacing:.3}}>{label}</div><div style={{fontSize:20,fontWeight:500,lineHeight:1.2,color:color||C.text1}}>{value}</div>{note&&<div style={{fontSize:11,color:C.text3,marginTop:2}}>{note}</div>}</div>
-const Sub      = ({children}) => <h3 style={{fontSize:14,fontWeight:500,margin:"18px 0 8px",color:C.text1}}>{children}</h3>
+const MC       = ({label,value,note,color}) => <div style={{background:C.bg2,borderRadius:8,padding:"11px 13px"}}><div style={{fontSize:11,color:C.text3,marginBottom:3,letterSpacing:.3,minHeight:"2.6em",lineHeight:1.4}}>{label}</div><div style={{fontSize:20,fontWeight:500,lineHeight:1.2,color:color||C.text1}}>{value}</div>{note&&<div style={{fontSize:11,color:C.text3,marginTop:2}}>{note}</div>}</div>
+const SecH2    = ({children}) => <h2 style={{fontSize:19,fontWeight:500,margin:"0 0 5px",paddingBottom:10,borderBottom:`0.5px solid ${C.border}`,borderLeft:"none",paddingLeft:0,marginLeft:0}}>{children}</h2>
+const Sub      = ({children}) => <h3 style={{fontSize:14,fontWeight:500,margin:"18px 0 8px",color:C.text1,borderLeft:"none",paddingLeft:0,marginLeft:0}}>{children}</h3>
 const Body     = ({children}) => <p style={{fontSize:13,color:C.text2,lineHeight:1.7,margin:"10px 0 14px"}}>{children}</p>
 const G2       = ({children}) => <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,margin:"10px 0"}}>{children}</div>
-const G3       = ({children}) => <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,margin:"10px 0"}}>{children}</div>
+const G3       = ({children}) => <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10,margin:"10px 0"}}>{children}</div>
 const G4       = ({children}) => <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,margin:"12px 0"}}>{children}</div>
 const Code     = ({children}) => <code style={{background:C.bg2,padding:"1px 5px",borderRadius:4,fontSize:12,fontFamily:"monospace"}}>{children}</code>
 const CodeBlock= ({children}) => <pre style={{background:"#111110",color:"#e8e6de",borderRadius:8,padding:"12px 14px",fontSize:11,lineHeight:1.7,overflowX:"auto",margin:"8px 0",fontFamily:"'JetBrains Mono','Fira Code',monospace"}}>{children}</pre>
@@ -364,9 +365,9 @@ const S_SIMULATOR = () => {
 
   return (
     <div>
-      <h2 style={{fontSize:19,fontWeight:500,margin:"0 0 5px",paddingBottom:10,borderBottom:`0.5px solid ${C.border}`}}>
+      <SecH2>
         Context window simulator — by model, mode & effort
-      </h2>
+      </SecH2>
       <Body>A precise, model-aware simulator that accounts for extended thinking costs, MCP overhead, session mode, effort level, and prompt caching. Every value is calibrated to real-world Claude Code data. Adjust the controls — the token breakdown and cost estimate update live.</Body>
 
       {/* ── TOP CONTROLS ── */}
@@ -550,13 +551,10 @@ const S_SIMULATOR = () => {
 // ── Section 0: CC as CE system ────────────────────────────────────────────────
 const S0 = () => (
   <div>
-    <h2 style={{fontSize:19,fontWeight:500,margin:"0 0 5px",paddingBottom:10,borderBottom:`0.5px solid ${C.border}`}}>Claude Code is a CE system — not just a coding tool</h2>
-    <div style={{display:"flex",alignItems:"center",gap:8,margin:"8px 0 14px",fontSize:12,color:C.text3,flexWrap:"wrap"}}>
-      <span>v2.1.101 · Models: Opus 4.7, Sonnet 4.6, Haiku 4.5</span>
-    </div>
+    <SecH2>Claude Code is a CE system — not just a coding tool</SecH2>
     <Body>Claude Code is one of the most sophisticated context engineering implementations publicly available. It uses a deliberate hybrid approach: <strong>CLAUDE.md files are pre-loaded upfront</strong> (always-available background context), while <strong>file contents are retrieved just-in-time</strong> via glob, grep, and bash as the task demands. Every design decision — from path-scoped rules to auto-compaction to effort levels — is a live implementation of the four core CE strategies.</Body>
     <G4>
-      <MC label="Sonnet 4.6 / Opus 4.6 / Opus 4.7" value="1M ctx" note="Native GA — no beta header needed"/>
+      <MC label="Sonnet/Opus 4.x models" value="1M ctx" note="Native GA — no beta header"/>
       <MC label="Haiku 4.5 context" value="200K" note="Only model without 1M"/>
       <MC label="MCP overhead / server" value="2,650" note="Tokens — fixed per session"/>
       <MC label="Compaction triggers at" value="83.5%" note="835K of 1M window"/>
@@ -580,7 +578,7 @@ const S0 = () => (
 // ── Section 1: Context anatomy ────────────────────────────────────────────────
 const S1 = () => (
   <div>
-    <h2 style={{fontSize:19,fontWeight:500,margin:"0 0 5px",paddingBottom:10,borderBottom:`0.5px solid ${C.border}`}}>Context window anatomy — real numbers</h2>
+    <SecH2>Context window anatomy — real numbers</SecH2>
     <Body>Run <Code>/context</Code> in any Claude Code session to see your live breakdown. The output below is a representative real-world example from a session with <strong>Claude Sonnet 4.6</strong> (1M token window). Notice how the percentages differ sharply from the older 200K examples you may have seen — with 1M tokens the same absolute overhead becomes a much smaller fraction of the available budget.</Body>
     <Sub>Live /context output — representative Sonnet 4.6 session (1M window)</Sub>
     <Term lines={[
@@ -625,7 +623,7 @@ const S1 = () => (
 // ── Section 2: CLAUDE.md ──────────────────────────────────────────────────────
 const S2 = () => (
   <div>
-    <h2 style={{fontSize:19,fontWeight:500,margin:"0 0 5px",paddingBottom:10,borderBottom:`0.5px solid ${C.border}`}}>CLAUDE.md — your context engineering control panel</h2>
+    <SecH2>CLAUDE.md — your context engineering control panel</SecH2>
     <Body>CLAUDE.md is injected into the system prompt and is the only context that persists across session restarts and survives compaction at the project root level. It is the system prompt you write for your own codebase. CLAUDE.md loads before Claude reads your code, before it reads your task, before anything — every token in it is a constant baseline cost you carry on every turn, every session.</Body>
     <Sub>The three-level hierarchy</Sub>
     <CLAUDEHierarchySVG/>
@@ -697,7 +695,7 @@ npx prisma studio    # open DB GUI on port 5555
 // ── Section 3: JIT retrieval ──────────────────────────────────────────────────
 const S3 = () => (
   <div>
-    <h2 style={{fontSize:19,fontWeight:500,margin:"0 0 5px",paddingBottom:10,borderBottom:`0.5px solid ${C.border}`}}>Just-in-time retrieval — how Claude Code reads your codebase</h2>
+    <SecH2>Just-in-time retrieval — how Claude Code reads your codebase</SecH2>
     <Body>Claude Code does not load your entire codebase into context upfront. It navigates the filesystem like an experienced developer — reading files on demand as the task requires. A full dump of even a medium project would exhaust the context window before any work was done. The official Anthropic recommendation is to <strong>explore first, then plan, then code</strong> — always using Plan Mode to separate codebase exploration from implementation.</Body>
     <Sub>The JIT retrieval pattern</Sub>
     <JITRetrievalSVG/>
@@ -753,7 +751,7 @@ const S3 = () => (
 // ── Section 4: Auto-compaction ────────────────────────────────────────────────
 const S4 = () => (
   <div>
-    <h2 style={{fontSize:19,fontWeight:500,margin:"0 0 5px",paddingBottom:10,borderBottom:`0.5px solid ${C.border}`}}>Auto-compaction — mechanics, costs, and control</h2>
+    <SecH2>Auto-compaction — mechanics, costs, and control</SecH2>
     <Body>When a Claude Code session reaches approximately 83.5% context usage (~167K of 200K), auto-compaction triggers. Claude summarises the conversation history to create a compressed version that fits. <strong>Critical fact: each compaction event costs 100–200K tokens to execute</strong> — it is not free. Auto-compaction can fire up to 3 times per turn on large sessions. On Opus with the 1M window, it has been reported to fire at 76K tokens, wasting 92% of the available context. Always compact proactively.</Body>
     <Sub>Before and after compaction</Sub>
     <CompactionSVG/>
@@ -788,7 +786,7 @@ const S4 = () => (
 // ── Section 5: 4 CE strategies ────────────────────────────────────────────────
 const S5 = () => (
   <div>
-    <h2 style={{fontSize:19,fontWeight:500,margin:"0 0 5px",paddingBottom:10,borderBottom:`0.5px solid ${C.border}`}}>The 4 CE strategies — mapped to Claude Code primitives (2026)</h2>
+    <SecH2>The 4 CE strategies — mapped to Claude Code primitives (2026)</SecH2>
     <Body>Every one of the four core context engineering strategies maps directly to a specific Claude Code primitive. Recognising this mapping lets you apply the right tool at the right moment.</Body>
     <G2>
       {[
@@ -847,7 +845,7 @@ files and summarise schema evolution"
 // ── Section 6: Commands ───────────────────────────────────────────────────────
 const S6 = () => (
   <div>
-    <h2 style={{fontSize:19,fontWeight:500,margin:"0 0 5px",paddingBottom:10,borderBottom:`0.5px solid ${C.border}`}}>Commands — CE control panel (v2.1.101)</h2>
+    <SecH2>Commands — CE control panel (v2.1.101)</SecH2>
     <Body>Claude Code ships with a set of slash commands and CLI flags that are your context engineering control panel. Several new CE-relevant commands shipped in Q1 2026. The most impactful addition for CE is <Code>/effort</Code>, which directly controls the single largest variable cost in most sessions.</Body>
     <Sub>Core CE commands — full reference</Sub>
     <Card>
@@ -976,7 +974,7 @@ const S7 = () => {
   const toggle=(idx)=>setItems(prev=>prev.map((it,i)=>i===idx?{...it,done:!it.done}:it))
   return (
     <div>
-      <h2 style={{fontSize:19,fontWeight:500,margin:"0 0 5px",paddingBottom:10,borderBottom:`0.5px solid ${C.border}`}}>Claude Code CE checklist</h2>
+      <SecH2>Claude Code CE checklist</SecH2>
       <Body>Comprehensive checklist calibrated to current Claude Code behaviour. Includes all updates from the March–April cycle: effort system changes, compaction cost data, caching bug awareness, and new commands.</Body>
       <div style={{fontSize:12,color:C.text2,marginBottom:4}}>{done} of {total} complete</div>
       <div style={{background:C.bg2,borderRadius:4,height:4,overflow:"hidden",marginBottom:10}}><div style={{width:`${pct}%`,height:"100%",borderRadius:4,background:C.okT,transition:"width .3s"}}/></div>
