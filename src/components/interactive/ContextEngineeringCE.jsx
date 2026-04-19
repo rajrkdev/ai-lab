@@ -1,13 +1,13 @@
 import { useState, useMemo } from "react"
 
 const C = {
-  text1:"#1a1a18", text2:"#5c5c58", text3:"#96948e",
-  bg1:"#ffffff",   bg2:"#f5f4f0", bg3:"#eeece8",
-  border:"rgba(0,0,0,0.10)", borderMd:"rgba(0,0,0,0.18)",
-  infoBg:"#e6f1fb", infoBd:"rgba(24,95,165,.22)", infoT:"#0c447c",
-  okBg:  "#eaf3de", okBd:  "rgba(15,110,86,.22)",  okT:  "#085041",
-  warnBg:"#faeeda", warnBd:"rgba(186,117,23,.22)", warnT:"#633806",
-  errBg: "#fcebeb", errBd: "rgba(163,45,45,.22)",  errT: "#791f1f",
+  text1:"#e6e4de", text2:"#9b9895", text3:"#6a6865",
+  bg1:"#1c1f1c",   bg2:"#161917", bg3:"#0e100e",
+  border:"rgba(255,255,255,0.08)", borderMd:"rgba(255,255,255,0.15)",
+  infoBg:"rgba(88,166,255,0.10)",  infoBd:"rgba(88,166,255,0.25)",   infoT:"#58a6ff",
+  okBg:  "rgba(0,212,106,0.10)",   okBd:  "rgba(0,212,106,0.30)",    okT:  "#00d46a",
+  warnBg:"rgba(245,166,35,0.10)",  warnBd:"rgba(245,166,35,0.28)",   warnT:"#f5a623",
+  errBg: "rgba(248,113,113,0.10)", errBd: "rgba(248,113,113,0.28)",  errT: "#f87171",
 }
 
 // ── GROUND-TRUTH MODEL DATA (April 19, 2026) ──────────────────────────────────
