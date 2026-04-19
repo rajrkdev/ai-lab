@@ -111,7 +111,7 @@ const WarnBox  = ({children}) => <div style={{background:C.warnBg,border:`0.5px 
 const ErrBox   = ({children}) => <div style={{background:C.errBg, border:`0.5px solid ${C.errBd}`, borderRadius:8,padding:"9px 13px",fontSize:13,color:C.errT, margin:"10px 0",lineHeight:1.5}}>{children}</div>
 const OkBox    = ({children}) => <div style={{background:C.okBg,  border:`0.5px solid ${C.okBd}`,  borderRadius:8,padding:"9px 13px",fontSize:13,color:C.okT,  margin:"10px 0",lineHeight:1.5}}>{children}</div>
 const Card     = ({children,border,style={}}) => <div style={{background:C.bg1,border:`0.5px solid ${border||C.border}`,borderRadius:12,padding:"13px 15px",marginBottom:8,...style}}>{children}</div>
-const MC       = ({label,value,note,color}) => <div style={{background:C.bg2,borderRadius:8,padding:"11px 13px"}}><div style={{fontSize:11,color:C.text3,marginBottom:3,letterSpacing:.3,minHeight:"2.6em",lineHeight:1.4}}>{label}</div><div style={{fontSize:20,fontWeight:500,lineHeight:1.2,color:color||C.text1}}>{value}</div>{note&&<div style={{fontSize:11,color:C.text3,marginTop:2}}>{note}</div>}</div>
+const MC       = ({label,value,note,color}) => <div style={{background:C.bg2,borderRadius:8,padding:"11px 13px"}}><div style={{fontSize:11,color:C.text3,marginBottom:3,letterSpacing:.3,minHeight:"2.8em",lineHeight:1.4}}>{label}</div><div style={{fontSize:20,fontWeight:500,lineHeight:1.2,color:color||C.text1}}>{value}</div>{note&&<div style={{fontSize:11,color:C.text3,marginTop:2}}>{note}</div>}</div>
 const SecH2    = ({children}) => <h2 style={{fontSize:19,fontWeight:500,margin:"0 0 5px",paddingBottom:10,borderBottom:`0.5px solid ${C.border}`,borderLeft:"none",paddingLeft:0,marginLeft:0}}>{children}</h2>
 const Sub      = ({children}) => <h3 style={{fontSize:14,fontWeight:500,margin:"18px 0 8px",color:C.text1,borderLeft:"none",paddingLeft:0,marginLeft:0}}>{children}</h3>
 const Body     = ({children}) => <p style={{fontSize:13,color:C.text2,lineHeight:1.7,margin:"10px 0 14px"}}>{children}</p>
@@ -554,10 +554,10 @@ const S0 = () => (
     <SecH2>Claude Code is a CE system — not just a coding tool</SecH2>
     <Body>Claude Code is one of the most sophisticated context engineering implementations publicly available. It uses a deliberate hybrid approach: <strong>CLAUDE.md files are pre-loaded upfront</strong> (always-available background context), while <strong>file contents are retrieved just-in-time</strong> via glob, grep, and bash as the task demands. Every design decision — from path-scoped rules to auto-compaction to effort levels — is a live implementation of the four core CE strategies.</Body>
     <G4>
-      <MC label="Sonnet/Opus 4.x models" value="1M ctx" note="Native GA — no beta header"/>
-      <MC label="Haiku 4.5 context" value="200K" note="Only model without 1M"/>
-      <MC label="MCP overhead / server" value="2,650" note="Tokens — fixed per session"/>
-      <MC label="Compaction triggers at" value="83.5%" note="835K of 1M window"/>
+      <MC label="Sonnet/Opus 4.x" value="1M ctx" note="Native GA — no beta header"/>
+      <MC label="Haiku 4.5 ctx" value="200K" note="Only model without 1M"/>
+      <MC label="MCP / server" value="2,650" note="Tokens — fixed per session"/>
+      <MC label="Compaction at" value="83.5%" note="835K of 1M window"/>
     </G4>
     <Quote cite="Anthropic engineering blog, 'Effective Context Engineering for AI Agents' (Sep 2025)">"Claude Code loads CLAUDE.md files naively upfront, while primitives like glob and grep allow it to navigate its environment just-in-time. This self-managed context window keeps the agent focused on relevant subsets rather than drowning in exhaustive but potentially irrelevant information."</Quote>
     <Sub>What loads in every Claude Code session</Sub>
@@ -1014,7 +1014,7 @@ export default function ContextEngineeringClaudeCode() {
       <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none",msOverflowStyle:"none",padding:"12px 0",borderBottom:`0.5px solid ${C.border}`,position:"sticky",top:"var(--sl-nav-height)",background:C.bg3,zIndex:20}}>
         <div style={{display:"flex",flexWrap:"nowrap",gap:3}}>
           {TABS.map((tab,i)=>(
-            <button key={i} onClick={()=>setActive(i)} style={{padding:"5px 10px",fontSize:12,fontWeight:400,fontFamily:"inherit",lineHeight:"1.4",borderRadius:6,border:`0.5px solid ${i===active?C.borderMd:C.border}`,cursor:"pointer",color:i===active?C.text1:C.text2,background:i===active?C.bg2:"transparent",transition:"all .12s",whiteSpace:"nowrap",flexShrink:0,boxSizing:"border-box"}}>
+            <button key={i} onClick={()=>setActive(i)} style={{padding:"5px 10px",fontSize:12,fontWeight:400,fontFamily:"inherit",lineHeight:"1.4",borderRadius:6,border:`0.5px solid ${i===active?C.borderMd:C.border}`,cursor:"pointer",color:C.text1,opacity:i===active?1:0.5,background:i===active?C.bg2:"transparent",transition:"all .12s",whiteSpace:"nowrap",flexShrink:0,boxSizing:"border-box",WebkitAppearance:"none",appearance:"none"}}>
               {tab}{i===8?" ⚙":""}
             </button>
           ))}
