@@ -1002,7 +1002,7 @@ const S7 = () => {
 }
 
 // ── Root ──────────────────────────────────────────────────────────────────────
-const TABS=["CC as CE system","Context anatomy","CLAUDE.md","JIT retrieval","Auto-compaction","4 strategies","Commands","Checklist","Simulator"]
+const TABS=["CE System","Anatomy","CLAUDE.md","JIT","Compaction","Strategies","Commands","Checklist","Simulator"]
 const SECTIONS=[S0,S1,S2,S3,S4,S5,S6,S7,S_SIMULATOR]
 
 export default function ContextEngineeringClaudeCode() {
@@ -1013,10 +1013,10 @@ export default function ContextEngineeringClaudeCode() {
       <div style={{padding:"12px 0 16px",borderBottom:`0.5px solid ${C.borderMd}`}}>
         <p style={{fontSize:13,color:C.text2,margin:0}}>v2.1.101 · Models: Opus 4.7, Sonnet 4.6, Haiku 4.5 · Source: Anthropic docs, Claude Code best practices, community data</p>
       </div>
-      <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none",msOverflowStyle:"none",padding:"14px 0",borderBottom:`0.5px solid ${C.border}`,position:"sticky",top:"var(--sl-nav-height)",background:C.bg3,zIndex:20}}>
-        <div style={{display:"flex",flexWrap:"nowrap",gap:4,minWidth:"max-content"}}>
+      <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none",msOverflowStyle:"none",padding:"12px 0",borderBottom:`0.5px solid ${C.border}`,position:"sticky",top:"var(--sl-nav-height)",background:C.bg3,zIndex:20}}>
+        <div style={{display:"flex",flexWrap:"nowrap",gap:3}}>
           {TABS.map((tab,i)=>(
-            <button key={i} onClick={()=>setActive(i)} style={{padding:"5px 12px",fontSize:12,borderRadius:8,border:`0.5px solid ${i===active?C.borderMd:C.border}`,cursor:"pointer",color:i===active?C.text1:C.text2,background:i===active?C.bg2:"transparent",fontFamily:"sans-serif",transition:"all .12s",whiteSpace:"nowrap",flexShrink:0}}>
+            <button key={i} onClick={()=>setActive(i)} style={{padding:"5px 10px",fontSize:12,fontWeight:400,fontFamily:"inherit",lineHeight:"1.4",borderRadius:6,border:`0.5px solid ${i===active?C.borderMd:C.border}`,cursor:"pointer",color:i===active?C.text1:C.text2,background:i===active?C.bg2:"transparent",transition:"all .12s",whiteSpace:"nowrap",flexShrink:0,boxSizing:"border-box"}}>
               {tab}{i===8?" ⚙":""}
             </button>
           ))}
